@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "698860566876",
+    "project_id": "fir-2d6ea",
+    "storage_bucket": "fir-2d6ea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:698860566876:android:98ca0d0b6b26f7386fa999",
+        "android_client_info": {
+          "package_name": "com.katura.katura_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBujgkbXlSkWIhDMCqp1nmrIJrUOF3P4_Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
