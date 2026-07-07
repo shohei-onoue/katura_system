@@ -14,7 +14,10 @@ import '../widgets/k_button.dart';
 import '../widgets/k_choice_group.dart';
 import '../widgets/k_date_time_picker.dart';
 import '../widgets/k_labeled_checkbox.dart';
-import '../widgets/k_time_field.dart';
+import '../widgets/k_time_slot_selector.dart';
+import '../widgets/k_quantity_counter.dart';
+import '../widgets/k_tile_selector.dart';
+import '../widgets/k_hierarchy_selector.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
@@ -41,9 +44,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _nameController = TextEditingController();
   final _facilityController = TextEditingController();
   final _addressController = TextEditingController();
-  final _otherWorkController = TextEditingController();
-  final _totalCountController = TextEditingController();
-  final _totalPriceController = TextEditingController();
   final _remarksController = TextEditingController();
   final _packagingCountController = TextEditingController();
   final _teaCountController = TextEditingController();
@@ -52,8 +52,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   String _deliveryType = '配送';
-  DateTime _pickupTime = DateTime.now();
-  DateTime _deliveryTime = DateTime.now();
+  DateTime _selectedTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 12, 0);
   
   bool _isDirect = false;
   bool _isKetsuzen = false;
@@ -81,6 +80,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   
   bool _isLoading = false;
   String? _incomingNumber;
+  String? _duplicateOrderAlert;
 
   @override
   void initState() {
@@ -111,46 +111,30 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _nameController.text = order.customerName;
       _facilityController.text = order.facilityName;
       _addressController.text = order.address;
-      _totalCountController.text = order.totalCount.toString();
       _deliveryDate = order.deliveryDate;
       _receptionDate = order.receptionDate;
       _deliveryType = order.deliveryType;
       _packagingType = order.packagingType;
       _paymentMethod = order.paymentMethod;
-      _branchName = order.branchName; // 追加: 既存の店舗情報を反映
+      _branchName = order.branchName;
       
-      // Parse time
       final timeParts = order.deliveryTime.split(':');
       if (timeParts.length == 2) {
-        final time = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
-        if (_deliveryType == '配送') {
-          _deliveryTime = time;
-        } else {
-          _pickupTime = time;
-        }
+        _selectedTime = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
       }
 
-      // Populate items
       _selectedQuantities.clear();
       for (var item in order.items) {
         _selectedQuantities[item['id']] = item['quantity'];
       }
       _confirmedItems = List.from(order.items);
-      
-      // Re-calculate price
-      int totalPrice = 0;
-      for (var item in _confirmedItems) {
-        totalPrice += (item['price'] as int) * (item['quantity'] as int);
-      }
-      _totalPriceController.text = totalPrice.toString();
-      
       _confirmationDate = _deliveryDate.subtract(const Duration(days: 1));
     });
   }
 
   void _simulateIncomingCall() async {
     await Future.delayed(const Duration(seconds: 5));
-    if (widget.initialOrder != null) return; // 編集時は着信シミュレーション停止
+    if (widget.initialOrder != null) return;
 
     final customers = await _customerService.getAllCustomers();
     if (customers.isNotEmpty && mounted) {
@@ -175,10 +159,24 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _facilityController.text = customer.companyName;
         _addressController.text = customer.address;
         _phoneController.text = customer.phoneNumber;
+        _checkDuplicateOrder(customer.address);
       } else {
         _currentCustomer = null;
+        _duplicateOrderAlert = null;
       }
     });
+  }
+
+  void _checkDuplicateOrder(String address) {
+    // 現場要件: 同一住所または近隣の近日中の注文をチェック
+    // モック実装: 特定のキーワードで警告を出す
+    if (address.contains('豊田') || address.contains('病院')) {
+      setState(() {
+        _duplicateOrderAlert = "⚠️ 警告: 3日以内に近隣で注文があります。「前回とは違うお弁当」を提案してください。";
+      });
+    } else {
+      setState(() => _duplicateOrderAlert = null);
+    }
   }
 
   void _confirmSelection() {
@@ -192,48 +190,24 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 'quantity': _selectedQuantities[m.id],
               })
           .toList();
-      
-      int totalCount = 0;
-      int totalPrice = 0;
-      for (var item in _confirmedItems) {
-        totalCount += (item['quantity'] as int);
-        totalPrice += (item['price'] as int) * (item['quantity'] as int);
-      }
-      _totalCountController.text = totalCount.toString();
-      _totalPriceController.text = totalPrice.toString();
     });
   }
 
-  void _resetForm() {
-    setState(() {
-      _phoneController.clear();
-      _nameController.clear();
-      _facilityController.clear();
-      _addressController.clear();
-      _otherWorkController.clear();
-      _totalCountController.clear();
-      _totalPriceController.clear();
-      _remarksController.clear();
-      _packagingCountController.clear();
-      _teaCountController.clear();
-      
-      _selectedQuantities.clear();
-      _confirmedItems.clear();
-      _currentCustomer = null;
-      
-      _receptionDate = DateTime.now();
-      _deliveryDate = DateTime.now().add(const Duration(days: 1));
-      _confirmationDate = _deliveryDate.subtract(const Duration(days: 1));
-      
-      _selectedReceiverId = null;
-      _selectedConfirmerId = null;
-    });
+  double _calculateRiceAmount(int totalCount) {
+    // 夏季（5-10月）は吸水率が高いため補正係数 1.1、冬季（11-4月）は 1.05
+    final month = _deliveryDate.month;
+    final isSummer = month >= 5 && month <= 10;
+    final coefficient = isSummer ? 1.1 : 1.05;
+    const baseRicePerBento = 0.15; // 150g
+    return totalCount * baseRicePerBento * coefficient;
   }
 
-  String _getBranchFromAddress(String address) {
-    if (address.contains('名古屋')) return '名古屋店';
-    if (address.contains('岐阜')) return '岐阜店';
-    return '岡崎本店'; // デフォルト
+  int get _totalCount {
+    return _confirmedItems.fold(0, (sum, item) => sum + (item['quantity'] as int));
+  }
+
+  int get _totalPrice {
+    return _confirmedItems.fold(0, (sum, item) => sum + (item['price'] as int) * (item['quantity'] as int));
   }
 
   Future<void> _handleSave() async {
@@ -246,11 +220,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
     final orderId = widget.initialOrder?.id ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}';
     
-    // 新規登録時は住所から自動判定、編集時は選択されている値を優先
-    final determinedBranch = widget.initialOrder == null 
-        ? _getBranchFromAddress(_addressController.text)
-        : _branchName;
-
     final order = OrderModel(
       id: orderId,
       customerName: _nameController.text,
@@ -259,16 +228,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       address: _addressController.text,
       receptionDate: _receptionDate,
       deliveryDate: _deliveryDate,
-      deliveryTime: _deliveryType == '配送' 
-          ? "${_deliveryTime.hour}:${_deliveryTime.minute.toString().padLeft(2, '0')}"
-          : "${_pickupTime.hour}:${_pickupTime.minute.toString().padLeft(2, '0')}",
+      deliveryTime: "${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}",
       deliveryType: _deliveryType,
       items: _confirmedItems,
-      totalCount: int.tryParse(_totalCountController.text) ?? 0,
+      totalCount: _totalCount,
       packagingType: _packagingType,
       paymentMethod: _paymentMethod,
       status: widget.initialOrder?.status ?? '受注済み',
-      branchName: determinedBranch,
+      branchName: _branchName,
     );
 
     try {
@@ -279,341 +246,243 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         );
         if (widget.onSaveSuccess != null) {
           widget.onSaveSuccess!();
-        } else {
-          _resetForm();
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存に失敗しました: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
       }
     }
-  }
-
-  Future<void> _handlePrint() async {
-    final timeStr = _deliveryType == '配送' 
-        ? "${_deliveryTime.hour}:${_deliveryTime.minute.toString().padLeft(2, '0')}"
-        : "${_pickupTime.hour}:${_pickupTime.minute.toString().padLeft(2, '0')}";
-
-    final data = {
-      'deliveryType': _deliveryType,
-      'deliveryTime': timeStr,
-      'name': _nameController.text,
-      'facility': _facilityController.text,
-      'address': _addressController.text,
-      'phone': _phoneController.text,
-      'items': _confirmedItems,
-      'totalCount': _totalCountController.text,
-      'totalPrice': _totalPriceController.text,
-      'packaging': _packagingType,
-      'remarks': _remarksController.text,
-    };
-    await PrintService.printOrder(data);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(widget.initialOrder == null ? '電話受注システム' : '受注内容の編集', 
-                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        leading: widget.initialOrder != null ? IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: widget.onSaveSuccess,
-        ) : null,
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.only(right: 20),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-            ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF8F9FA),
       body: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               children: [
                 if (_incomingNumber != null) _buildIncomingCallBar(),
-                _buildTopCustomerInfoArea(),
+                _buildHeader(),
+                if (_duplicateOrderAlert != null) _buildDuplicateAlert(),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildReceptionDetailsSection(),
-                        const SizedBox(height: 24),
-                        if (_confirmedItems.isNotEmpty) ...[
-                          _buildConfirmedItemsSection(),
-                          const SizedBox(height: 24),
-                        ],
-                        _buildOrderItemsSection(),
-                        const SizedBox(height: 24),
-                        _buildPaymentAndReceiptSection(),
-                        const SizedBox(height: 24),
-                        _buildConfirmationSection(),
-                        const SizedBox(height: 32),
-                        Row(
-                          children: [
-                            KButton(
-                              label: widget.initialOrder == null ? '受注を確定して保存する (F10)' : '更新を保存する',
-                              fullWidth: false,
-                              onPressed: _handleSave,
-                            ),
-                            const SizedBox(width: 16),
-                            KButton(
-                              label: '印刷する',
-                              color: Colors.blueGrey,
-                              fullWidth: false,
-                              onPressed: _handlePrint,
-                            ),
-                            if (widget.initialOrder != null) ...[
-                              const SizedBox(width: 16),
-                              KButton(
-                                label: 'キャンセル',
-                                color: Colors.grey,
-                                fullWidth: false,
-                                onPressed: widget.onSaveSuccess!,
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 40),
-                      ],
-                    ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                    children: [
+                      _buildCustomerSection(),
+                      const SizedBox(height: 24),
+                      _buildDeliveryDateTimeSection(),
+                      const SizedBox(height: 24),
+                      _buildItemsAndRiceSection(),
+                      const SizedBox(height: 24),
+                      _buildOptionsAndPaymentSection(),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            width: 500,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(left: BorderSide(color: Colors.grey[300]!)),
-            ),
-            child: _buildSideMenu(),
-          ),
+          _buildRightSideMenu(),
         ],
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(right: 520), // 右側メニューを避ける
+        child: FloatingActionButton.extended(
+          onPressed: _handleSave,
+          label: Text(widget.initialOrder == null ? '受注確定・保存 (F10)' : '内容更新', 
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.check_circle),
+          backgroundColor: Colors.deepOrange,
+        ),
       ),
     );
   }
 
-  Widget _buildTopCustomerInfoArea() {
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+      padding: const EdgeInsets.all(24),
+      color: Colors.white,
+      child: Row(
+        children: [
+          const Icon(Icons.phone_callback, color: Colors.deepOrange, size: 28),
+          const SizedBox(width: 12),
+          Text(
+            widget.initialOrder == null ? '受注入力（右手片手操作特化）' : '受注編集',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+          ),
+          const Spacer(),
+          if (_isLoading) const CircularProgressIndicator(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildDuplicateAlert() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.shade50,
+        border: Border.all(color: Colors.red.shade200),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.red),
+          const SizedBox(width: 12),
+          Expanded(child: Text(_duplicateOrderAlert!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerSection() {
+    return _buildCard(
+      title: '顧客・施設情報（カーナビ風選択）',
+      icon: Icons.person_pin_circle,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.person, color: Colors.blueGrey, size: 20),
-              const SizedBox(width: 8),
-              const Text('基本・顧客情報', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              if (_currentCustomer == null && widget.initialOrder == null)
-                const Text('新規顧客', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
-              else
-                const Text('既往顧客', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
               Expanded(
                 child: KTextField(
-                  label: '電話番号 (ハイフンなし可)',
+                  label: '電話番号',
                   controller: _phoneController,
-                  icon: Icons.phone,
+                  icon: Icons.phone_android,
                   onChanged: _lookupCustomer,
-                  keyboardType: TextInputType.phone,
-                  autofocus: widget.initialOrder == null,
+                  autofocus: true,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: widget.initialOrder != null 
-                  ? KChoiceGroup<String>(
-                      label: '担当店舗 (編集モード)',
-                      selectedValue: _branchName,
-                      items: [
-                        KChoiceItem(label: '岡崎本店', value: '岡崎本店'),
-                        KChoiceItem(label: '名古屋店', value: '名古屋店'),
-                        KChoiceItem(label: '岐阜店', value: '岐阜店'),
-                      ],
-                      onSelected: (val) => setState(() => _branchName = val),
-                    )
-                  : KTextField(label: '名前', controller: _nameController, icon: Icons.badge),
+                child: KTextField(label: 'お名前', controller: _nameController, icon: Icons.badge),
               ),
             ],
           ),
-          Row(
-            children: [
-              if (widget.initialOrder != null) ...[
-                Expanded(child: KTextField(label: '名前', controller: _nameController, icon: Icons.badge)),
-                const SizedBox(width: 16),
-              ],
-              Expanded(
-                flex: 1,
-                child: KTextField(label: '施設名・会社名', controller: _facilityController, icon: Icons.business),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: KTextField(
-                  label: '住所', 
-                  controller: _addressController, 
-                  icon: Icons.location_on,
-                  suffix: (_currentCustomer != null && _currentCustomer!.deliveryAddresses.isNotEmpty)
-                      ? _buildAddressHistoryPopup()
-                      : null,
-                ),
-              ),
-            ],
+          const SizedBox(height: 20),
+          KHierarchySelector(
+            label: '施設名・エリア階層選択',
+            onSelected: (val) {
+              setState(() {
+                _facilityController.text = val;
+                // 住所自動補正ロジック（モック）
+                if (val.contains('市民病院')) _addressController.text = "愛知県岡崎市若松町1-1";
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+          KTextField(
+            label: '詳細施設名・会社名',
+            controller: _facilityController,
+            icon: Icons.business,
+          ),
+          const SizedBox(height: 12),
+          KTextField(
+            label: '配達先住所',
+            controller: _addressController,
+            icon: Icons.map,
+            suffix: _currentCustomer != null ? _buildAddressHistoryPopup() : null,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildReceptionDetailsSection() {
-    return _buildSectionCard(
-      title: '受電・配送詳細',
-      icon: Icons.assignment,
+  Widget _buildDeliveryDateTimeSection() {
+    return _buildCard(
+      title: '配達・日時（15分刻み）',
+      icon: Icons.timer,
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(child: _buildStaffDropdown('受電者', _selectedReceiverId, (val) => setState(() => _selectedReceiverId = val))),
-              const SizedBox(width: 16),
               Expanded(
                 child: KDateTimePicker(
-                  label: '受電日',
-                  value: _receptionDate,
-                  onSelected: (date) => setState(() => _receptionDate = date),
-                  icon: Icons.calendar_today,
-                ),
-              ),
-            ],
-          ),
-          KChoiceGroup<String>(
-            label: '引取 / 配送',
-            selectedValue: _deliveryType,
-            items: [
-              KChoiceItem(label: '配送', value: '配送'),
-              KChoiceItem(label: '引取', value: '引取'),
-            ],
-            onSelected: (val) => setState(() => _deliveryType = val),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: KDateTimePicker(
-                  label: _deliveryType == '配送' ? '配送日' : '引取日',
+                  label: '配達日',
                   value: _deliveryDate,
-                  onSelected: (date) {
-                    setState(() {
-                      _deliveryDate = date;
-                      _confirmationDate = date.subtract(const Duration(days: 1));
-                    });
-                  },
+                  onSelected: (date) => setState(() => _deliveryDate = date),
                   icon: Icons.calendar_month,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: KTimeField(
-                  label: _deliveryType == '配送' ? '配送希望時間' : '引取予定時間',
-                  value: _deliveryType == '配送' ? _deliveryTime : _pickupTime,
-                  onSelected: (time) => setState(() {
-                    if (_deliveryType == '配送') {
-                      _deliveryTime = time;
-                    } else {
-                      _pickupTime = time;
-                    }
-                  }),
+                child: KChoiceGroup<String>(
+                  label: '区分',
+                  selectedValue: _deliveryType,
+                  items: [KChoiceItem(label: '配送', value: '配送'), KChoiceItem(label: '引取', value: '引取')],
+                  onSelected: (val) => setState(() => _deliveryType = val),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 24,
-            children: [
-              KLabeledCheckbox(label: '直取り', value: _isDirect, onChanged: (v) => setState(() => _isDirect = v ?? false)),
-              KLabeledCheckbox(label: '結膳', value: _isKetsuzen, onChanged: (v) => setState(() => _isKetsuzen = v ?? false)),
-              KLabeledCheckbox(label: '納品書あり', value: _hasDeliveryNote, onChanged: (v) => setState(() => _hasDeliveryNote = v ?? true)),
-              KLabeledCheckbox(label: 'デリカ', value: _isDelica, onChanged: (v) => setState(() => _isDelica = v ?? false)),
-            ],
+          const SizedBox(height: 16),
+          KTimeSlotSelector(
+            label: '希望時間枠',
+            selectedTime: _selectedTime,
+            onSelected: (time) => setState(() => _selectedTime = time),
           ),
-          KTextField(label: 'その他作業内容', controller: _otherWorkController, icon: Icons.more_horiz),
         ],
       ),
     );
   }
 
-  Widget _buildConfirmedItemsSection() {
-    return _buildSectionCard(
-      title: '確定した注文内容',
-      icon: Icons.shopping_cart_checkout,
+  Widget _buildItemsAndRiceSection() {
+    return _buildCard(
+      title: '注文内容・生米換算',
+      icon: Icons.restaurant,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ..._confirmedItems.map((item) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
-              children: [
-                Expanded(child: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                Text("${item['quantity']} 個", style: const TextStyle(fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold)),
-                const SizedBox(width: 16),
-                Text("¥${(item['price'] * item['quantity']).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-                    style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
-          )),
-          const Divider(height: 32),
+          if (_confirmedItems.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: Text('右側メニューからお弁当を選択してください', style: TextStyle(color: Colors.grey))),
+            )
+          else
+            ..._confirmedItems.map((item) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(item['name'], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                  KQuantityCounter(
+                    value: _selectedQuantities[item['id']] ?? 0,
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedQuantities[item['id']] = val;
+                        _confirmSelection();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            )),
+          const Divider(height: 40),
           Row(
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('合計個数', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Row(
-                    children: [
-                      Text(_totalCountController.text, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange)),
-                      const Text(' 個', style: TextStyle(fontSize: 14)),
-                    ],
-                  ),
+                  const Text('合計金額', style: TextStyle(color: Colors.grey)),
+                  Text('¥${_totalPrice.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => "${m[1]},")}',
+                       style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.deepOrange)),
                 ],
               ),
-              const SizedBox(width: 48),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('請求金額 (税込)', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  Row(
-                    children: [
-                      const Text('¥ ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      Text(
-                        _totalPriceController.text.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},'),
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepOrange),
-                      ),
-                    ],
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.blueGrey.shade50, borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  children: [
+                    const Text('必要生米量', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Text('${_calculateRiceAmount(_totalCount).toStringAsFixed(2)} kg',
+                         style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    Text('(${_deliveryDate.month >= 5 && _deliveryDate.month <= 10 ? "夏季" : "冬季"}補正適用)',
+                         style: const TextStyle(fontSize: 10, color: Colors.blueGrey)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -622,380 +491,185 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
-  Widget _buildOrderItemsSection() {
-    return _buildSectionCard(
-      title: '梱包・特記',
-      icon: Icons.inventory_2,
+  Widget _buildOptionsAndPaymentSection() {
+    return _buildCard(
+      title: '支払・店舗・担当',
+      icon: Icons.settings,
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: KTextField(
-                  label: '合計個数',
-                  controller: _totalCountController,
-                  icon: Icons.numbers,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: KTextField(
-                  label: '請求金額',
-                  controller: _totalPriceController,
-                  icon: Icons.currency_yen,
-                  keyboardType: TextInputType.number,
-                ),
-              ),
+          KTileSelector<String>(
+            label: '担当店舗',
+            selectedValue: _branchName,
+            items: [
+              KTileItem(label: '岡崎本店', value: '岡崎本店'),
+              KTileItem(label: '名古屋店', value: '名古屋店'),
+              KTileItem(label: '岐阜店', value: '岐阜店'),
             ],
+            onSelected: (val) => setState(() => _branchName = val),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                flex: 3,
-                child: KChoiceGroup<String>(
-                  label: '梱包形態',
-                  selectedValue: _packagingType,
-                  items: [
-                    KChoiceItem(label: '紙袋', value: '紙袋'),
-                    KChoiceItem(label: '段ボール', value: '段ボール'),
-                    KChoiceItem(label: '小分け', value: '小分け'),
-                  ],
-                  onSelected: (val) => setState(() => _packagingType = val),
-                ),
-              ),
-              if (_packagingType == '小分け') ...[
-                const SizedBox(width: 16),
-                Expanded(flex: 1, child: KTextField(label: '個数', controller: _packagingCountController)),
-              ],
-            ],
+          const SizedBox(height: 20),
+          KTileSelector<String?>(
+            label: '受電担当者（右手タイル選択）',
+            selectedValue: _selectedReceiverId,
+            items: _staffList.map((s) => KTileItem(label: s.name, value: s.id)).toList(),
+            onSelected: (val) => setState(() => _selectedReceiverId = val),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                flex: 3,
-                child: KChoiceGroup<String>(
-                  label: 'お茶',
-                  selectedValue: _teaType,
-                  items: [
-                    KChoiceItem(label: '込み', value: '込み'),
-                    KChoiceItem(label: '別', value: '別'),
-                    KChoiceItem(label: 'なし', value: 'なし'),
-                    KChoiceItem(label: '特典', value: '特典'),
-                  ],
-                  onSelected: (val) => setState(() => _teaType = val),
-                ),
-              ),
-              if (_teaType == '特典' || _teaType == '別') ...[
-                const SizedBox(width: 16),
-                Expanded(flex: 1, child: KTextField(label: '本数', controller: _teaCountController)),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          KTextField(label: '備考 (アレルギー、配送指示など)', controller: _remarksController, icon: Icons.notes),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentAndReceiptSection() {
-    return _buildSectionCard(
-      title: '支払・領収書',
-      icon: Icons.payments,
-      child: Column(
-        children: [
-          KChoiceGroup<String>(
+          const SizedBox(height: 20),
+          KTileSelector<String>(
             label: '支払方法',
             selectedValue: _paymentMethod,
             items: [
-              KChoiceItem(label: '現金', value: '現金'),
-              KChoiceItem(label: 'カード', value: 'カード'),
-              KChoiceItem(label: '請求', value: '請求'),
-              KChoiceItem(label: '売掛', value: '売掛'),
+              KTileItem(label: '現金', value: '現金'),
+              KTileItem(label: 'カード', value: 'カード'),
+              KTileItem(label: '請求書', value: '請求'),
+              KTileItem(label: '売掛', value: '売掛'),
             ],
             onSelected: (val) => setState(() => _paymentMethod = val),
           ),
-          KChoiceGroup<String>(
-            label: '領収書',
-            selectedValue: _receiptType,
-            items: [
-              KChoiceItem(label: '不要', value: '不要'),
-              KChoiceItem(label: '手書き', value: '手書き'),
-              KChoiceItem(label: '電子', value: '電子'),
-              KChoiceItem(label: 'レシート', value: 'レシート'),
-            ],
-            onSelected: (val) => setState(() => _receiptType = val),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildConfirmationSection() {
-    return _buildSectionCard(
-      title: '事前確認設定',
-      icon: Icons.verified_user,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: KDateTimePicker(
-                  label: '確認予定日',
-                  value: _confirmationDate,
-                  onSelected: (date) => setState(() => _confirmationDate = date),
-                  icon: Icons.event_available,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStaffDropdown('確認担当者', _selectedConfirmerId, (val) => setState(() => _selectedConfirmerId = val))),
-            ],
-          ),
-          KChoiceGroup<String>(
-            label: '確認方法',
-            selectedValue: _confirmationMethod,
-            items: [
-              KChoiceItem(label: '電話', value: '電話'),
-              KChoiceItem(label: 'メール', value: 'メール'),
-            ],
-            onSelected: (val) => setState(() => _confirmationMethod = val),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStaffDropdown(String label, String? value, ValueChanged<String?> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: const Icon(Icons.badge_outlined),
-          border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        items: _staffList.map((staff) {
-          return DropdownMenuItem(
-            value: staff.id,
-            child: Text(staff.name),
-          );
-        }).toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
+  Widget _buildCard({required String title, required IconData icon, required Widget child}) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4)),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.orange, size: 22),
-              const SizedBox(width: 12),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.deepOrange, size: 20),
+                const SizedBox(width: 8),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+              ],
+            ),
           ),
-          const Divider(height: 32),
-          child,
+          const Divider(),
+          Padding(padding: const EdgeInsets.all(20), child: child),
         ],
       ),
     );
   }
 
-  Widget _buildSideMenu() {
+  Widget _buildRightSideMenu() {
     final categories = _menus.map((m) => m.category).toSet().toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.05),
-            border: Border(bottom: BorderSide(color: Colors.orange.shade100)),
+    return Container(
+      width: 500,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(left: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.grey.shade50, border: Border(bottom: BorderSide(color: Colors.grey.shade200))),
+            child: const Row(
+              children: [
+                Icon(Icons.restaurant_menu, color: Colors.blueGrey),
+                SizedBox(width: 12),
+                Text('メニュー選択（ダイレクト追加）', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
           ),
-          child: const Row(
-            children: [
-              Icon(Icons.restaurant_menu, color: Colors.orange),
-              SizedBox(width: 12),
-              Text('メニュー選択', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: categories.length,
-            itemBuilder: (context, catIndex) {
-              final category = categories[catIndex];
-              final categoryMenus = _menus.where((m) => m.category == category).toList();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                    child: Text(category, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  ),
-                  ...categoryMenus.map((menu) {
-                    final qty = _selectedQuantities[menu.id] ?? 0;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          if (menu.imageUrl.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.asset(
-                                menu.imageUrl,
-                                height: 70,
-                                width: 70,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  height: 70,
-                                  width: 70,
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 20),
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final categoryMenus = _menus.where((m) => m.category == category).toList();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      child: Text(category, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.orange.shade800)),
+                    ),
+                    ...categoryMenus.map((menu) {
+                      final qty = _selectedQuantities[menu.id] ?? 0;
+                      return Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade100)),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedQuantities[menu.id] = qty + 1;
+                              _confirmSelection();
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
                               children: [
-                                Text(menu.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                Text("¥${menu.price}", style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      Text('¥${menu.price}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                                if (qty > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(20)),
+                                    child: Text('$qty', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                                  ),
                               ],
                             ),
                           ),
-                          Row(
-                            children: [
-                              _buildQtyButton(Icons.remove, () {
-                                if (qty > 0) setState(() => _selectedQuantities[menu.id] = qty - 1);
-                              }),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text("$qty", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                              ),
-                              _buildQtyButton(Icons.add, () {
-                                setState(() => _selectedQuantities[menu.id] = qty + 1);
-                              }),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
-                                onPressed: () {
-                                  if (qty > 0) setState(() => _selectedQuantities[menu.id] = 0);
-                                },
-                                constraints: const BoxConstraints(),
-                                padding: EdgeInsets.zero,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              );
-            },
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: KButton(
-            label: '選択内容を確定',
-            fullWidth: false,
-            onPressed: _confirmSelection,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQtyButton(IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Icon(icon, size: 16, color: Colors.orange),
+        ],
       ),
     );
   }
 
   Widget _buildAddressHistoryPopup() {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.orange),
-      tooltip: '過去の配達先住所',
+      icon: const Icon(Icons.history, color: Colors.deepOrange),
       onSelected: (String value) => _addressController.text = value,
-      itemBuilder: (BuildContext context) {
-        return _currentCustomer!.deliveryAddresses.map((String addr) {
-          return PopupMenuItem<String>(
-            value: addr,
-            child: Text(addr, style: const TextStyle(fontSize: 13)),
-          );
-        }).toList();
-      },
+      itemBuilder: (context) => _currentCustomer!.deliveryAddresses.map((addr) => PopupMenuItem(value: addr, child: Text(addr))).toList(),
     );
   }
 
   Widget _buildIncomingCallBar() {
     return Container(
-      color: Colors.orange[800],
+      color: Colors.green.shade600,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         children: [
-          const Icon(Icons.phone_in_talk, color: Colors.white, size: 24),
+          const Icon(Icons.phone_in_talk, color: Colors.white),
           const SizedBox(width: 16),
-          Text(
-            '着信中: $_incomingNumber',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(width: 32),
+          Text('着信中: $_incomingNumber', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+          const Spacer(),
           ElevatedButton(
             onPressed: () {
-              if (_incomingNumber != null) {
-                _phoneController.text = _incomingNumber!;
-                _lookupCustomer(_incomingNumber!);
-                setState(() => _incomingNumber = null);
-              }
+              _phoneController.text = _incomingNumber!;
+              _lookupCustomer(_incomingNumber!);
+              setState(() => _incomingNumber = null);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.orange[800]),
-            child: const Text('この番号で入力開始'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.green.shade800),
+            child: const Text('入力開始'),
           ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => setState(() => _incomingNumber = null),
-          ),
-          const Spacer(),
+          const SizedBox(width: 8),
+          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => setState(() => _incomingNumber = null)),
         ],
       ),
     );
@@ -1007,9 +681,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _nameController.dispose();
     _facilityController.dispose();
     _addressController.dispose();
-    _otherWorkController.dispose();
-    _totalCountController.dispose();
-    _totalPriceController.dispose();
     _remarksController.dispose();
     _packagingCountController.dispose();
     _teaCountController.dispose();
