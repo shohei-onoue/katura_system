@@ -29,11 +29,4 @@ class StaffService {
       Staff(id: 's10', name: '加藤 智子', role: 'アルバイト'),
     ];
   }
-
-  Future<void> seedStaffData() async {
-    final dummy = _getDummyStaff();
-    for (var staff in dummy) {
-      await _staffCollection.doc(staff.id).set(staff.toMap());
-    }
-  }
 }

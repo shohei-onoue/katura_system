@@ -305,7 +305,18 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       children: [
                         const Icon(Icons.location_on, size: 16, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Expanded(child: Text(order.address, style: const TextStyle(fontSize: 14, color: Colors.grey))),
+                        Expanded(
+                          child: Text(
+                            "${order.address}${order.deliveryLocation.isNotEmpty ? ' (${order.deliveryLocation})' : ''}", 
+                            style: const TextStyle(fontSize: 14, color: Colors.grey)
+                          ),
+                        ),
+                        if (order.receiverName.isNotEmpty) ...[
+                          const SizedBox(width: 16),
+                          const Icon(Icons.person_outline, size: 16, color: Colors.blueGrey),
+                          const SizedBox(width: 4),
+                          Text(order.receiverName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                        ],
                       ],
                     ),
                     const Divider(height: 32),

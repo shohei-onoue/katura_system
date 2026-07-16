@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../models/menu_model.dart';
 import '../services/menu_service.dart';
 
@@ -13,7 +12,6 @@ class MenuMasterScreen extends StatefulWidget {
 
 class _MenuMasterScreenState extends State<MenuMasterScreen> {
   final _menuService = MenuService();
-  final _picker = ImagePicker();
   List<MenuModel> _menus = [];
   bool _isLoading = true;
 

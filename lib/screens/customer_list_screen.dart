@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/customer_model.dart';
 import '../services/customer_service.dart';
 
@@ -79,43 +80,108 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           ],
         ),
         content: SizedBox(
-          width: 600,
+          width: 700,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _detailItem('顧客ID', customer.id),
-                _detailItem('企業名', customer.companyName),
-                _detailItem('電話番号', customer.phoneNumber),
-                _detailItem('メールアドレス', customer.email),
-                _detailItem('登録住所', customer.address),
-                const Divider(height: 32),
-                const Text('配達実績のある住所', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 8),
-                ...customer.deliveryAddresses.map((addr) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text(addr),
+                          _detailItem('顧客氏名', customer.name),
+                          _detailItem('ふりがな', customer.furigana),
+                          _detailItem('所属企業', customer.companyName),
+                          _detailItem('電話番号', customer.phoneNumber),
                         ],
                       ),
-                    )),
-                const Divider(height: 32),
-                const Text('注文履歴', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 8),
-                ...customer.orderHistory.map((history) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.history, size: 16, color: Colors.grey),
-                          const SizedBox(width: 8),
-                          Text(history),
+                          _detailItem('代表住所', customer.address),
+                          _detailItem('位置座標', '${customer.latitude ?? "-"}, ${customer.longitude ?? "-"}'),
+                          _detailItem('メール', customer.email),
                         ],
                       ),
-                    )),
+                    ),
+                  ],
+                ),
+                const Divider(height: 48, thickness: 1),
+                const Text('【 配達先マスター・履歴 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blueGrey)),
+                const SizedBox(height: 16),
+                ...customer.deliveryAddresses.map((addr) {
+                  // "施設名: 住所 (座標)" 形式を想定
+                  final parts = addr.split(': ');
+                  final facilityName = parts.length > 1 ? parts[0] : '名称なし';
+                  final addressWithCoord = parts.length > 1 ? parts[1] : addr;
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.business, size: 18, color: Colors.deepOrange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(facilityName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 26),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('住所: ${addressWithCoord.split(' (')[0]}', style: const TextStyle(color: Colors.black87)),
+                              if (addressWithCoord.contains('('))
+                                Text(
+                                  '座標: ${addressWithCoord.substring(addressWithCoord.indexOf('('))}',
+                                  style: const TextStyle(color: Colors.blueGrey, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const Divider(height: 48, thickness: 1),
+                const Text('【 注文履歴（施設別サマリー） 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blueGrey)),
+                const SizedBox(height: 16),
+                if (customer.orderHistory.isEmpty)
+                  const Text('履歴なし', style: TextStyle(color: Colors.grey))
+                else
+                  ...customer.orderHistory.map((history) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.history, size: 16, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                history,
+                                style: const TextStyle(fontSize: 15, fontFamily: 'monospace'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
               ],
             ),
           ),
@@ -133,7 +199,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   void _showEditCustomerDialog(Customer customer) {
     final nameController = TextEditingController(text: customer.name);
     final companyController = TextEditingController(text: customer.companyName);
-    final phoneController = TextEditingController(text: customer.phoneNumber);
+    final phoneController = TextEditingController(text: _formatPhone(customer.phoneNumber));
     final emailController = TextEditingController(text: customer.email);
     final addressController = TextEditingController(text: customer.address);
 
@@ -158,6 +224,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 TextField(
                   controller: phoneController,
                   decoration: const InputDecoration(labelText: '電話番号'),
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                    _PhoneFormatter(_formatPhone),
+                  ],
                 ),
                 TextField(
                   controller: emailController,
@@ -198,6 +269,24 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         ],
       ),
     );
+  }
+
+  String _formatPhone(String phone) {
+    final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.length == 11) {
+      return '${clean.substring(0, 3)}-${clean.substring(3, 7)}-${clean.substring(7)}';
+    } else if (clean.length == 10) {
+      if (clean.startsWith('03') || clean.startsWith('06')) {
+        return '${clean.substring(0, 2)}-${clean.substring(2, 6)}-${clean.substring(6)}';
+      } else if (clean.startsWith('0564')) {
+        return '${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6)}';
+      } else if (clean.startsWith('0120') || clean.startsWith('0800')) {
+        return '${clean.substring(0, 4)}-${clean.substring(4, 7)}-${clean.substring(7)}';
+      } else {
+        return '${clean.substring(0, 3)}-${clean.substring(3, 6)}-${clean.substring(6)}';
+      }
+    }
+    return clean;
   }
 
   void _showDeleteConfirmDialog(Customer customer) {
@@ -246,15 +335,67 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
+  void _showDeleteAllConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('全顧客データの一括削除'),
+        content: const Text('システム内の全顧客データを削除してもよろしいですか？\nこの操作は取り消せません。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
+              );
+              await _customerService.deleteAllCustomers();
+              if (mounted) {
+                Navigator.pop(context);
+                _loadCustomers();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('全顧客データを削除しました')),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('一括削除する'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('顧客管理システム'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.sync_problem, color: Colors.orange),
-            tooltip: 'メニューマスタから注文履歴を再生成',
+          ElevatedButton.icon(
+            icon: const Icon(Icons.delete_forever),
+            label: const Text('全削除'),
+            onPressed: _showDeleteAllConfirmDialog,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade50,
+              foregroundColor: Colors.red,
+              elevation: 0,
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('ダミー生成'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade50,
+              foregroundColor: Colors.orange.shade900,
+              elevation: 0,
+            ),
             onPressed: () async {
               showDialog(
                 context: context,
@@ -267,7 +408,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 _loadCustomers();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('メニューマスタに基づいて100件のデータを再生成しました')),
+                    const SnackBar(content: Text('ダミーデータを生成しました（100件）')),
                   );
                 }
               } catch (e) {
@@ -280,10 +421,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               }
             },
           ),
+          const SizedBox(width: 12),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
+            constraints: const BoxConstraints(maxWidth: 300),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8),
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[100],
@@ -292,7 +434,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: '氏名・企業名・電話番号・住所から検索...',
+                    hintText: '検索...',
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -307,13 +449,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   onChanged: (value) {
-                    setState(() {}); // 削除アイコンの表示切り替えのためにリビルド
+                    setState(() {});
                     _filterCustomers(value);
                   },
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: _isLoading
@@ -426,5 +569,20 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+}
+
+class _PhoneFormatter extends TextInputFormatter {
+  final String Function(String) formatFunc;
+  _PhoneFormatter(this.formatFunc);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final formatted = formatFunc(newValue.text);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+      composing: TextRange.empty,
+    );
   }
 }
