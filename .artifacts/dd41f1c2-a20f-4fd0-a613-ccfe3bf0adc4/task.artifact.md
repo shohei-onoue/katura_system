@@ -1,0 +1,7 @@
+- `[x]` Fix `CommonDatabase` import path to `package:sqlite3/common.dart` in all factory files
+- `[x]` Update `lib/services/database_factory_interface.dart`
+- `[x]` Update `lib/services/database_factory_mobile.dart`
+- `[x]` Update `lib/services/database_factory_web.dart`
+- `[x]` Update `lib/services/database_factory.dart`
+- `[x]` Update `lib/services/address_service.dart`
+- `[x]` Run `flutter pub get` and verify build
