@@ -4,12 +4,14 @@ class KPhoneInputPad extends StatelessWidget {
   final TextEditingController controller;
   final Function(String) onInput;
   final VoidCallback? onClear;
+  final VoidCallback? onBackspace;
 
   const KPhoneInputPad({
     super.key,
     required this.controller,
     required this.onInput,
     this.onClear,
+    this.onBackspace,
   });
 
   @override
@@ -63,6 +65,7 @@ class KPhoneInputPad extends StatelessWidget {
                             if (text.length >= deleteCount) {
                               controller.text = text.substring(0, text.length - deleteCount);
                             }
+                            onBackspace?.call();
                           }
                         } else {
                           onInput(digit);

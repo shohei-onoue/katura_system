@@ -91,7 +91,7 @@ class KSidebar extends StatelessWidget {
               const SizedBox(height: 12),
               _buildStoreInfo('名古屋店', '名古屋市緑区森の里1-93', '050-1748-2670'),
               const SizedBox(height: 12),
-              _buildStoreInfo('岐阜店', '岐阜県内 (デリバリー専門)', '050-1748-2670'),
+              _buildStoreInfo('岐阜店', '岐阜県岐阜市加納矢場町1-42-1', '050-1748-2670'),
               const SizedBox(height: 40), // 店舗情報を少し上に移動
               const Text(
                 'Version 1.0.52',

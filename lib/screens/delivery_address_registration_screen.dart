@@ -450,9 +450,19 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
       return;
     }
     final fullAddress = "$_selectedState$_selectedCity$_selectedTown${_addressController.text}";
-    final displayEntry = "${_facilityController.text}: $fullAddress";
+    
+    // 最終的な座標の確定とローカルDBへの保存
+    await _addressService.upsertKigyouEntity(
+      name: _facilityController.text,
+      address: fullAddress,
+      lat: _selectedLocation.latitude,
+      lng: _selectedLocation.longitude,
+    );
+
+    final displayEntry = "${_facilityController.text}: $fullAddress (${_selectedLocation.latitude}, ${_selectedLocation.longitude})";
     final updatedAddresses = List<String>.from(widget.customer.deliveryAddresses);
     if (!updatedAddresses.contains(displayEntry)) updatedAddresses.add(displayEntry);
+    
     await _customerService.updateCustomer(widget.customer.copyWith(deliveryAddresses: updatedAddresses));
     if (mounted) Navigator.pop(context, displayEntry);
   }

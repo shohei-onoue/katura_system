@@ -1,0 +1,5 @@
+- [ ] `order_form_screen.dart` の `_syncSearchQuery` を全タブ対応へ拡張
+- [ ] `_keywordQueryController` へのリスナー追加
+- [ ] `_onSearchSubmit` への「フィルタリング救済ロジック」と CORS 警告の実装
+- [ ] `delivery_destination_step.dart` の「地域・キーワード」タブへの検索バー統合
+- [ ] 動作確認（キーワード検索からの Google マップ連携確認）

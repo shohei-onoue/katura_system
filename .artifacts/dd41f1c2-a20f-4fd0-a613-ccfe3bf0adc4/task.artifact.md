@@ -1,7 +1,11 @@
-- `[x]` Fix `CommonDatabase` import path to `package:sqlite3/common.dart` in all factory files
-- `[x]` Update `lib/services/database_factory_interface.dart`
-- `[x]` Update `lib/services/database_factory_mobile.dart`
-- `[x]` Update `lib/services/database_factory_web.dart`
-- `[x]` Update `lib/services/database_factory.dart`
-- `[x]` Update `lib/services/address_service.dart`
-- `[x]` Run `flutter pub get` and verify build
+- `[x]` Update `AddressService.dart`
+    - `[x]` Define Category and Genre hierarchies
+    - `[x]` Implement `searchByLocationAndCategory`
+    - `[x]` Implement `searchByAddressOrZip`
+    - `[x]` Implement `searchByLocationAndKeyword`
+- `[x]` Update `OrderFormScreen.dart`
+    - `[x]` Add state for search tabs and selections (Pref/City/Cat/Genre)
+    - `[x]` Redesign `_buildNewAddressForm` with tabbed search modes
+    - `[x]` Update `_buildRightSideMenu` to handle and display diverse search results
+    - `[x]` Link search UI to service methods
+- `[ ]` Verify all 3 search patterns and map reflection

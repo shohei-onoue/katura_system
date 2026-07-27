@@ -41,48 +41,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCU8PnSULiVu4_JyiqSXQuanD21u0fHM6Q',
-    appId: '1:698860566876:web:44c7e7a8fecb23016fa999',
-    messagingSenderId: '698860566876',
-    projectId: 'fir-2d6ea',
-    authDomain: 'fir-2d6ea.firebaseapp.com',
-    storageBucket: 'fir-2d6ea.firebasestorage.app',
-    measurementId: 'G-3W33JLLJRH',
+    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Web用Firebase APIキー
+    appId: '1:698860566876:web:44c7e7a8fecb23016fa999', // アプリケーション固有の識別子 (App ID)
+    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
+    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
+    authDomain: 'fir-2d6ea.firebaseapp.com', // Firebase Authentication 用のドメイン
+    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
+    measurementId: 'G-3W33JLLJRH', // Google Analytics (Analytics) 用の測定 ID
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBujgkbXlSkWIhDMCqp1nmrIJrUOF3P4_Y',
-    appId: '1:698860566876:android:98ca0d0b6b26f7386fa999',
-    messagingSenderId: '698860566876',
-    projectId: 'fir-2d6ea',
-    storageBucket: 'fir-2d6ea.firebasestorage.app',
+    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Android用Firebase & Google Maps APIキー
+    appId: '1:698860566876:android:98ca0d0b6b26f7386fa999', // アプリケーション固有の識別子 (App ID)
+    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
+    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
+    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyA8hC_gZ0CLmeAYlcjWEVjApzS7piVQcEI',
-    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999',
-    messagingSenderId: '698860566876',
-    projectId: 'fir-2d6ea',
-    storageBucket: 'fir-2d6ea.firebasestorage.app',
-    iosBundleId: 'com.katura.katuraSystem',
+    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // iOS用Firebase APIキー
+    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999', // アプリケーション固有の識別子 (App ID)
+    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
+    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
+    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
+    iosBundleId: 'com.katura.katuraSystem', // iOS のバンドル識別子 (Bundle ID)
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyA8hC_gZ0CLmeAYlcjWEVjApzS7piVQcEI',
-    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999',
-    messagingSenderId: '698860566876',
-    projectId: 'fir-2d6ea',
-    storageBucket: 'fir-2d6ea.firebasestorage.app',
-    iosBundleId: 'com.katura.katuraSystem',
+    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // macOS用Firebase APIキー
+    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999', // アプリケーション固有の識別子 (App ID)
+    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
+    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
+    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
+    iosBundleId: 'com.katura.katuraSystem', // macOS のバンドル識別子 (Bundle ID)
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCU8PnSULiVu4_JyiqSXQuanD21u0fHM6Q',
-    appId: '1:698860566876:web:59fdc88c79cb48b26fa999',
-    messagingSenderId: '698860566876',
-    projectId: 'fir-2d6ea',
-    authDomain: 'fir-2d6ea.firebaseapp.com',
-    storageBucket: 'fir-2d6ea.firebasestorage.app',
-    measurementId: 'G-8T673QR5WF',
+    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Windows用Firebase APIキー
+    appId: '1:698860566876:web:59fdc88c79cb48b26fa999', // アプリケーション固有の識別子 (App ID)
+    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
+    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
+    authDomain: 'fir-2d6ea.firebaseapp.com', // Firebase Authentication 用のドメイン
+    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
+    measurementId: 'G-8T673QR5WF', // Google Analytics (Analytics) 用の測定 ID
   );
 }

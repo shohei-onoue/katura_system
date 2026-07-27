@@ -62,6 +62,23 @@ class OrderModel {
     };
   }
 
+  factory OrderModel.empty() {
+    return OrderModel(
+      id: '',
+      customerName: '',
+      address: '',
+      phoneNumber: '',
+      receptionDate: DateTime.now(),
+      deliveryDate: DateTime.now(),
+      deliveryTime: '',
+      deliveryType: '',
+      items: [],
+      totalCount: 0,
+      packagingType: '',
+      paymentMethod: '',
+    );
+  }
+
   factory OrderModel.fromMap(Map<String, dynamic> map) {
     return OrderModel(
       id: map['id'] ?? '',

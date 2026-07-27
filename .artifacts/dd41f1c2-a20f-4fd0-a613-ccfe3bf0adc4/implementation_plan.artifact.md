@@ -1,43 +1,47 @@
-# Implementation Plan - Fix Database Compatibility (WASM & Native)
+# Implementation Plan - Enhanced New Delivery Destination Registration
 
-The current implementation fails to compile because it imports `dart:ffi` (via `sqlite3/sqlite3.dart`) and `sqlite3/wasm.dart` in the same file, which is not allowed in cross-platform Flutter projects. Web does not support `dart:ffi`. Additionally, the common database type needs the correct import path.
+Improve the "New Registration" (新規登録) flow in the Order Entry screen by providing three distinct search patterns, optimizing user experience and API usage.
 
 ## Proposed Changes
 
-### 1. Conditional Imports for Database Loading
-To fix the "Dart library 'dart:ffi' is not available on this platform" and other compilation errors, we must separate the Web (WASM) and Mobile (Native) database loading logic into separate files using conditional imports.
+### 1. `AddressService` Enhancements
+Add flexible search methods to `AddressService.dart` to handle the new search patterns:
+- **`searchByLocationAndCategory`**: Filter by prefecture, city, and a predefined category/genre mapping (using keywords).
+- **`searchByAddressOrZip`**: Search the `kigyou`, `medical`, and `post_all` tables using a partial address or exact zip code.
+- **`searchByLocationAndKeyword`**: Search by prefecture, city, and a custom keyword in `company_name` or `address`.
 
-#### [MODIFY] [database_factory_interface.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/database_factory_interface.dart)
-- Update import to `package:sqlite3/common.dart` to correctly access `CommonDatabase`.
+### 2. Category/Genre Definition
+Define a hierarchical mapping that matches common car navigation systems:
+- **医療・福祉**: 病院, 歯科医院, クリニック, 介護施設
+- **公共施設**: 役所・役場, 警察署, 消防署, 学校, 公園
+- **商業・店舗**: スーパー, コンビニ, デパート, 飲食店
+- **工場・工業**: 工場, 製作所, 工業, 倉庫
+- **企業・オフィス**: 一般企業, 銀行, 保険, 放送局
 
-#### [MODIFY] [database_factory_mobile.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/database_factory_mobile.dart)
-- Implements the interface for Mobile platforms using `sqlite3.dart` (FFI).
-- Handles copying the asset to the local file system.
-- Uses `CommonDatabase` from `common.dart`.
+### 3. `OrderFormScreen` UI Redesign
+Update the `_buildNewAddressForm` widget to include a navigation/tab system for the three patterns:
 
-#### [MODIFY] [database_factory_web.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/database_factory_web.dart)
-- Implements the interface for Web using `wasm.dart`.
-- Loads `sqlite3.wasm` and reads the asset into an in-memory or virtual file system.
-- Uses `CommonDatabase` from `common.dart`.
+#### Pattern 1: Area & Category
+- Prefecture selection (Dropdown/List)
+- City selection (Filtered by prefecture)
+- Category & Genre selection (Chips or Tiles)
 
-#### [MODIFY] [database_factory.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/database_factory.dart)
-- Uses `conditional imports` to pick the correct implementation at compile time.
-- Returns `CommonDatabase`.
+#### Pattern 2: Address or Zip Code
+- Single input field for "Address or Zip Code"
+- Automatic detection and search
 
-### 2. Service Update
+#### Pattern 3: Area & Keyword
+- Reuse Prefecture/City selection from Pattern 1
+- Custom Keyword input field
 
-#### [MODIFY] [address_service.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/address_service.dart)
-- Change all `Database` types to `CommonDatabase` and use the correct import `package:sqlite3/common.dart`.
-- Ensure the initialization logic calls the unified factory.
+### 4. Search Result Display
+- Search results for all patterns will be displayed in the **right sidebar** under the map.
+- Selecting a result will populate the form and update the map immediately.
 
 ## Verification Plan
 
 ### Manual Verification
-1. **Web (Chrome)**: Build and run. Verify that `dart:ffi` errors are gone and address search works.
-2. **Android (Pixel Tablet)**: Build and run. Verify that the app starts and searches correctly.
-
-## User Review Required
-
-> [!CAUTION]
-> Webとモバイルでライブラリの仕組みが根本的に異なる（WebはWASM、モバイルはFFI）ため、一つのファイルに両方のインポートを書くとコンパイルエラーになります。
-> また、`CommonDatabase` 型を正しく認識させるためにインポートパスを `package:sqlite3/common.dart` に修正します。
+1. **Category Search**: Select "愛知県" -> "岡崎市" -> "医療" -> "歯科". Verify that only dentists in Okazaki appear in the sidebar.
+2. **Zip Search**: Enter "444-0011". Verify that facilities in that area appear.
+3. **Keyword Search**: Select "岡崎市" and enter "トヨタ". Verify that Toyota-related facilities in Okazaki appear.
+4. **Map Reflection**: Ensure every selection moves the map and places a marker correctly.
