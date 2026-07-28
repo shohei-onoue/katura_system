@@ -1,5 +1,8 @@
-- [ ] `order_form_screen.dart` の `_syncSearchQuery` を全タブ対応へ拡張
-- [ ] `_keywordQueryController` へのリスナー追加
-- [ ] `_onSearchSubmit` への「フィルタリング救済ロジック」と CORS 警告の実装
-- [ ] `delivery_destination_step.dart` の「地域・キーワード」タブへの検索バー統合
-- [ ] 動作確認（キーワード検索からの Google マップ連携確認）
+- [x] `lib/widgets/k_responsive.dart` の調整 (比例スケーリング優先)
+- [x] `lib/widgets/k_stepper.dart` のオーバーフロー修正 (Flexible導入) とスケーリング適用
+- [ ] `lib/widgets/k_quantity_counter.dart` のスケーリング適用
+- [ ] `lib/widgets/k_phone_input_pad.dart` のスケーリング適用
+- [ ] `lib/widgets/k_japanese_input_pad.dart` のスケーリング適用
+- [ ] `lib/screens/order_form/widgets/order_form_parts.dart` の高さと余白のスケーリング適用
+- [ ] `lib/screens/order_form/widgets/sidebar_widgets.dart` のチャートとリストのスケーリング適用
+- [ ] 全体の動作確認と微調整

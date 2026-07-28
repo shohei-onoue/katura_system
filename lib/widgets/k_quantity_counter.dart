@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KQuantityCounter extends StatelessWidget {
   final int value;
@@ -26,35 +27,35 @@ class KQuantityCounter extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black54),
+            style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: rs(context, 8)),
         ],
         Row(
           children: [
             _buildStepButton(
+              context,
               icon: Icons.remove,
               onPressed: (min == null || value > min!) ? () => onChanged(value - step) : null,
-              isLarge: true,
             ),
             Container(
-              constraints: const BoxConstraints(minWidth: 80),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              constraints: BoxConstraints(minWidth: rs(context, 80)),
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
               alignment: Alignment.center,
               child: Text(
                 '$value',
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                style: TextStyle(fontSize: rf(context, 32), fontWeight: FontWeight.bold, color: Colors.deepOrange),
               ),
             ),
             _buildStepButton(
+              context,
               icon: Icons.add,
               onPressed: (max == null || value < max!) ? () => onChanged(value + step) : null,
-              isLarge: true,
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: rs(context, 16)),
             // クイック入力ボタン（現場でよく出る数）
             Wrap(
-              spacing: 8,
+              spacing: rs(context, 8),
               children: [5, 10, 20].map((v) {
                 return _buildQuickButton(context, '+$v', () => onChanged(value + v));
               }).toList(),
@@ -65,21 +66,21 @@ class KQuantityCounter extends StatelessWidget {
     );
   }
 
-  Widget _buildStepButton({required IconData icon, VoidCallback? onPressed, bool isLarge = false}) {
+  Widget _buildStepButton(BuildContext context, {required IconData icon, VoidCallback? onPressed}) {
     return Material(
       color: onPressed == null ? Colors.grey[200] : Colors.orange.shade50,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rs(context, 12)),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         child: Container(
-          width: 60,
-          height: 60,
+          width: rs(context, 60),
+          height: rs(context, 60),
           decoration: BoxDecoration(
             border: Border.all(color: onPressed == null ? Colors.transparent : Colors.orange.shade200),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(rs(context, 12)),
           ),
-          child: Icon(icon, size: 30, color: onPressed == null ? Colors.grey : Colors.orange.shade800),
+          child: Icon(icon, size: rs(context, 30), color: onPressed == null ? Colors.grey : Colors.orange.shade800),
         ),
       ),
     );
@@ -89,11 +90,12 @@ class KQuantityCounter extends StatelessWidget {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(60, 60),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        minimumSize: Size(rs(context, 60), rs(context, 60)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         side: BorderSide(color: Colors.grey.shade300),
+        padding: EdgeInsets.zero,
       ),
-      child: Text(text, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+      child: Text(text, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
     );
   }
 }

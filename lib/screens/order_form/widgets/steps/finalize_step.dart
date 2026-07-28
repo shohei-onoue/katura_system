@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../models/staff_model.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_tile_selector.dart';
+import '../../../../widgets/k_responsive.dart';
 import '../order_form_parts.dart';
 
 class FinalizeStep extends StatelessWidget {
@@ -38,17 +39,17 @@ class FinalizeStep extends StatelessWidget {
       child: Column(
         children: [
           KTileSelector(label: '担当店舗', selectedValue: branchName, items: [KTileItem(label: '岡崎本店', value: '岡崎本店'), KTileItem(label: '名古屋店', value: '名古屋店'), KTileItem(label: '岐阜店', value: '岐阜店')], onSelected: onBranchChanged),
-          const SizedBox(height: 24),
+          SizedBox(height: rs(context, 24)),
           Row(
             children: [
               Expanded(child: KTileSelector(label: '支払方法', selectedValue: paymentMethod, items: [KTileItem(label: '現金', value: '現金'), KTileItem(label: 'カード', value: 'カード'), KTileItem(label: '請求書', value: '請求')], onSelected: onPaymentChanged)),
-              const SizedBox(width: 24),
-              Container(width: 200, padding: const EdgeInsets.all(16), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)), child: Column(children: [const Text('容器回収', style: TextStyle(fontWeight: FontWeight.bold)), Switch(value: collectContainer, onChanged: onCollectChanged)])),
+              SizedBox(width: rs(context, 24)),
+              Container(width: rs(context, 200), padding: EdgeInsets.all(rs(context, 16)), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(rs(context, 8))), child: Column(children: [Text('容器回収', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))), Switch(value: collectContainer, onChanged: onCollectChanged)])),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: rs(context, 24)),
           KTileSelector(label: '受電担当者', selectedValue: selectedReceiverId, items: staffList.map((s) => KTileItem(label: s.name, value: s.id)).toList(), onSelected: onReceiverChanged),
-          const SizedBox(height: 40),
+          SizedBox(height: rs(context, 40)),
           KButton(label: '受注を確定して保存する', color: Colors.deepOrange, onPressed: onSave),
         ],
       ),

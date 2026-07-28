@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KPhoneInputPad extends StatelessWidget {
   final TextEditingController controller;
@@ -24,62 +25,63 @@ class KPhoneInputPad extends StatelessWidget {
     ];
 
     return Container(
-      width: 380, // KJapaneseInputPadと統一
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade300),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: rows.map((row) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: EdgeInsets.only(bottom: rs(context, 12)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: row.map((digit) {
                 final isAction = digit == 'クリア' || digit == '⌫';
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: SizedBox(
-                    width: 105,
-                    height: 90, // Japanese Padの縦横比に近づける
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isAction ? Colors.grey.shade600 : Colors.blueGrey.shade800,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: EdgeInsets.zero,
-                      ),
-                      onPressed: () {
-                        if (digit == 'クリア') {
-                          controller.clear();
-                          onClear?.call();
-                        } else if (digit == '⌫') {
-                          final text = controller.text;
-                          if (text.isNotEmpty) {
-                            final lastChar = text.substring(text.length - 1);
-                            final deleteCount = lastChar == '-' ? 2 : 1;
-                            if (text.length >= deleteCount) {
-                              controller.text = text.substring(0, text.length - deleteCount);
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 4)),
+                    child: SizedBox(
+                      height: rs(context, 80),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isAction ? Colors.grey.shade600 : Colors.blueGrey.shade800,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+                          padding: EdgeInsets.zero,
+                        ),
+                        onPressed: () {
+                          if (digit == 'クリア') {
+                            controller.clear();
+                            onClear?.call();
+                          } else if (digit == '⌫') {
+                            final text = controller.text;
+                            if (text.isNotEmpty) {
+                              final lastChar = text.substring(text.length - 1);
+                              final deleteCount = lastChar == '-' ? 2 : 1;
+                              if (text.length >= deleteCount) {
+                                controller.text = text.substring(0, text.length - deleteCount);
+                              }
+                              onBackspace?.call();
                             }
-                            onBackspace?.call();
+                          } else {
+                            onInput(digit);
                           }
-                        } else {
-                          onInput(digit);
-                        }
-                      },
-                      child: digit == '⌫'
-                          ? const Icon(Icons.backspace, size: 32)
-                          : Text(
-                              digit,
-                              style: TextStyle(
-                                fontSize: digit == 'クリア' ? 18 : 32,
-                                fontWeight: FontWeight.bold,
+                        },
+                        child: digit == '⌫'
+                            ? Icon(Icons.backspace, size: rs(context, 32))
+                            : Text(
+                                digit,
+                                style: TextStyle(
+                                  fontSize: digit == 'クリア' ? rf(context, 18) : rf(context, 32),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 );

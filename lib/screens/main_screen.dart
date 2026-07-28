@@ -66,19 +66,23 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: Row(
         children: [
-          KSidebar(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) {
-              setState(() {
-                _selectedIndex = index;
-                if (index != 0) {
-                  _editingOrder = null; // 他の画面に切り替えたら編集状態を解除
-                }
-              });
-            },
+          Expanded(
+            flex: 15,
+            child: KSidebar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                  if (index != 0) {
+                    _editingOrder = null; // 他の画面に切り替えたら編集状態を解除
+                  }
+                });
+              },
+            ),
           ),
           const VerticalDivider(thickness: 1, width: 1),
           Expanded(
+            flex: 85,
             child: currentScreen,
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
+import '../../../../widgets/k_responsive.dart';
 import '../order_form_parts.dart';
 
 class PhoneConfirmStep extends StatelessWidget {
@@ -32,15 +33,15 @@ class PhoneConfirmStep extends StatelessWidget {
             controller: phoneController,
             textAlign: TextAlign.center,
             readOnly: true,
-            style: const TextStyle(fontSize: 80, fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: 10),
+            style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: rs(context, 10)),
             decoration: const InputDecoration(border: InputBorder.none),
             keyboardType: TextInputType.none,
           ),
           if (isLoading)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: CircularProgressIndicator()),
+            Padding(padding: EdgeInsets.symmetric(vertical: rs(context, 20)), child: const CircularProgressIndicator()),
           if (candidates.isNotEmpty && currentCustomer == null)
-            _buildCandidateList(),
-          const SizedBox(height: 48),
+            _buildCandidateList(context),
+          SizedBox(height: rs(context, 48)),
           if (phoneController.text.isNotEmpty)
             KButton(
               label: currentCustomer != null ? '顧客確認へ進む' : '新規登録として受注フォームへ',
@@ -48,26 +49,26 @@ class PhoneConfirmStep extends StatelessWidget {
               color: Colors.deepPurple,
             )
           else
-            const Text('電話番号を入力してください', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            Text('電話番号を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16))),
         ],
       ),
     );
   }
 
-  Widget _buildCandidateList() {
+  Widget _buildCandidateList(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 20),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.symmetric(vertical: rs(context, 20)),
+      padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('該当する候補', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-          const SizedBox(height: 12),
+          Text('該当する候補', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: rf(context, 14))),
+          SizedBox(height: rs(context, 12)),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -75,16 +76,16 @@ class PhoneConfirmStep extends StatelessWidget {
             itemBuilder: (context, index) {
               final customer = candidates[index];
               return Card(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: EdgeInsets.only(bottom: rs(context, 8)),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
                   side: BorderSide(color: Colors.grey.shade300),
                 ),
                 child: ListTile(
-                  title: Text(customer.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('${customer.companyName} / ${customer.phoneNumber}'),
-                  trailing: const Icon(Icons.check_circle_outline, color: Colors.deepPurple),
+                  title: Text(customer.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
+                  subtitle: Text('${customer.companyName} / ${customer.phoneNumber}', style: TextStyle(fontSize: rf(context, 12))),
+                  trailing: Icon(Icons.check_circle_outline, color: Colors.deepPurple, size: rs(context, 24)),
                   onTap: () => onSelectCustomer(customer),
                 ),
               );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KStepper extends StatelessWidget {
   final int currentStep;
@@ -15,7 +16,7 @@ class KStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 16), horizontal: rs(context, 24)),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
@@ -31,38 +32,43 @@ class KStepper extends StatelessWidget {
               child: Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: rs(context, 32),
+                    height: rs(context, 32),
                     decoration: BoxDecoration(
                       color: isActive ? Colors.deepOrange : (isCompleted ? Colors.green : Colors.grey.shade300),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: isCompleted
-                          ? const Icon(Icons.check, color: Colors.white, size: 20)
+                          ? Icon(Icons.check, color: Colors.white, size: rs(context, 20))
                           : Text(
                               '${index + 1}',
                               style: TextStyle(
                                 color: isActive ? Colors.white : Colors.grey.shade600,
                                 fontWeight: FontWeight.bold,
+                                fontSize: rf(context, 14),
                               ),
                             ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    steps[index],
-                    style: TextStyle(
-                      color: isActive ? Colors.black : Colors.grey.shade500,
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 14,
+                  SizedBox(width: rs(context, 12)),
+                  Flexible(
+                    child: Text(
+                      steps[index],
+                      style: TextStyle(
+                        color: isActive ? Colors.black : Colors.grey.shade500,
+                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                        fontSize: rf(context, 14),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                   if (index < steps.length - 1)
                     Expanded(
                       child: Container(
                         height: 2,
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        margin: EdgeInsets.symmetric(horizontal: rs(context, 16)),
                         color: isCompleted ? Colors.green : Colors.grey.shade200,
                       ),
                     ),

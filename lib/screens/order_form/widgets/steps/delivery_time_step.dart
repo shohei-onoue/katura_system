@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../widgets/k_choice_group.dart';
 import '../../../../widgets/k_date_time_picker.dart';
 import '../../../../widgets/k_time_slot_selector.dart';
+import '../../../../widgets/k_responsive.dart';
 import '../order_form_parts.dart';
 
 class DeliveryTimeStep extends StatelessWidget {
@@ -32,11 +33,11 @@ class DeliveryTimeStep extends StatelessWidget {
           Row(
             children: [
               Expanded(child: KDateTimePicker(label: '配達日', value: deliveryDate, icon: Icons.calendar_month, onSelected: onDateSelected)),
-              const SizedBox(width: 16),
+              SizedBox(width: rs(context, 16)),
               Expanded(child: KChoiceGroup(label: '区分', selectedValue: deliveryType, items: [KChoiceItem(label: '配送', value: '配送'), KChoiceItem(label: '引取', value: '引取')], onSelected: onTypeSelected)),
             ],
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: rs(context, 24)),
           KTimeSlotSelector(label: '希望時間枠', selectedTime: selectedTime, onSelected: onTimeSelected),
         ],
       ),

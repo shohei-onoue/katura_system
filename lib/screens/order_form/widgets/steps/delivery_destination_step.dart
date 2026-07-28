@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_text_field.dart';
+import '../../../../widgets/k_responsive.dart';
 import '../../../../services/address_service.dart';
 import '../order_form_parts.dart';
 
@@ -19,7 +20,7 @@ class DeliveryDestinationStep extends StatelessWidget {
   final TextEditingController deliveryLocationController;
   final TextEditingController addressQueryController;
   final TextEditingController keywordQueryController;
-  final TextEditingController combinedSearchController; // 追加
+  final TextEditingController combinedSearchController;
   final List<String> prefList;
   final List<String> cityList;
   final List<String> townList;
@@ -63,7 +64,7 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.deliveryLocationController,
     required this.addressQueryController,
     required this.keywordQueryController,
-    required this.combinedSearchController, // 追加
+    required this.combinedSearchController,
     required this.prefList,
     required this.cityList,
     required this.townList,
@@ -97,24 +98,24 @@ class DeliveryDestinationStep extends StatelessWidget {
     return Column(
       children: [
         CustomerInfoBanner(customer: currentCustomer),
-        const SizedBox(height: 24),
+        SizedBox(height: rs(context, 24)),
         OrderFormCard(
           title: '配達先の確定',
           icon: Icons.location_on,
           trailing: Text('受電: $phoneDisplay', 
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+            style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
           child: Column(
             children: [
               Row(
                 children: [
-                  Expanded(child: _buildModeToggleBtn(label: '履歴から選択', icon: Icons.history, isSelected: isHistoryMode, onTap: () => onModeToggle(true))),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildModeToggleBtn(label: '新規登録', icon: Icons.add_location_alt, isSelected: !isHistoryMode, onTap: () => onModeToggle(false))),
+                  Expanded(child: _buildModeToggleBtn(context, label: '履歴から選択', icon: Icons.history, isSelected: isHistoryMode, onTap: () => onModeToggle(true))),
+                  SizedBox(width: rs(context, 16)),
+                  Expanded(child: _buildModeToggleBtn(context, label: '新規登録', icon: Icons.add_location_alt, isSelected: !isHistoryMode, onTap: () => onModeToggle(false))),
                 ],
               ),
-              const SizedBox(height: 32),
-              if (isHistoryMode) _buildHistoryList() else _buildNewForm(),
-              const SizedBox(height: 40),
+              SizedBox(height: rs(context, 32)),
+              if (isHistoryMode) _buildHistoryList(context) else _buildNewForm(context),
+              SizedBox(height: rs(context, 40)),
               KButton(
                 label: '配達日時の選択へ', 
                 onPressed: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? onNext : () {},
@@ -127,32 +128,32 @@ class DeliveryDestinationStep extends StatelessWidget {
     );
   }
 
-  Widget _buildModeToggleBtn({required String label, required IconData icon, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildModeToggleBtn(BuildContext context, {required String label, required IconData icon, required bool isSelected, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rs(context, 12)),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: EdgeInsets.symmetric(vertical: rs(context, 20)),
         decoration: BoxDecoration(
           color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
-          border: Border.all(color: isSelected ? Colors.deepPurple : Colors.grey.shade300, width: 2),
-          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isSelected ? Colors.deepPurple : Colors.grey.shade300, width: rs(context, 2)),
+          borderRadius: BorderRadius.circular(rs(context, 12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.deepPurple : Colors.grey),
-            const SizedBox(width: 12),
-            Text(label, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isSelected ? Colors.deepPurple : Colors.grey)),
+            Icon(icon, color: isSelected ? Colors.deepPurple : Colors.grey, size: rs(context, 24)),
+            SizedBox(width: rs(context, 12)),
+            Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: isSelected ? Colors.deepPurple : Colors.grey)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHistoryList() {
+  Widget _buildHistoryList(BuildContext context) {
     if (currentCustomer == null || currentCustomer!.deliveryAddresses.isEmpty) {
-      return const Center(child: Text('配達実績がありません。新規登録を行ってください。', style: TextStyle(color: Colors.grey)));
+      return Center(child: Text('配達実績がありません。新規登録を行ってください。', style: TextStyle(color: Colors.grey, fontSize: rf(context, 14))));
     }
 
     final categories = {'すべて'};
@@ -174,14 +175,14 @@ class DeliveryDestinationStep extends StatelessWidget {
             children: categoryList.map((cat) {
               final isSelected = selectedHistoryCategory == cat;
               return Padding(
-                padding: const EdgeInsets.only(right: 8, bottom: 16),
+                padding: EdgeInsets.only(right: rs(context, 8), bottom: rs(context, 16)),
                 child: ChoiceChip(
-                  label: Text(cat, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.blueGrey)),
+                  label: Text(cat, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.blueGrey, fontSize: rf(context, 13))),
                   selected: isSelected,
                   onSelected: (val) => onHistoryCategoryChanged(cat),
                   selectedColor: Colors.deepPurple,
                   backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                   showCheckmark: false,
                 ),
               );
@@ -195,27 +196,27 @@ class DeliveryDestinationStep extends StatelessWidget {
           final isSelected = addressControllerText == addressOnly && facilityControllerText == facilityName;
 
           return Card(
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: EdgeInsets.only(bottom: rs(context, 8)),
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8), 
+              borderRadius: BorderRadius.circular(rs(context, 8)), 
               side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1)
             ),
             child: InkWell(
               onTap: () => onAddressSelected(fullAddr),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(rs(context, 8)),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 12)),
                 child: Row(
                   children: [
-                    Icon(Icons.location_on, size: 20, color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
-                    const SizedBox(width: 12),
-                    SizedBox(width: 90, child: Text('【${_extractGenre(facilityName)}】', style: const TextStyle(fontSize: 13, color: Colors.deepPurple, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                    const SizedBox(width: 8),
-                    SizedBox(width: 220, child: Text(facilityName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                    const SizedBox(width: 16),
-                    Expanded(child: Text(addressOnly, style: const TextStyle(fontSize: 14, color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
-                    if (isSelected) const Icon(Icons.check_circle, color: Colors.orange, size: 20),
+                    Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
+                    SizedBox(width: rs(context, 12)),
+                    SizedBox(width: rs(context, 90), child: Text('【${_extractGenre(facilityName)}】', style: TextStyle(fontSize: rf(context, 13), color: Colors.deepPurple, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: rs(context, 8)),
+                    SizedBox(width: rs(context, 220), child: Text(facilityName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: rs(context, 16)),
+                    Expanded(child: Text(addressOnly, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
+                    if (isSelected) Icon(Icons.check_circle, color: Colors.orange, size: rs(context, 20)),
                   ],
                 ),
               ),
@@ -247,38 +248,38 @@ class DeliveryDestinationStep extends StatelessWidget {
     return '一般';
   }
 
-  Widget _buildNewForm() {
+  Widget _buildNewForm(BuildContext context) {
     return Column(
       children: [
         Container(
-          decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(rs(context, 12))),
           child: Row(
             children: [
-              _buildSearchTab(0, '地域・カテゴリ', Icons.category),
-              _buildSearchTab(1, '住所・郵便番号', Icons.pin_drop),
-              _buildSearchTab(2, '地域・キーワード', Icons.search),
+              _buildSearchTab(context, 0, '地域・カテゴリ', Icons.category),
+              _buildSearchTab(context, 1, '住所・郵便番号', Icons.pin_drop),
+              _buildSearchTab(context, 2, '地域・キーワード', Icons.search),
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        if (searchTabIndex == 0) _buildAreaCategorySearchUI(),
+        SizedBox(height: rs(context, 24)),
+        if (searchTabIndex == 0) _buildAreaCategorySearchUI(context),
         if (searchTabIndex == 1) _buildDirectSearchUI(),
-        if (searchTabIndex == 2) _buildAreaKeywordSearchUI(),
-        const Divider(height: 48),
+        if (searchTabIndex == 2) _buildAreaKeywordSearchUI(context),
+        Divider(height: rs(context, 48)),
         Row(
           children: [
             Expanded(child: KTextField(label: '注文者名 (必須)', controller: nameController, icon: Icons.person)),
-            const SizedBox(width: 16),
+            SizedBox(width: rs(context, 16)),
             Expanded(child: KTextField(label: '施設・会社名', controller: facilityController, icon: Icons.business)),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: rs(context, 16)),
         KTextField(label: '確定住所 (必須)', controller: addressController, icon: Icons.map),
-        const SizedBox(height: 16),
+        SizedBox(height: rs(context, 16)),
         Row(
           children: [
             Expanded(child: KTextField(label: 'お渡し場所 (例: 1Fロビー)', controller: deliveryLocationController, icon: Icons.location_on)),
-            const SizedBox(width: 16),
+            SizedBox(width: rs(context, 16)),
             Expanded(child: KTextField(label: '受取人名', controller: receiverController, icon: Icons.badge)),
           ],
         ),
@@ -286,64 +287,64 @@ class DeliveryDestinationStep extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchTab(int index, String label, IconData icon) {
+  Widget _buildSearchTab(BuildContext context, int index, String label, IconData icon) {
     final isSelected = searchTabIndex == index;
     return Expanded(
       child: InkWell(
         onTap: () => onSearchTabChanged(index),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(color: isSelected ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12)),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: 18, color: isSelected ? Colors.deepPurple : Colors.grey), const SizedBox(width: 8), Text(label, style: TextStyle(fontSize: 14, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? Colors.deepPurple : Colors.grey))]),
+          padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
+          decoration: BoxDecoration(color: isSelected ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? Colors.deepPurple : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? Colors.deepPurple : Colors.grey))]),
         ),
       ),
     );
   }
 
-  Widget _buildAreaCategorySearchUI() {
+  Widget _buildAreaCategorySearchUI(BuildContext context) {
     return Column(
       children: [
-        _buildAreaSelectionRow(),
-        const SizedBox(height: 16),
-        _buildCategoryHierarchyUI(),
-        const SizedBox(height: 24),
+        _buildAreaSelectionRow(context),
+        SizedBox(height: rs(context, 16)),
+        _buildCategoryHierarchyUI(context),
+        SizedBox(height: rs(context, 24)),
         
-        // Googleマップ風 検索窓 (自動挿入・手動編集)
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 4)),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(color: Colors.deepPurple.shade200, width: 2),
+            borderRadius: BorderRadius.circular(rs(context, 32)),
+            border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: rs(context, 10), offset: Offset(0, rs(context, 4)))
             ],
           ),
           child: Row(
             children: [
-              const Icon(Icons.search, color: Colors.deepPurple),
-              const SizedBox(width: 12),
+              Icon(Icons.search, color: Colors.deepPurple, size: rs(context, 24)),
+              SizedBox(width: rs(context, 12)),
               Expanded(
                 child: TextField(
                   controller: combinedSearchController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'マップを検索（住所＋ジャンル）',
+                    hintStyle: TextStyle(fontSize: rf(context, 14)),
                     border: InputBorder.none,
                     isDense: true,
                   ),
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.clear, size: 20),
+                icon: Icon(Icons.clear, size: rs(context, 20)),
                 onPressed: () => combinedSearchController.clear(),
               ),
             ],
           ),
         ),
         
-        const SizedBox(height: 24),
+        SizedBox(height: rs(context, 24)),
         KButton(label: 'この条件で検索', onPressed: (searchCategory != null && searchGenre != null) ? onSearchSubmit : () {}, color: (searchCategory != null && searchGenre != null) ? Colors.deepPurple : Colors.grey),
       ],
     );
@@ -353,14 +354,15 @@ class DeliveryDestinationStep extends StatelessWidget {
     return Row(children: [Expanded(child: KTextField(label: '住所 または 郵便番号', controller: addressQueryController, icon: Icons.map)), const SizedBox(width: 16), SizedBox(width: 200, child: KButton(label: '検索', onPressed: onSearchSubmit))]);
   }
 
-  Widget _buildAreaKeywordSearchUI() {
-    return Column(children: [_buildAreaSelectionRow(), const SizedBox(height: 16), Row(children: [Expanded(child: KTextField(label: 'キーワード', controller: keywordQueryController, icon: Icons.search)), const SizedBox(width: 16), SizedBox(width: 200, child: KButton(label: '検索', onPressed: onSearchSubmit))])]);
+  Widget _buildAreaKeywordSearchUI(BuildContext context) {
+    return Column(children: [_buildAreaSelectionRow(context), SizedBox(height: rs(context, 16)), Row(children: [Expanded(child: KTextField(label: 'キーワード', controller: keywordQueryController, icon: Icons.search)), SizedBox(width: rs(context, 16)), SizedBox(width: rs(context, 200), child: KButton(label: '検索', onPressed: onSearchSubmit))])]);
   }
 
-  Widget _buildAreaSelectionRow() {
+  Widget _buildAreaSelectionRow(BuildContext context) {
     return Column(
       children: [
         _buildInitialAndDropdown(
+          context,
           label: '都道府県',
           initial: searchPrefInitial,
           value: searchPrefecture,
@@ -368,8 +370,9 @@ class DeliveryDestinationStep extends StatelessWidget {
           onInitialChanged: onPrefInitialChanged,
           onChanged: onPrefChanged,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: rs(context, 12)),
         _buildInitialAndDropdown(
+          context,
           label: '市区町村',
           initial: searchCityInitial,
           value: searchCity,
@@ -377,8 +380,9 @@ class DeliveryDestinationStep extends StatelessWidget {
           onInitialChanged: onCityInitialChanged,
           onChanged: onCityChanged,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: rs(context, 12)),
         _buildInitialAndDropdown(
+          context,
           label: '町名',
           initial: searchTownInitial,
           value: searchTown,
@@ -390,7 +394,8 @@ class DeliveryDestinationStep extends StatelessWidget {
     );
   }
 
-  Widget _buildInitialAndDropdown({
+  Widget _buildInitialAndDropdown(
+    BuildContext context, {
     required String label,
     required String initial,
     required String value,
@@ -403,43 +408,43 @@ class DeliveryDestinationStep extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
-            const SizedBox(width: 12),
+            Text(label, style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+            SizedBox(width: rs(context, 12)),
             Expanded(child: KInitialRowSelector(selectedInitial: initial, onSelected: onInitialChanged)),
           ],
         ),
-        const SizedBox(height: 4),
-        _buildSimpleDropdown(label: '', value: value, items: items, onChanged: onChanged),
+        SizedBox(height: rs(context, 4)),
+        _buildSimpleDropdown(context, label: '', value: value, items: items, onChanged: onChanged),
       ],
     );
   }
 
-  Widget _buildCategoryHierarchyUI() {
+  Widget _buildCategoryHierarchyUI(BuildContext context) {
     final categories = AddressService.categoryHierarchy.keys.toList();
     final genres = searchCategory != null ? AddressService.categoryHierarchy[searchCategory]!.keys.toList() : [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('カテゴリ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey)),
-        Wrap(spacing: 8, children: categories.map((cat) => ChoiceChip(label: Text(cat), selected: searchCategory == cat, onSelected: (val) => onCategoryChanged(val ? cat : null))).toList()),
+        Text('カテゴリ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 13), color: Colors.blueGrey)),
+        Wrap(spacing: rs(context, 8), children: categories.map((cat) => ChoiceChip(label: Text(cat, style: TextStyle(fontSize: rf(context, 13))), selected: searchCategory == cat, onSelected: (val) => onCategoryChanged(val ? cat : null))).toList()),
         if (searchCategory != null) ...[
-          const SizedBox(height: 16),
-          const Text('ジャンル', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueGrey)),
-          Wrap(spacing: 8, children: genres.map((gen) => ChoiceChip(label: Text(gen), selected: searchGenre == gen, onSelected: (val) => onGenreChanged(val ? gen : null))).toList()),
+          SizedBox(height: rs(context, 16)),
+          Text('ジャンル', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 13), color: Colors.blueGrey)),
+          Wrap(spacing: rs(context, 8), children: genres.map((gen) => ChoiceChip(label: Text(gen, style: TextStyle(fontSize: rf(context, 13))), selected: searchGenre == gen, onSelected: (val) => onGenreChanged(val ? gen : null))).toList()),
         ],
       ],
     );
   }
 
-  Widget _buildSimpleDropdown({required String label, required String value, required List<String> items, required Function(String) onChanged}) {
+  Widget _buildSimpleDropdown(BuildContext context, {required String label, required String value, required List<String> items, required Function(String) onChanged}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (label.isNotEmpty) Text(label, style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+        if (label.isNotEmpty) Text(label, style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
-          child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: value.isEmpty && items.isNotEmpty ? items.first : value, isExpanded: true, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(), onChanged: (v) => onChanged(v!))),
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(rs(context, 8))),
+          child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: value.isEmpty && items.isNotEmpty ? items.first : value, isExpanded: true, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: TextStyle(fontSize: rf(context, 14))))).toList(), onChanged: (v) => onChanged(v!))),
         ),
       ],
     );

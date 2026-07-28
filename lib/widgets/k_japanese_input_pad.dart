@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 enum KInputMode { kana, alpha, numeric }
 
@@ -140,42 +141,44 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 380,
-      padding: const EdgeInsets.all(12),
+      width: double.infinity,
+      padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: rs(context, 10))],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              _modeButton('かな', KInputMode.kana),
-              const SizedBox(width: 8),
-              _modeButton('ABC', KInputMode.alpha),
-              const SizedBox(width: 8),
-              _modeButton('123', KInputMode.numeric),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildKeyGrid(),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _actionButton('送る', Colors.orange.shade800, _finalizeLastChar)),
-              const SizedBox(width: 12),
-              Expanded(child: _actionButton('確定', Colors.deepPurple, () { _finalizeLastChar(); widget.onCompleted?.call(); })),
-            ],
-          ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                _modeButton(context, 'かな', KInputMode.kana),
+                SizedBox(width: rs(context, 8)),
+                _modeButton(context, 'ABC', KInputMode.alpha),
+                SizedBox(width: rs(context, 8)),
+                _modeButton(context, '123', KInputMode.numeric),
+              ],
+            ),
+            SizedBox(height: rs(context, 12)),
+            _buildKeyGrid(context),
+            SizedBox(height: rs(context, 12)),
+            Row(
+              children: [
+                Expanded(child: _actionButton(context, '送る', Colors.orange.shade800, _finalizeLastChar)),
+                SizedBox(width: rs(context, 12)),
+                Expanded(child: _actionButton(context, '確定', Colors.deepPurple, () { _finalizeLastChar(); widget.onCompleted?.call(); })),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _modeButton(String label, KInputMode mode) {
+  Widget _modeButton(BuildContext context, String label, KInputMode mode) {
     final isSelected = _mode == mode;
     return Expanded(
       child: ElevatedButton(
@@ -183,29 +186,30 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
           backgroundColor: isSelected ? Colors.deepPurple : Colors.white,
           foregroundColor: isSelected ? Colors.white : Colors.black87,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: Colors.grey.shade300)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8)), side: BorderSide(color: Colors.grey.shade300)),
           padding: EdgeInsets.zero,
+          minimumSize: Size(0, rs(context, 44)),
         ),
         onPressed: () => setState(() { _finalizeLastChar(); _mode = mode; }),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
       ),
     );
   }
 
-  Widget _buildKeyGrid() {
+  Widget _buildKeyGrid(BuildContext context) {
     if (_mode == KInputMode.kana) {
       final List<String> keys = ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら'];
       return GridView.count(
         shrinkWrap: true,
         crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
+        mainAxisSpacing: rs(context, 8),
+        crossAxisSpacing: rs(context, 8),
         childAspectRatio: 1.4,
         children: [
-          ...keys.map((k) => _buildKey(k)),
-          _buildSpecialKey('濁/小', _handleModifier, Colors.blueGrey.shade300),
-          _buildKey('わ'),
-          _buildDeleteKey(),
+          ...keys.map((k) => _buildKey(context, k)),
+          _buildSpecialKey(context, '濁/小', _handleModifier, Colors.blueGrey.shade300),
+          _buildKey(context, 'わ'),
+          _buildDeleteKey(context),
         ],
       );
     } else if (_mode == KInputMode.alpha) {
@@ -213,14 +217,14 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
       return GridView.count(
         shrinkWrap: true,
         crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
+        mainAxisSpacing: rs(context, 8),
+        crossAxisSpacing: rs(context, 8),
         childAspectRatio: 1.4,
         children: [
-          ...keys.map((k) => _buildKey(k)),
-          _buildSpecialKey(_isUpperCase ? 'A→a' : 'a→A', () => setState(() => _isUpperCase = !_isUpperCase), Colors.blueGrey.shade300),
-          _buildKey('0'),
-          _buildDeleteKey(),
+          ...keys.map((k) => _buildKey(context, k)),
+          _buildSpecialKey(context, _isUpperCase ? 'A→a' : 'a→A', () => setState(() => _isUpperCase = !_isUpperCase), Colors.blueGrey.shade300),
+          _buildKey(context, '0'),
+          _buildDeleteKey(context),
         ],
       );
     } else {
@@ -228,20 +232,20 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
       return GridView.count(
         shrinkWrap: true,
         crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
+        mainAxisSpacing: rs(context, 8),
+        crossAxisSpacing: rs(context, 8),
         childAspectRatio: 1.4,
         children: [
-          ...keys.take(9).map((k) => _buildKey(k)),
+          ...keys.take(9).map((k) => _buildKey(context, k)),
           const SizedBox.shrink(),
-          _buildKey('0'),
-          _buildDeleteKey(),
+          _buildKey(context, '0'),
+          _buildDeleteKey(context),
         ],
       );
     }
   }
 
-  Widget _buildKey(String label) {
+  Widget _buildKey(BuildContext context, String label) {
     String displayLabel = label;
     if (_mode == KInputMode.alpha && _alphaLabelMap.containsKey(label)) {
       displayLabel = _alphaLabelMap[label]!;
@@ -255,27 +259,27 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         padding: EdgeInsets.zero,
       ),
       onPressed: () => _handleKeyTap(label),
       child: Text(
         displayLabel,
-        style: const TextStyle(
-          fontSize: 20, // フォントサイズを20に統一
+        style: TextStyle(
+          fontSize: rf(context, 20),
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget _buildDeleteKey() {
+  Widget _buildDeleteKey(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey.shade600,
         foregroundColor: Colors.white,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         padding: EdgeInsets.zero,
       ),
       onPressed: () {
@@ -284,19 +288,19 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
           widget.controller.text = widget.controller.text.substring(0, widget.controller.text.length - 1);
         }
       },
-      child: const Icon(Icons.backspace, size: 32),
+      child: Icon(Icons.backspace, size: rs(context, 32)),
     );
   }
 
-  Widget _buildSpecialKey(String label, VoidCallback onPressed, Color color) {
+  Widget _buildSpecialKey(BuildContext context, String label, VoidCallback onPressed, Color color) {
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))),
       onPressed: onPressed,
-      child: Text(label, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      child: Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _actionButton(String label, Color color, VoidCallback onPressed) {
-    return SizedBox(height: 54, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), onPressed: onPressed, child: Text(label, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))));
+  Widget _actionButton(BuildContext context, String label, Color color, VoidCallback onPressed) {
+    return SizedBox(height: rs(context, 54), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))), onPressed: onPressed, child: Text(label, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold))));
   }
 }

@@ -1,32 +1,45 @@
-# Google Maps API 診断機能の強化とエラー解消計画
+# 画面全体を比率ベースで拡大縮小（プロポーショナル・スケーリング）し、オーバーフローを修正する実装計画
 
-タブレットシミュレータおよびWeb環境で検索結果が出ない問題を解決するため、APIからの詳細なエラー応答を可視化し、原因を特定・解消します。
+ウィンドウサイズの変更に対し、フォント、余白、コンポーネントのサイズがすべて同じ比率で連動して変化するようにアプリを最適化します。また、`KStepper` で発生しているオーバーフローエラーを解消します。
 
 ## ユーザーレビューが必要な項目
+
 > [!IMPORTANT]
-> **Google Cloud Console での確認事項:**
-> 1. **キーの制限:** 「リファラー制限」がかかっているとAndroid/iOSでは動作しません。一時的に「制限なし」にしてテストしてください。
-> 2. **有効なAPI:** **Places API (Newではない方)** が有効になっているか確認してください。
-> 3. **請求設定:** クレジットカードが登録されており、プロジェクトに紐付いているか確認してください（必須です）。
+> - **スケーリングの完全連動:** 画面幅 1280px を基準（1.0）とし、全てのパディング、マージン、文字サイズをこの係数に乗算します。
+> - **オーバーフロー対策:** 文字が長い場合でも `Flexible` と `Ellipsis` を併用し、レイアウトが崩れないようにガードを入れます。
+> - **入力パッドのサイズ変更:** テンキーや日本語入力パッドも画面サイズに合わせて大きく・小さくなります。
 
 ## 提案される変更
 
-### [Component] GoogleMaps サービス (Diagnostics)
+### 1. レスポンシブ・ユーティリティの強化
 
-#### [MODIFY] [google_maps_service.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/services/google_maps_service.dart)
-- `searchPlacesByText` において、`status != 'OK'` の場合に Google から返される `error_message` を抽出し、`debugPrint` で出力するように強化します。
+#### [MODIFY] [k_responsive.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_responsive.dart)
+- 「同じ比率」を最優先するため、`scale` の `clamp` 制限を緩和（または撤廃）します。
+- 文字が消えないよう、`rf` 関数に最小値（例: 4px）を設定します。
 
-### [Component] 受注画面ロジック (Error Handling)
+### 2. コンポーネントの比例スケーリング適用
 
-#### [MODIFY] [order_form_screen.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form_screen.dart)
-- APIエラー発生時に、デバッグ時のみ詳細なステータスコードを SnackBar またはログに表示するようにし、現場での切り分けを可能にします。
+#### [MODIFY] [k_stepper.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_stepper.dart)
+- ラベル文字を `Flexible` で包み、オーバーフローを防止します（修正済み）。
+- 全ての `SizedBox` や `margin` に `rs` を適用します。
+
+#### [MODIFY] [k_quantity_counter.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_quantity_counter.dart)
+- ボタンの大きさ (`60x60`)、文字サイズ、余白を `rs` / `rf` に置き換えます。
+
+#### [MODIFY] [k_phone_input_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_phone_input_pad.dart) / [k_japanese_input_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_japanese_input_pad.dart)
+- パッドの横幅 (`380`)、キーの高さ、フォントサイズを全てスケール連動値に変更します。
+
+### 3. サイドバーとチャートの調整
+
+#### [MODIFY] [sidebar_widgets.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/sidebar_widgets.dart)
+- 統計チャートの高さや棒の太さ、ランキングの文字サイズにスケーリングを適用します。
 
 ## Verification Plan
 
 ### 自動テスト
-- `gradlew :app:assembleDebug`
+- `gradlew :app:assembleDebug` が通ることを確認。
 
-### 手動検証（シミュレータ）
-1. 施設検索を実行。
-2. Android Studio の **Logcat** を開き、`Google Maps Text Search Status:` と `Error Details:` の出力を確認。
-3. `REQUEST_DENIED` の理由（API key not authorized, Billing not enabled 等）を確認。
+### 手動検証
+1. ウィンドウを極端に横に長くしたり、縦に長くしたりして、UI要素が比率を保ったまま追従することを確認。
+2. `KStepper` で「配達先の確定」などの長い文字が表示されても、赤いエラー画面が出ないことを確認。
+3. 日本語入力パッドなどが、広い画面では押しやすく、狭い画面ではコンパクトに収まることを確認。

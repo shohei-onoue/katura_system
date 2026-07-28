@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
+import '../../../../widgets/k_responsive.dart';
 import '../order_form_parts.dart';
 
 class CustomerConfirmationStep extends StatelessWidget {
@@ -28,27 +29,27 @@ class CustomerConfirmationStep extends StatelessWidget {
             controller: phoneController,
             textAlign: TextAlign.center,
             readOnly: true,
-            style: const TextStyle(fontSize: 80, fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: 10),
+            style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: rs(context, 10)),
             decoration: const InputDecoration(border: InputBorder.none),
             keyboardType: TextInputType.none,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: rs(context, 24)),
           CustomerInfoBanner(customer: currentCustomer),
-          const SizedBox(height: 48),
+          SizedBox(height: rs(context, 48)),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: EdgeInsets.symmetric(vertical: rs(context, 20)),
                     side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                   ),
                   onPressed: onBack,
-                  child: const Text('選び直す', style: TextStyle(fontSize: 18, color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                  child: Text('選び直す', style: TextStyle(fontSize: rf(context, 18), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: rs(context, 16)),
               Expanded(
                 child: KButton(label: 'この顧客で受注する', onPressed: onNext, color: Colors.deepPurple),
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KButton extends StatelessWidget {
   final String label;
@@ -18,19 +19,19 @@ class KButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: fullWidth ? double.infinity : null,
-      height: 50,
+      height: rs(context, 50),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color ?? Theme.of(context).primaryColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
         ),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
         ),
       ),
     );

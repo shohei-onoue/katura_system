@@ -9,6 +9,7 @@ import '../services/menu_service.dart';
 import '../services/staff_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_stepper.dart';
+import '../widgets/k_responsive.dart';
 import 'order_form/widgets/order_form_parts.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/sidebar_widgets.dart';
@@ -455,6 +456,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       body: Row(
         children: [
           Expanded(
+            flex: 65,
             child: Column(
               children: [
                 KStepper(currentStep: _currentStep, steps: _stepLabels, onStepTapped: (s) { if (s < _currentStep) setState(() => _currentStep = s); }),
@@ -535,18 +537,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Widget _buildRightSideMenu() {
-    return Container(
-      width: 400,
-      decoration: BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: Colors.grey.shade200))),
-      child: Column(
-        children: [
-          if (_currentStep == 0) Expanded(child: SidebarPhonePad(controller: _phoneController, onInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, onClear: () { _phoneController.clear(); _lookupCustomer(''); }, onBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } })),
-          if (_currentStep == 1) Expanded(child: SidebarAnalysis(history: _customerOrderHistory, onRegenerate: () async { setState(() => _isLoading = true); await _customerService.regenerateDummyCustomers(); if (mounted) setState(() { _isLoading = false; _currentStep = 0; }); })),
-          if (_currentStep >= 2) ...[
-            SizedBox(height: 300, child: GoogleMap(initialCameraPosition: const CameraPosition(target: _initialCenter, zoom: 12), onMapCreated: (c) => _mapController = c, markers: _markers, myLocationButtonEnabled: false, zoomControlsEnabled: true)),
-            Expanded(child: SingleChildScrollView(child: _facilitySearchCandidates.isNotEmpty ? SidebarSearchResults(results: _facilitySearchCandidates, onClose: () => setState(() => _facilitySearchCandidates = []), onSelect: _selectFacilityCandidate, onForceApiSearch: () => _onSearchSubmit(forceApi: true)) : (_selectedHistoryItem != null ? SidebarHistoryDetail(order: _selectedHistoryItem!) : SidebarSummary(date: _deliveryDate, time: _selectedTime, customerName: _nameController.text, receiverName: _receiverController.text, totalPrice: _totalPrice, totalCount: _totalCount)))),
+    return Expanded(
+      flex: 20,
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: Colors.grey.shade200))),
+        child: Column(
+          children: [
+            if (_currentStep == 0) Expanded(child: SidebarPhonePad(controller: _phoneController, onInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, onClear: () { _phoneController.clear(); _lookupCustomer(''); }, onBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } })),
+            if (_currentStep == 1) Expanded(child: SidebarAnalysis(history: _customerOrderHistory, onRegenerate: () async { setState(() => _isLoading = true); await _customerService.regenerateDummyCustomers(); if (mounted) setState(() { _isLoading = false; _currentStep = 0; }); })),
+            if (_currentStep >= 2) ...[
+              SizedBox(height: rs(context, 300), child: GoogleMap(initialCameraPosition: const CameraPosition(target: _initialCenter, zoom: 12), onMapCreated: (c) => _mapController = c, markers: _markers, myLocationButtonEnabled: false, zoomControlsEnabled: true)),
+              Expanded(child: SingleChildScrollView(child: _facilitySearchCandidates.isNotEmpty ? SidebarSearchResults(results: _facilitySearchCandidates, onClose: () => setState(() => _facilitySearchCandidates = []), onSelect: _selectFacilityCandidate, onForceApiSearch: () => _onSearchSubmit(forceApi: true)) : (_selectedHistoryItem != null ? SidebarHistoryDetail(order: _selectedHistoryItem!) : SidebarSummary(date: _deliveryDate, time: _selectedTime, customerName: _nameController.text, receiverName: _receiverController.text, totalPrice: _totalPrice, totalCount: _totalCount)))),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
