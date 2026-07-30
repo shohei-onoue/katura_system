@@ -38,6 +38,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadStaff,
+            tooltip: '再読み込み',
           ),
         ],
       ),

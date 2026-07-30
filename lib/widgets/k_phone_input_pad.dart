@@ -56,17 +56,19 @@ class KPhoneInputPad extends StatelessWidget {
                         ),
                         onPressed: () {
                           if (digit == 'クリア') {
-                            controller.clear();
-                            onClear?.call();
+                            if (onClear != null) {
+                              onClear!.call();
+                            } else {
+                              controller.clear();
+                            }
                           } else if (digit == '⌫') {
-                            final text = controller.text;
-                            if (text.isNotEmpty) {
-                              final lastChar = text.substring(text.length - 1);
-                              final deleteCount = lastChar == '-' ? 2 : 1;
-                              if (text.length >= deleteCount) {
-                                controller.text = text.substring(0, text.length - deleteCount);
+                            if (onBackspace != null) {
+                              onBackspace!.call();
+                            } else {
+                              final text = controller.text;
+                              if (text.isNotEmpty) {
+                                controller.text = text.substring(0, text.length - 1);
                               }
-                              onBackspace?.call();
                             }
                           } else {
                             onInput(digit);

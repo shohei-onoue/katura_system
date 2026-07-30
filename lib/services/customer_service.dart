@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer_model.dart';
 import 'address_service.dart';
 import 'google_maps_service.dart';
-import 'package:flutter/foundation.dart';
 
 
 class CustomerService {
@@ -25,10 +24,10 @@ class CustomerService {
         .toList();
   }
 
-  // 電話番号の下4桁で検索
+  // 電話番号の下N桁で検索（4文字以上）
   Future<List<Customer>> searchByPhoneSuffix(String suffix) async {
     final cleanSuffix = suffix.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleanSuffix.length != 4) return [];
+    if (cleanSuffix.length < 4) return [];
 
     final snapshot = await _customerCollection.get();
     return snapshot.docs
@@ -91,16 +90,59 @@ class CustomerService {
 
   // 全顧客を一括削除
   Future<void> deleteAllCustomers() async {
+    // 顧客の削除
     while (true) {
       final snapshot = await _customerCollection.limit(500).get();
       if (snapshot.docs.isEmpty) break;
-
       final batch = FirebaseFirestore.instance.batch();
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
+      for (var doc in snapshot.docs) { batch.delete(doc.reference); }
       await batch.commit();
     }
+    // 関連する注文データの削除（ダミー再生成時に一貫性を保つため）
+    final orderCollection = FirebaseFirestore.instance.collection('orders');
+    while (true) {
+      final snapshot = await orderCollection.limit(500).get();
+      if (snapshot.docs.isEmpty) break;
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snapshot.docs) { batch.delete(doc.reference); }
+      await batch.commit();
+    }
+  }
+
+  // 住所の重複を防ぎながら綺麗に結合する
+  String _buildSafeAddress({required String pref, required String city, required String town, required String addr}) {
+    String result = "";
+    
+    // 構成要素を順番にチェックしながら追加
+    void append(String component) {
+      if (component.isEmpty) return;
+      // 既に結果に含まれている場合は追加しない (例: 「岡崎市」が既にあれば追加しない)
+      if (!result.contains(component)) {
+        result += component;
+      }
+    }
+
+    append(pref);
+    append(city);
+    append(town);
+    
+    // 番地データ (addr) の徹底的なクリーニング
+    String cleanAddr = addr;
+    if (pref.isNotEmpty) cleanAddr = cleanAddr.replaceAll(pref, '');
+    if (city.isNotEmpty) cleanAddr = cleanAddr.replaceAll(city, '');
+    if (town.isNotEmpty) cleanAddr = cleanAddr.replaceAll(town, '');
+    
+    result += cleanAddr;
+    
+    // 最終的な多重重複の排除 (例: 愛知県愛知県 -> 愛知県)
+    final targets = [pref, city, town].where((s) => s.length >= 2).toList();
+    for (var t in targets) {
+      while (result.contains('$t$t')) {
+        result = result.replaceAll('$t$t', t);
+      }
+    }
+    
+    return result;
   }
 
   // メニューマスタと住所DBから情報を取得し、岡崎市中心の高品質なダミーデータ100件を生成
@@ -126,90 +168,93 @@ class CustomerService {
         throw Exception('メニューマスタが空です。先にメニューを登録してください。');
       }
 
-      // 岡崎市の実在施設データを取得（40件程度取得して100名に割り振る）
+      // 岡崎市の実在施設データを取得
       final entities = await _addressService.getRandomOkazakiEntities(limit: 40);
       if (entities.isEmpty) {
         throw Exception('住所データベースから岡崎市のデータを取得できませんでした。');
       }
 
-      // ジオコーディング結果のキャッシュ（API節約）
       final Map<String, Map<String, double>> geoCache = {};
-
       final branches = ['岡崎本店', '名古屋店', '岐阜店'];
-      
       final lastNames = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山本', '中村', '小林', '加藤', '吉田', '山田', '佐々木', '山口', '松本', '井上', '木村', '林', '斎藤', '清水'];
       final firstNames = ['健一', '直樹', '恵子', '由美子', '和也', '大輔', '雅弘', '美穂', '沙織', '翔太', '陽子', '真一', '愛', '健太', '美咲', '大樹', '彩', '拓海', '七海', '駿'];
 
-      final batch = FirebaseFirestore.instance.batch();
+      final orderCollection = FirebaseFirestore.instance.collection('orders');
       final now = DateTime.now();
 
-      // 100名生成するためのカウント管理
       int totalCreated = 0;
       int entityIdx = 0;
 
       while (totalCreated < 100) {
         final entity = entities[entityIdx % entities.length];
         final entityName = entity['name'] ?? '一般';
-        final entityAddr = entity['address'] ?? '住所不明';
+        
+        // 住所の重複を排除して結合
+        final entityAddr = _buildSafeAddress(
+          pref: entity['pref'] ?? '',
+          city: entity['city'] ?? '',
+          town: entity['town'] ?? '',
+          addr: entity['addr'] ?? '',
+        );
 
-        // 座標の取得（施設名＋住所で精度を向上）
         if (!geoCache.containsKey(entityAddr)) {
-          final query = "$entityName $entityAddr";
-          debugPrint('Generating dummy coords for: $query');
-          
-          final latLng = await _googleMapsService.getLatLngFromAddress(query);
+          final latLng = await _googleMapsService.getLatLngFromAddress("$entityName $entityAddr");
           if (latLng != null && latLng['lat'] != 0.0) {
             geoCache[entityAddr] = latLng;
-            // SQLite DB に保存して永続化
-            await _addressService.upsertKigyouEntity(
-              name: entityName,
-              address: entityAddr,
-              lat: latLng['lat']!,
-              lng: latLng['lng']!,
-            );
+            await _addressService.upsertKigyouEntity(name: entityName, address: entityAddr, lat: latLng['lat']!, lng: latLng['lng']!);
           } else {
-            // 失敗時は住所のみで再試行
-            final fallbackLatLng = await _googleMapsService.getLatLngFromAddress(entityAddr);
-            if (fallbackLatLng != null && fallbackLatLng['lat'] != 0.0) {
-              geoCache[entityAddr] = fallbackLatLng;
-            } else {
-              debugPrint('CRITICAL FAIL: Could not resolve address for $entityName ($entityAddr)');
-              geoCache[entityAddr] = {'lat': 0.0, 'lng': 0.0}; // 0.0で保存し、実行時に自己修復させる
-            }
+            geoCache[entityAddr] = {'lat': 0.0, 'lng': 0.0};
           }
-          // 短いウェイトを置いてクォータを安定させる
-          await Future.delayed(const Duration(milliseconds: 200));
+          await Future.delayed(const Duration(milliseconds: 100));
         }
         
         final coords = geoCache[entityAddr]!;
-
-        // 1つの企業に対し、1〜5人をランダムに割り当てる
-        int staffCount = random.nextInt(5) + 1;
+        int staffCount = random.nextInt(4) + 1;
         if (totalCreated + staffCount > 100) staffCount = 100 - totalCreated;
 
         for (int s = 0; staffCount > s; s++) {
           final name = "${lastNames[random.nextInt(lastNames.length)]} ${firstNames[random.nextInt(firstNames.length)]}";
           final phone = '0${random.nextInt(3) + 7}0-${random.nextInt(9000) + 1000}-${random.nextInt(9000) + 1000}';
           
-          List<String> history = [];
-          for (int m = 0; m < 12; m++) {
-            if (random.nextDouble() > 0.6) {
-              final orderMonth = DateTime(now.year, m + 1, random.nextInt(28) + 1);
-              if (orderMonth.isAfter(now)) continue;
+          List<String> historyStrings = [];
+          int historyCount = random.nextInt(6) + 3;
+          final batch = FirebaseFirestore.instance.batch();
 
-              final dateStr = "${orderMonth.year}-${orderMonth.month.toString().padLeft(2, '0')}-${orderMonth.day.toString().padLeft(2, '0')}";
-              final menu = menus[random.nextInt(menus.length)];
-              final qty = random.nextInt(10) + 5;
-              final branch = branches[random.nextInt(branches.length)];
-              
-              history.add('$dateStr: [$branch] [$entityName] ${menu['name']} x$qty');
-            }
+          for (int h = 0; h < historyCount; h++) {
+            final orderDate = now.subtract(Duration(days: random.nextInt(360)));
+            final dateStr = "${orderDate.year}-${orderDate.month.toString().padLeft(2, '0')}-${orderDate.day.toString().padLeft(2, '0')}";
+            
+            final menu = menus[random.nextInt(menus.length)];
+            final qty = random.nextInt(10) + 2;
+            final branch = branches[random.nextInt(branches.length)];
+            final time = "${11 + random.nextInt(2)}:${random.nextBool() ? '00' : '30'}";
+
+            // 文字列履歴
+            historyStrings.add('$dateStr: [$branch] [$entityName] ${menu['name']} x$qty');
+
+            // 実際の受注データ生成
+            final orderDocRef = orderCollection.doc();
+            batch.set(orderDocRef, {
+              'id': orderDocRef.id,
+              'customerName': name,
+              'facilityName': entityName,
+              'address': entityAddr,
+              'phoneNumber': phone,
+              'receptionDate': orderDate.subtract(const Duration(days: 1)).toIso8601String(),
+              'deliveryDate': orderDate.toIso8601String(),
+              'deliveryTime': time,
+              'deliveryType': '配送',
+              'items': [{'id': menu['id'], 'name': menu['name'], 'price': menu['price'], 'quantity': qty}],
+              'totalCount': qty,
+              'packagingType': qty >= 20 ? 'ダンボール' : '紙袋',
+              'paymentMethod': '現金',
+              'status': '配送済み',
+              'branchName': branch,
+            });
           }
-          history.sort((a, b) => b.compareTo(a));
+          historyStrings.sort((a, b) => b.compareTo(a));
 
           final docRef = _customerCollection.doc();
-          final String displayAddrWithGeo = '$entityName: $entityAddr (${coords['lat']}, ${coords['lng']})';
-          
           final customer = Customer(
             id: docRef.id,
             name: name,
@@ -218,17 +263,16 @@ class CustomerService {
             address: entityAddr,
             latitude: coords['lat'],
             longitude: coords['lng'],
-            orderHistory: history,
-            deliveryAddresses: [displayAddrWithGeo],
+            orderHistory: historyStrings,
+            deliveryAddresses: ['$entityName: $entityAddr (${coords['lat']}, ${coords['lng']})'],
             facilityReceivers: {entityName: [name]},
           );
           batch.set(docRef, customer.toMap());
+          await batch.commit();
           totalCreated++;
         }
         entityIdx++;
       }
-
-      await batch.commit();
     } catch (e) {
       print('Error in regenerateDummyCustomers: $e');
       rethrow;

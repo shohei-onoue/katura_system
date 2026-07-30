@@ -1,45 +1,44 @@
-# 画面全体を比率ベースで拡大縮小（プロポーショナル・スケーリング）し、オーバーフローを修正する実装計画
+# 顧客確認ステップのサイドバー構成変更と「同僚リスト」廃止計画
 
-ウィンドウサイズの変更に対し、フォント、余白、コンポーネントのサイズがすべて同じ比率で連動して変化するようにアプリを最適化します。また、`KStepper` で発生しているオーバーフローエラーを解消します。
+「顧客確認」ステップ（ステップ 1）の右サイドバーにおける地図表示と同企業他顧客（同僚）リストを廃止し、代わりに売上推移の棒グラフを表示するように変更します。また、不要になった関連コードを削除しクリーンアップします。
 
 ## ユーザーレビューが必要な項目
 
 > [!IMPORTANT]
-> - **スケーリングの完全連動:** 画面幅 1280px を基準（1.0）とし、全てのパディング、マージン、文字サイズをこの係数に乗算します。
-> - **オーバーフロー対策:** 文字が長い場合でも `Flexible` と `Ellipsis` を併用し、レイアウトが崩れないようにガードを入れます。
-> - **入力パッドのサイズ変更:** テンキーや日本語入力パッドも画面サイズに合わせて大きく・小さくなります。
+> - **ステップ 1 のサイドバー:** 地図や同僚リストが表示されなくなり、売上推移グラフ（SidebarAnalysis）のみが表示されるようになります。
+> - **機能の削除:** 「同企業他顧客リスト」機能はアプリ全体から削除されます。
+> - **ステップ 2 以降:** 引き続き、上部に地図、その下にグラフと受注サマリーが表示される構成を維持します。
 
 ## 提案される変更
 
-### 1. レスポンシブ・ユーティリティの強化
+### 1. サイドバー・レイアウトの条件変更
 
-#### [MODIFY] [k_responsive.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_responsive.dart)
-- 「同じ比率」を最優先するため、`scale` の `clamp` 制限を緩和（または撤廃）します。
-- 文字が消えないよう、`rf` 関数に最小値（例: 4px）を設定します。
+#### [MODIFY] [order_form_sidebar.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/order_form_sidebar.dart)
+- 地図の表示条件を `currentStep >= 2` に変更（ステップ 1 では非表示に）。
+- ステップ 1 (`currentStep == 1`) の際に `SidebarAnalysis`（グラフ）を単独で表示するようにロジックを修正。
+- `SidebarCompanyPeers` の呼び出しを削除。
+- 不要になった引数（`companyName`, `companyPeers`, `onShowPin`）を削除。
 
-### 2. コンポーネントの比例スケーリング適用
+### 2. 受注入力画面のクリーンアップ
 
-#### [MODIFY] [k_stepper.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_stepper.dart)
-- ラベル文字を `Flexible` で包み、オーバーフローを防止します（修正済み）。
-- 全ての `SizedBox` や `margin` に `rs` を適用します。
+#### [MODIFY] [order_form_screen.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form_screen.dart)
+- `_companyPeers` 状態変数を削除。
+- `_selectCustomer` 内での同僚リスト取得処理を削除。
+- `OrderFormSidebar` 呼び出し時の引数を整理。
 
-#### [MODIFY] [k_quantity_counter.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_quantity_counter.dart)
-- ボタンの大きさ (`60x60`)、文字サイズ、余白を `rs` / `rf` に置き換えます。
+### 3. ファイルの削除
 
-#### [MODIFY] [k_phone_input_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_phone_input_pad.dart) / [k_japanese_input_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_japanese_input_pad.dart)
-- パッドの横幅 (`380`)、キーの高さ、フォントサイズを全てスケール連動値に変更します。
-
-### 3. サイドバーとチャートの調整
-
-#### [MODIFY] [sidebar_widgets.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/sidebar_widgets.dart)
-- 統計チャートの高さや棒の太さ、ランキングの文字サイズにスケーリングを適用します。
+#### [DELETE] [sidebar_company_peers.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/sidebar/sidebar_company_peers.dart)
+- 使用されなくなる同僚リストのウィジェットファイルを削除します。
 
 ## Verification Plan
 
 ### 自動テスト
-- `gradlew :app:assembleDebug` が通ることを確認。
+- `gradlew :app:assembleDebug`
 
 ### 手動検証
-1. ウィンドウを極端に横に長くしたり、縦に長くしたりして、UI要素が比率を保ったまま追従することを確認。
-2. `KStepper` で「配達先の確定」などの長い文字が表示されても、赤いエラー画面が出ないことを確認。
-3. 日本語入力パッドなどが、広い画面では押しやすく、狭い画面ではコンパクトに収まることを確認。
+1. 電話番号を入力し、「顧客確認」ステップ（ステップ 1）へ進む。
+2. 右サイドバーに**地図が表示されず、棒グラフのみ**が表示されていることを確認。
+3. 「配達先の確定」ステップ（ステップ 2）へ進む。
+4. 右サイドバーの上部に**地図が復活し、その下にグラフと履歴詳細/サマリー**が表示されることを確認。
+5. リファクタリングによる他の機能（顧客検索など）への影響がないことを確認。

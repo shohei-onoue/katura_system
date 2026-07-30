@@ -10,12 +10,13 @@ class OrderService {
   }
 
   Future<List<OrderModel>> getAllOrders() async {
-    final snapshot = await _orderCollection
-        .orderBy('deliveryDate', descending: true)
-        .get();
-    return snapshot.docs
+    final snapshot = await _orderCollection.get();
+    final list = snapshot.docs
         .map((doc) => OrderModel.fromMap(doc.data() as Map<String, dynamic>))
         .toList();
+    // メモリ上でソート (Firestoreインデックス未作成対策)
+    list.sort((a, b) => b.deliveryDate.compareTo(a.deliveryDate));
+    return list;
   }
 
   Future<void> updateOrderStatus(String orderId, String status) async {

@@ -34,7 +34,11 @@ class PhoneConfirmStep extends StatelessWidget {
             textAlign: TextAlign.center,
             readOnly: true,
             style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: rs(context, 10)),
-            decoration: const InputDecoration(border: InputBorder.none),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: '0000',
+              hintStyle: TextStyle(color: Colors.grey.shade300),
+            ),
             keyboardType: TextInputType.none,
           ),
           if (isLoading)
@@ -49,7 +53,7 @@ class PhoneConfirmStep extends StatelessWidget {
               color: Colors.deepPurple,
             )
           else
-            Text('電話番号を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16))),
+            Text('下４桁を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
         ],
       ),
     );

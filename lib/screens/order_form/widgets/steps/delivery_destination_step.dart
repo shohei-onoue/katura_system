@@ -97,8 +97,6 @@ class DeliveryDestinationStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        CustomerInfoBanner(customer: currentCustomer),
-        SizedBox(height: rs(context, 24)),
         OrderFormCard(
           title: '配達先の確定',
           icon: Icons.location_on,

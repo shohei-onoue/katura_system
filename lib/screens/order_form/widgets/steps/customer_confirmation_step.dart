@@ -20,9 +20,38 @@ class CustomerConfirmationStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final daysSince = currentCustomer != null 
+        ? CustomerInfoBanner.calculateDaysSince(currentCustomer!.orderHistory) 
+        : null;
+
     return OrderFormCard(
       title: '受注者（本人）の確認',
       icon: Icons.person_search,
+      trailing: daysSince != null 
+          ? Container(
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 6)),
+              decoration: BoxDecoration(
+                color: (daysSince > 90) ? Colors.red.shade50 : Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(rs(context, 20)),
+                border: Border.all(color: (daysSince > 90) ? Colors.red.shade200 : Colors.blue.shade200),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history, size: rs(context, 14), color: (daysSince > 90) ? Colors.red : Colors.blue),
+                  SizedBox(width: rs(context, 6)),
+                  Text(
+                    '前回から $daysSince 日',
+                    style: TextStyle(
+                      fontSize: rf(context, 13),
+                      fontWeight: FontWeight.bold,
+                      color: (daysSince > 90) ? Colors.red : Colors.blue,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
       child: Column(
         children: [
           TextField(

@@ -50,13 +50,13 @@ class _MainScreenState extends State<MainScreen> {
       case 2:
         currentScreen = const PlanningScreen();
         break;
-      case 7:
+      case 6:
         currentScreen = const CustomerListScreen();
         break;
-      case 8:
+      case 7:
         currentScreen = const MenuMasterScreen();
         break;
-      case 9:
+      case 8:
         currentScreen = const StaffManagementScreen();
         break;
       default:

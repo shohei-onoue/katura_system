@@ -3,22 +3,17 @@ import '../models/menu_model.dart';
 import '../models/planning_models.dart';
 
 class PlanningService {
-  /// 受注データとメニューマスタから必要な食材の総量を集計する（店舗フィルタ対応）
-  Map<String, IngredientRequirement> calculateTotalIngredients(
+  /// 受注データとメニューマスタから必要な食材の総量を集計する
+  Map<String, IngredientRequirement> calculateIngredientTotals(
     List<OrderModel> orders,
     List<MenuModel> allMenus,
-    String? branchName,
   ) {
-    final Map<String, IngredientRequirement> totals = {};
+    final Map<String, ({double amount, String unit, Set<String> usedIn})> totals = {};
     final Map<String, MenuModel> menuMap = {for (var m in allMenus) m.id: m};
 
-    final filteredOrders = branchName == null || branchName == 'すべて'
-        ? orders
-        : orders.where((o) => o.branchName == branchName).toList();
-
-    for (var order in filteredOrders) {
+    for (var order in orders) {
       for (var item in order.items) {
-        final menuId = item['id']; // OrderModel.items の map には 'id' (menuId) が入っている
+        final menuId = item['id'];
         final quantity = item['quantity'] as int;
         final menu = menuMap[menuId];
 
@@ -29,23 +24,33 @@ class PlanningService {
 
             if (totals.containsKey(name)) {
               final existing = totals[name]!;
-              totals[name] = IngredientRequirement(
-                name: name,
+              existing.usedIn.add(menu.name);
+              totals[name] = (
                 amount: existing.amount + amount,
                 unit: existing.unit,
+                usedIn: existing.usedIn
               );
             } else {
-              totals[name] = IngredientRequirement(
-                name: name,
+              totals[name] = (
                 amount: amount,
                 unit: parsed.unit,
+                usedIn: {menu.name}
               );
             }
           });
         }
       }
     }
-    return totals;
+
+    return totals.map((name, data) => MapEntry(
+      name,
+      IngredientRequirement(
+        name: name,
+        totalQuantity: data.amount,
+        unit: data.unit,
+        usedInMenus: data.usedIn.toList(),
+      ),
+    ));
   }
 
   /// 文字列（例: "100g", "2個"）から数値と単位を抽出する
@@ -56,52 +61,43 @@ class PlanningService {
       final unit = valueStr.substring(numberMatch.end).trim();
       return (amount: amount, unit: unit);
     }
-    // 数値が取れない場合は、その文字列全体を単位とし、数量を1とする
     return (amount: 1.0, unit: valueStr);
   }
 
-  /// 配達時間から逆算して調理スケジュール（タスク一覧）を生成する（店舗フィルタ対応）
-  List<CookingTask> generateCookingSchedule(
-    List<OrderModel> orders,
-    String? branchName,
-  ) {
+  /// 配達時間から逆算して調理スケジュール（タスク一覧）を生成する
+  List<CookingTask> generateCookingSchedule(List<OrderModel> orders) {
     final List<CookingTask> tasks = [];
-    final filteredOrders = branchName == null || branchName == 'すべて'
-        ? orders
-        : orders.where((o) => o.branchName == branchName).toList();
 
-    for (var order in filteredOrders) {
+    for (var order in orders) {
       final timeParts = order.deliveryTime.split(':');
       if (timeParts.length == 2) {
         final hour = int.tryParse(timeParts[0]) ?? 0;
         final minute = int.tryParse(timeParts[1]) ?? 0;
         
-        final deliveryDateTime = DateTime(
-          order.deliveryDate.year,
-          order.deliveryDate.month,
-          order.deliveryDate.day,
-          hour,
-          minute,
-        );
+        final deliveryDateTime = DateTime(2024, 1, 1, hour, minute);
 
         for (var item in order.items) {
           // 調理開始時間の簡易見積もり（配達の90分前を準備・調理開始とする）
-          final startTime = deliveryDateTime.subtract(const Duration(minutes: 90));
+          final startDt = deliveryDateTime.subtract(const Duration(minutes: 90));
+          
+          final startTime = "${startDt.hour}:${startDt.minute.toString().padLeft(2, '0')}";
+          final endTime = "${deliveryDateTime.hour}:${deliveryDateTime.minute.toString().padLeft(2, '0')}";
 
           tasks.add(CookingTask(
             menuName: item['name'] ?? '不明',
             quantity: item['quantity'] as int,
+            startTime: startTime,
+            endTime: endTime,
             deliveryTime: order.deliveryTime,
             customerName: order.customerName,
-            estimatedStartTime: startTime,
-            deliveryDateTime: deliveryDateTime,
+            branchName: order.branchName,
           ));
         }
       }
     }
 
-    // 調理開始時間の早い順にソート
-    tasks.sort((a, b) => a.estimatedStartTime.compareTo(b.estimatedStartTime));
+    // 開始時間の早い順にソート
+    tasks.sort((a, b) => a.startTime.compareTo(b.startTime));
     return tasks;
   }
 }

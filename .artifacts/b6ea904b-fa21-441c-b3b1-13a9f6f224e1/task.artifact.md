@@ -1,8 +1,5 @@
-- [x] `lib/widgets/k_responsive.dart` の調整 (比例スケーリング優先)
-- [x] `lib/widgets/k_stepper.dart` のオーバーフロー修正 (Flexible導入) とスケーリング適用
-- [ ] `lib/widgets/k_quantity_counter.dart` のスケーリング適用
-- [ ] `lib/widgets/k_phone_input_pad.dart` のスケーリング適用
-- [ ] `lib/widgets/k_japanese_input_pad.dart` のスケーリング適用
-- [ ] `lib/screens/order_form/widgets/order_form_parts.dart` の高さと余白のスケーリング適用
-- [ ] `lib/screens/order_form/widgets/sidebar_widgets.dart` のチャートとリストのスケーリング適用
-- [ ] 全体の動作確認と微調整
+- `[x]` `lib/screens/order_form/widgets/sidebar/sidebar_company_peers.dart` の削除
+- `[x]` `lib/services/customer_service.dart` から `findPeersByCompany` メソッドを削除
+- `[x]` `lib/screens/order_form_screen.dart` のクリーンアップ (`_companyPeers` 等の削除)
+- `[x]` `lib/screens/order_form/widgets/order_form_sidebar.dart` のレイアウト修正（ステップ 1 の地図廃止、グラフ表示）
+- `[ ]` 動作確認

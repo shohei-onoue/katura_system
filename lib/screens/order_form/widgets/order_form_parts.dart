@@ -61,72 +61,87 @@ class CustomerInfoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     if (customer == null) return const SizedBox.shrink();
     
-    final daysSince = _calculateDaysSince(customer!.orderHistory);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: _InfoCardWrapper(
-            label: '注文者',
-            icon: Icons.person,
-            child: Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                Text(customer!.name, 
-                  style: TextStyle(fontSize: rf(context, 26), fontWeight: FontWeight.bold, height: 1.0),
-                  overflow: TextOverflow.ellipsis),
-                if (customer!.furigana.isNotEmpty)
-                  Transform.translate(
-                    offset: Offset(0, rs(context, -20)),
-                    child: Text(customer!.furigana, 
-                      style: TextStyle(fontSize: rf(context, 11), color: Colors.grey, height: 1.0)),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
+      child: Container(
+        padding: EdgeInsets.all(rs(context, 20)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(rs(context, 12)),
+          border: Border.all(color: Colors.blueGrey.shade100, width: 1.5),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // 左側: 顧客名
+            Expanded(
+              flex: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel(context, Icons.person, '注文者名'),
+                  SizedBox(height: rs(context, 4)),
+                  if (customer!.furigana.isNotEmpty)
+                    Text(customer!.furigana, 
+                      style: TextStyle(fontSize: rf(context, 11), color: Colors.grey, height: 1.1)),
+                  Text(
+                    customer!.name,
+                    style: TextStyle(
+                      fontSize: rf(context, 32),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                      height: 1.2,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
-        SizedBox(width: rs(context, 12)),
-        Expanded(
-          flex: 4,
-          child: _InfoCardWrapper(
-            label: '企業・施設',
-            icon: Icons.business,
-            child: Text(
-              customer!.companyName.isEmpty ? '個人' : customer!.companyName,
-              style: TextStyle(fontSize: rf(context, 26), fontWeight: FontWeight.bold, height: 1.0),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+            
+            // 区切り線代わりの余白
+            SizedBox(width: rs(context, 24)),
+            
+            // 右側: 企業・施設名
+            Expanded(
+              flex: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel(context, Icons.business, '所属企業・施設'),
+                  SizedBox(height: rs(context, 4)),
+                  Text(
+                    customer!.companyName.isEmpty ? '個人' : customer!.companyName,
+                    style: TextStyle(
+                      fontSize: rf(context, 26),
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueGrey.shade700,
+                      height: 1.2,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
-        SizedBox(width: rs(context, 12)),
-        Expanded(
-          flex: 2,
-          child: _InfoCardWrapper(
-            label: '最終注文から',
-            icon: Icons.update,
-            isAlert: (daysSince ?? 0) > 90,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(daysSince != null ? '$daysSince' : '-', 
-                  style: TextStyle(fontSize: rf(context, 38), fontWeight: FontWeight.bold, height: 1.0, color: (daysSince ?? 0) > 90 ? Colors.red : Colors.blue)),
-                SizedBox(width: rs(context, 2)),
-                Text('日', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: (daysSince ?? 0) > 90 ? Colors.red : Colors.blue)),
-              ],
-            ),
-          ),
-        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(BuildContext context, IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: rs(context, 14), color: Colors.blueGrey),
+        SizedBox(width: rs(context, 6)),
+        Text(text, style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
       ],
     );
   }
 
-  int? _calculateDaysSince(List<String> history) {
+  static int? calculateDaysSince(List<String> history) {
     if (history.isEmpty) return null;
     try {
       final dateStr = history.first.split(':').first.trim();
@@ -179,59 +194,6 @@ class KInitialRowSelector extends StatelessWidget {
           );
         }).toList(),
       ),
-    );
-  }
-}
-
-class _InfoCardWrapper extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Widget child;
-  final bool isAlert;
-
-  const _InfoCardWrapper({
-    required this.label,
-    required this.icon,
-    required this.child,
-    this.isAlert = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: rs(context, 24),
-          child: Row(
-            children: [
-              SizedBox(width: rs(context, 4)),
-              Icon(icon, size: rs(context, 14), color: Colors.blueGrey),
-              SizedBox(width: rs(context, 6)),
-              Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-            ],
-          ),
-        ),
-        SizedBox(height: rs(context, 4)),
-        Container(
-          height: rs(context, 90), 
-          width: double.infinity,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: isAlert ? Colors.red.shade50 : Colors.white,
-            borderRadius: BorderRadius.circular(rs(context, 12)),
-            border: Border.all(color: isAlert ? Colors.red.shade100 : Colors.blueGrey.shade100),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: rs(context, 6),
-                offset: Offset(0, rs(context, 2)),
-              )
-            ],
-          ),
-          child: child,
-        ),
-      ],
     );
   }
 }

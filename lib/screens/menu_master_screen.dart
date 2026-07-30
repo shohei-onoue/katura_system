@@ -317,7 +317,10 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('メニューマスタ'),
+        title: const Text('メニューマスタ', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -327,7 +330,9 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               if (mounted) Navigator.pop(context);
               _loadMenus();
             },
+            tooltip: '初期データでリセット',
           ),
+          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () => _showEditMenuDialog(),
             icon: const Icon(Icons.add),
