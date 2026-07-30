@@ -113,11 +113,16 @@ class CustomerService {
   String _buildSafeAddress({required String pref, required String city, required String town, required String addr}) {
     String result = "";
     
-    // 構成要素を順番にチェックしながら追加
+    // 正規化関数: 比較のために全角・半角・スペースの差異を吸収
+    String normalize(String s) => s.replaceAll(RegExp(r'\s+'), '').replaceAll('　', '');
+
     void append(String component) {
       if (component.isEmpty) return;
-      // 既に結果に含まれている場合は追加しない (例: 「岡崎市」が既にあれば追加しない)
-      if (!result.contains(component)) {
+      final normComp = normalize(component);
+      final normResult = normalize(result);
+      
+      // 既に結果に含まれている場合は追加しない (例: 「岡崎市」が「愛知県岡崎市」に含まれていればスキップ)
+      if (!normResult.contains(normComp)) {
         result += component;
       }
     }
@@ -127,22 +132,38 @@ class CustomerService {
     append(town);
     
     // 番地データ (addr) の徹底的なクリーニング
+    // addr 自体が「愛知県岡崎市...」とフル住所を持っているケースに対応
     String cleanAddr = addr;
-    if (pref.isNotEmpty) cleanAddr = cleanAddr.replaceAll(pref, '');
-    if (city.isNotEmpty) cleanAddr = cleanAddr.replaceAll(city, '');
-    if (town.isNotEmpty) cleanAddr = cleanAddr.replaceAll(town, '');
+    final List<String> partsToRemove = [pref, city, town];
+    for (var p in partsToRemove) {
+      if (p.isNotEmpty) {
+        cleanAddr = cleanAddr.replaceAll(p, '');
+      }
+    }
     
     result += cleanAddr;
     
-    // 最終的な多重重複の排除 (例: 愛知県愛知県 -> 愛知県)
-    final targets = [pref, city, town].where((s) => s.length >= 2).toList();
+    // 最終的な多重重複の徹底排除 (例: 愛知県愛知県 -> 愛知県)
+    // 正規表現を用いて、2回以上繰り返される住所要素を1つに絞る
+    final List<String> targets = [pref, city, town].where((s) => s.length >= 2).toList();
     for (var t in targets) {
+      // 連続重複だけでなく、間に何か挟まっていても「愛知県...愛知県」のようなパターンを前方のマッチで消す
+      // (ただしこれは危険なので、シンプルに連続重複と、全体としての正規化を行う)
       while (result.contains('$t$t')) {
         result = result.replaceAll('$t$t', t);
       }
     }
     
-    return result;
+    // 「愛知県岡崎市愛知県岡崎市」のような複合的な繰り返しを排除
+    String finalResult = result;
+    if (pref.isNotEmpty && city.isNotEmpty) {
+      final combined = pref + city;
+      while (finalResult.contains('$combined$combined')) {
+        finalResult = finalResult.replaceAll('$combined$combined', combined);
+      }
+    }
+    
+    return finalResult;
   }
 
   // メニューマスタと住所DBから情報を取得し、岡崎市中心の高品質なダミーデータ100件を生成

@@ -13,7 +13,7 @@ import 'sidebar/sidebar_analysis.dart';
 import 'sidebar/sidebar_ranking.dart';
 import 'sidebar/sidebar_destination_info.dart';
 
-class OrderFormSidebar extends StatelessWidget {
+class OrderFormSidebar extends StatefulWidget {
   final int currentStep;
   final TextEditingController phoneController;
   final bool isLoading;
@@ -75,6 +75,14 @@ class OrderFormSidebar extends StatelessWidget {
   });
 
   @override
+  State<OrderFormSidebar> createState() => _OrderFormSidebarState();
+}
+
+class _OrderFormSidebarState extends State<OrderFormSidebar> {
+  // Mapのライフサイクルを安定させるためのKey
+  final GlobalKey _mapKey = GlobalKey();
+
+  @override
   Widget build(BuildContext context) {
     return Expanded(
       flex: 23,
@@ -85,140 +93,133 @@ class OrderFormSidebar extends StatelessWidget {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // 小数点誤差を排除した絶対ピクセル計算
             final totalHeight = constraints.maxHeight.floorToDouble();
             final halfHeight = (totalHeight / 2).floorToDouble();
+            final bottomAreaHeight = totalHeight - halfHeight - 1.0;
 
-            // ステップ0 (番号入力)
-            if (currentStep == 0) {
-              return SingleChildScrollView(
-                child: SidebarPhonePad(
-                  controller: phoneController, 
-                  onInput: onPhoneInput, 
-                  onClear: onPhoneClear, 
-                  onBackspace: onPhoneBackspace
-                ),
-              );
-            }
-
-            // ステップ1 (顧客確認)
-            if (currentStep == 1) {
-              return Column(
-                children: [
-                  SizedBox(
-                    height: halfHeight,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-                      child: SidebarAnalysis(
-                        history: customerOrderHistory, 
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  SizedBox(
-                    height: totalHeight - halfHeight - 1,
-                    child: SidebarRanking(
-                      history: customerOrderHistory,
-                      allMenus: allMenus,
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            // ステップ2 (配達先確定) 以降
-            // Stack + Positioned による絶対配置で、マップの描画エラーを物理的に回避
-            return Stack(
-              children: [
-                // 上部 50%: マップ
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: halfHeight,
-                  child: GoogleMap(
-                    key: const PageStorageKey('sidebar_map'),
-                    initialCameraPosition: CameraPosition(target: initialCenter, zoom: 12),
-                    onMapCreated: onMapCreated,
-                    markers: markers,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: true,
-                  ),
-                ),
-                // 中央の境界線
-                Positioned(
-                  top: halfHeight,
-                  left: 0,
-                  right: 0,
-                  child: const Divider(height: 1),
-                ),
-                // 下部 50%: 各種情報
-                Positioned(
-                  top: halfHeight + 1,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Column(
-                    children: [
-                      // 顧客情報・配達先情報
-                      _buildInfoTextSection(context),
-                      
-                      // スクロールエリア (履歴詳細や統計グラフ)
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              if (facilitySearchCandidates.isNotEmpty) 
-                                SidebarSearchResults(
-                                  results: facilitySearchCandidates, 
-                                  onClose: onSidebarResultsClose, 
-                                  onSelect: onFacilitySelect, 
-                                  onForceApiSearch: onForceApiSearch
-                                ) 
-                              else ...[
-                                if (selectedHistoryItem != null) 
-                                  SidebarHistoryDetail(order: selectedHistoryItem!) 
-                                else 
-                                  SidebarSummary(
-                                    date: deliveryDate, 
-                                    time: selectedTime, 
-                                    customerName: customerName, 
-                                    receiverName: receiverName, 
-                                    totalPrice: totalPrice, 
-                                    totalCount: totalCount
-                                  ),
-                                const Divider(height: 1),
-                                Padding(
-                                  padding: EdgeInsets.all(rs(context, 24)),
-                                  child: SidebarAnalysis(
-                                    history: customerOrderHistory, 
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            );
+            return _buildContent(halfHeight, bottomAreaHeight);
           },
         ),
       ),
     );
   }
 
-  Widget _buildInfoTextSection(BuildContext context) {
-    final destMarker = markers.any((m) => m.markerId.value == 'dest')
-        ? markers.firstWhere((m) => m.markerId.value == 'dest')
+  Widget _buildContent(double halfHeight, double bottomHeight) {
+    // ステップ0 (番号入力)
+    if (widget.currentStep == 0) {
+      return SingleChildScrollView(
+        child: SidebarPhonePad(
+          controller: widget.phoneController, 
+          onInput: widget.onPhoneInput, 
+          onClear: widget.onPhoneClear, 
+          onBackspace: widget.onPhoneBackspace
+        ),
+      );
+    }
+
+    // ステップ1 (顧客確認)
+    if (widget.currentStep == 1) {
+      return Column(
+        children: [
+          SizedBox(
+            height: halfHeight,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
+              child: SidebarAnalysis(
+                history: widget.customerOrderHistory, 
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          SizedBox(
+            height: bottomHeight,
+            child: SidebarRanking(
+              history: widget.customerOrderHistory,
+              allMenus: widget.allMenus,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ステップ2 (配達先確定) 以降
+    return Column(
+      children: [
+        // 上部 50%: マップ (物理サイズ固定でエラー封殺)
+        SizedBox(
+          height: halfHeight,
+          child: GoogleMap(
+            key: _mapKey,
+            initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
+            onMapCreated: widget.onMapCreated,
+            markers: widget.markers,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: true,
+          ),
+        ),
+        const Divider(height: 1, thickness: 1),
+        // 下部 50%: 情報表示エリア
+        SizedBox(
+          height: bottomHeight,
+          child: Column(
+            children: [
+              // 固定表示: 顧客・配達先テキスト
+              _buildInfoTextSection(),
+              
+              // 残りのスペース: スクロール可能な詳細情報
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      if (widget.facilitySearchCandidates.isNotEmpty) 
+                        SidebarSearchResults(
+                          results: widget.facilitySearchCandidates, 
+                          onClose: widget.onSidebarResultsClose, 
+                          onSelect: widget.onFacilitySelect, 
+                          onForceApiSearch: widget.onForceApiSearch
+                        ) 
+                      else ...[
+                        if (widget.selectedHistoryItem != null) 
+                          SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
+                        else 
+                          SidebarSummary(
+                            date: widget.deliveryDate, 
+                            time: widget.selectedTime, 
+                            customerName: widget.customerName, 
+                            receiverName: widget.receiverName, 
+                            totalPrice: widget.totalPrice, 
+                            totalCount: widget.totalCount
+                          ),
+                        const Divider(height: 1),
+                        Padding(
+                          padding: EdgeInsets.all(rs(context, 24)),
+                          child: SidebarAnalysis(
+                            history: widget.customerOrderHistory, 
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoTextSection() {
+    final destMarker = widget.markers.any((m) => m.markerId.value == 'dest')
+        ? widget.markers.firstWhere((m) => m.markerId.value == 'dest')
         : null;
     final coordsText = destMarker != null 
         ? "${destMarker.position.latitude.toStringAsFixed(6)}, ${destMarker.position.longitude.toStringAsFixed(6)}" 
         : null;
 
     final labelStyle = TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold);
-    final valueStyle = TextStyle(fontSize: rf(context, 14), color: Colors.black87, fontWeight: FontWeight.w500);
+    final valueStyle = TextStyle(fontSize: rf(context, 14), color: Colors.black87, fontWeight: FontWeight.w600);
     final unconfirmedStyle = TextStyle(fontSize: rf(context, 14), color: Colors.red, fontWeight: FontWeight.bold);
 
     return Container(
@@ -233,42 +234,39 @@ class OrderFormSidebar extends StatelessWidget {
         children: [
           Text('[顧客情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
-          _buildInfoRow(context, '顧客名：', currentCustomer?.name ?? "-", valueStyle),
-          _buildInfoRow(context, '企業名：', currentCustomer?.companyName ?? "-", valueStyle),
+          _buildInfoRow('顧客名：', widget.currentCustomer?.name ?? "-", valueStyle),
+          _buildInfoRow('企業名：', widget.currentCustomer?.companyName ?? "-", valueStyle),
           
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Divider(height: 1),
-          ),
+          const Divider(height: 16),
           
           Text('[配達先情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
-          _buildInfoRow(context, '施設名：', facilityName.isEmpty ? "未確定" : facilityName, 
-              facilityName.isEmpty ? unconfirmedStyle : valueStyle),
-          _buildInfoRow(context, '住所：', address.isEmpty ? "未確定" : address, 
-              address.isEmpty ? unconfirmedStyle : valueStyle),
-          _buildInfoRow(context, '座標：', coordsText ?? "未確定", 
+          _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, 
+              widget.facilityName.isEmpty ? unconfirmedStyle : valueStyle),
+          _buildInfoRow('住所：', widget.address.isEmpty ? "未確定" : widget.address, 
+              widget.address.isEmpty ? unconfirmedStyle : valueStyle),
+          _buildInfoRow('座標：', coordsText ?? "未確定", 
               coordsText == null ? unconfirmedStyle : valueStyle),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, String label, String value, TextStyle valueStyle) {
+  Widget _buildInfoRow(String label, String value, TextStyle valueStyle) {
     return Padding(
       padding: EdgeInsets.only(bottom: rs(context, 4)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: rs(context, 65), // ラベルの幅を固定してインデントを揃える
-            child: Text(label, style: TextStyle(fontSize: rf(context, 14), color: Colors.black87)),
+            width: rs(context, 75), // 固定幅ラベルで「ぶら下げインデント」を実現
+            child: Text(label, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey.shade800)),
           ),
           Expanded(
             child: Text(
               value,
               style: valueStyle,
-              softWrap: true, // 自動改行
+              softWrap: true,
             ),
           ),
         ],
