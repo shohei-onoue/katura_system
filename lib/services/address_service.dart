@@ -43,12 +43,12 @@ class AddressService {
     return [...kigyouResults, ...medicalResults].map((row) => {'name': row['name'], 'address': row['address'], 'lat': row['lat'], 'lng': row['lng'], 'type': row['type']}).toList();
   }
 
-  Future<List<String>> getPrefecturesByInitial(String initialRow) async {
+  Future<List<String>> getPrefecturesByInitial(String initial) async {
     await initDatabase();
-    if (initialRow == 'すべて') {
+    if (initial == 'すべて') {
       return _db!.select('SELECT DISTINCT prefecture FROM post_all ORDER BY prefecture_kana').map((row) => row['prefecture'] as String).toList();
     }
-    final List<String> prefixes = _getPrefixes(initialRow);
+    final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'prefecture_kana LIKE ?').join(' OR ');
     return _db!.select('SELECT DISTINCT prefecture FROM post_all WHERE $whereClause ORDER BY prefecture_kana', prefixes.map((p) => '$p%').toList()).map((row) => row['prefecture'] as String).toList();
   }
@@ -60,10 +60,10 @@ class AddressService {
     return _db!.select('SELECT DISTINCT city FROM post_all WHERE prefecture = ? ORDER BY city_kana', [state]).map((row) => row['city'] as String).toList();
   }
 
-  Future<List<String>> getCitiesByInitial(String state, String initialRow) async {
-    if (initialRow == 'すべて') return getCities(state);
+  Future<List<String>> getCitiesByInitial(String state, String initial) async {
+    if (initial == 'すべて') return getCities(state);
     await initDatabase();
-    final List<String> prefixes = _getPrefixes(initialRow);
+    final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'city_kana LIKE ?').join(' OR ');
     return _db!.select('SELECT DISTINCT city FROM post_all WHERE prefecture = ? AND ($whereClause) ORDER BY city_kana', [state, ...prefixes.map((p) => '$p%')]).map((row) => row['city'] as String).toList();
   }
@@ -73,10 +73,10 @@ class AddressService {
     return _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? ORDER BY town_kana', [state, city]).map((row) => row['town'] as String).toList();
   }
 
-  Future<List<String>> getTownsByInitial(String state, String city, String initialRow) async {
-    if (initialRow == 'すべて') return getTowns(state, city);
+  Future<List<String>> getTownsByInitial(String state, String city, String initial) async {
+    if (initial == 'すべて') return getTowns(state, city);
     await initDatabase();
-    final List<String> prefixes = _getPrefixes(initialRow);
+    final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'town_kana LIKE ?').join(' OR ');
     return _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? AND ($whereClause) ORDER BY town_kana', [state, city, ...prefixes.map((p) => '$p%')]).map((row) => row['town'] as String).toList();
   }
@@ -91,25 +91,67 @@ class AddressService {
     return combined..shuffle();
   }
 
-  Future<void> upsertKigyouEntity({required String name, required String address, required double lat, required double lng}) async {
+  Future<void> upsertKigyouEntity({
+    required String name, 
+    required String address, 
+    required double lat, 
+    required double lng,
+    String? prefecture,
+    String? city,
+  }) async {
     await initDatabase();
-    String street = address.replaceFirst('愛知県', '').replaceFirst('岡崎市', '');
+    final pref = prefecture ?? '愛知県';
+    final targetCity = city ?? '岡崎市';
+    
+    String street = address.replaceFirst(pref, '').replaceFirst(targetCity, '');
     final existing = _db!.select('SELECT rowid FROM kigyou WHERE company_name = ? AND (address LIKE ? OR address = ?) LIMIT 1', [name, '%$street%', street]);
     if (existing.isNotEmpty) {
       _db!.execute('UPDATE kigyou SET lat = ?, lng = ? WHERE rowid = ?', [lat, lng, existing.first['rowid']]);
     } else {
-      _db!.execute('INSERT INTO kigyou (company_name, address, lat, lng, prefecture, city) VALUES (?, ?, ?, ?, ?, ?)', [name, street, lat, lng, '愛知県', '岡崎市']);
+      _db!.execute('INSERT INTO kigyou (company_name, address, lat, lng, prefecture, city) VALUES (?, ?, ?, ?, ?, ?)', [name, street, lat, lng, pref, targetCity]);
     }
   }
 
-  Future<List<Map<String, dynamic>>> searchByLocationAndCategory({required String prefecture, required String city, required String category, required String genre}) async {
+  Future<List<Map<String, dynamic>>> searchByLocationAndCategory({
+    required String prefecture, 
+    required String city, 
+    String town = '（すべて）', 
+    required String category, 
+    required String genre
+  }) async {
     await initDatabase();
     final keywords = categoryHierarchy[category]?[genre] ?? [];
     if (keywords.isEmpty) return [];
+    
     final String kigyouLike = keywords.map((_) => 'company_name LIKE ?').join(' OR ');
     final String medicalLike = keywords.map((_) => 'name LIKE ?').join(' OR ');
-    final List<String> params = [...keywords.map((k) => '%$k%'), prefecture, city, ...keywords.map((k) => '%$k%'), prefecture, city];
-    final results = _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '$genre' as type FROM kigyou WHERE ($kigyouLike) AND prefecture = ? AND city = ? UNION ALL SELECT name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, NULL as lat, NULL as lng, '$genre' as type FROM medical WHERE ($medicalLike) AND prefecture = ? AND city = ? LIMIT 200", params);
+    
+    String townFilter = "";
+    List<String> townParams = [];
+    if (town != '（すべて）' && town.isNotEmpty) {
+      townFilter = " AND address LIKE ?";
+      townParams = ['%$town%'];
+    }
+
+    final List<String> params = [
+      ...keywords.map((k) => '%$k%'), 
+      prefecture, 
+      city, 
+      ...townParams,
+      ...keywords.map((k) => '%$k%'), 
+      prefecture, 
+      city,
+      ...townParams
+    ];
+
+    final results = _db!.select(
+      "SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '$genre' as type "
+      "FROM kigyou WHERE ($kigyouLike) AND prefecture = ? AND city = ?$townFilter "
+      "UNION ALL "
+      "SELECT name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, NULL as lat, NULL as lng, '$genre' as type "
+      "FROM medical WHERE ($medicalLike) AND prefecture = ? AND city = ?$townFilter LIMIT 200", 
+      params
+    );
     return results.map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
   }
 
@@ -123,17 +165,77 @@ class AddressService {
     return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '住所検索' as type FROM kigyou WHERE address LIKE ? OR city LIKE ? OR town LIKE ? LIMIT 100", ['%$query%', '%$query%', '%$query%']).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
   }
 
-  Future<List<Map<String, dynamic>>> searchByLocationAndKeyword({required String prefecture, required String city, required String keyword}) async {
+  Future<List<Map<String, dynamic>>> searchByLocationAndKeyword({
+    required String prefecture, 
+    required String city, 
+    String town = '（すべて）', 
+    required String keyword
+  }) async {
     await initDatabase();
-    return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, 'キーワード検索' as type FROM kigyou WHERE (company_name LIKE ? OR address LIKE ?) AND prefecture = ? AND city = ? LIMIT 100", ['%$keyword%', '%$keyword%', prefecture, city]).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
+    String townFilter = "";
+    List<String> params = ['%$keyword%', '%$keyword%', prefecture, city];
+    if (town != '（すべて）' && town.isNotEmpty) {
+      townFilter = " AND address LIKE ?";
+      params.add('%$town%');
+    }
+    return _db!.select(
+      "SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, 'キーワード検索' as type "
+      "FROM kigyou WHERE (company_name LIKE ? OR address LIKE ?) AND prefecture = ? AND city = ?$townFilter LIMIT 100", 
+      params
+    ).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
   }
 
-  List<String> _getPrefixes(String initialRow) {
-    final Map<String, String> toHalf = {'ア': 'ｱ', 'イ': 'ｲ', 'ウ': 'ｳ', 'エ': 'ｴ', 'オ': 'ｵ', 'カ': 'ｶ', 'キ': 'ｷ', 'ク': 'ｸ', 'ケ': 'ｹ', 'コ': 'ｺ', 'サ': 'ｻ', 'シ': 'ｼ', 'ス': 'ｽ', 'セ': 'ｾ', 'ソ': 'ｿ', 'タ': 'ﾀ', 'チ': 'ﾁ', 'ツ': 'ﾂ', 'テ': 'ﾃ', 'ト': 'ﾄ', 'ナ': 'ﾅ', 'ニ': 'ﾆ', 'ヌ': 'ﾇ', 'ネ': 'ﾈ', 'ノ': 'ﾉ', 'ハ': 'ﾊ', 'ヒ': 'ﾋ', 'フ': 'ﾌ', 'ヘ': 'ﾍ', 'ホ': 'ﾎ', 'マ': 'ﾏ', 'ミ': 'ﾐ', 'ム': 'ﾑ', 'メ': 'ﾒ', 'モ': 'ﾓ', 'ヤ': 'ﾔ', 'ユ': 'ﾕ', 'ヨ': 'ﾖ', 'ラ': 'ﾗ', 'リ': 'ﾘ', 'ル': 'ﾙ', 'レ': 'ﾚ', 'ロ': 'ﾛ', 'ワ': 'ﾜ', 'ヲ': 'ｦ', 'ン': 'ﾝ', 'ガ': 'ｶﾞ', 'ギ': 'ｷﾞ', 'グ': 'ｸﾞ', 'ゲ': 'ｹﾞ', 'ゴ': 'ｺﾞ', 'ザ': 'ｻﾞ', 'ジ': 'ｼﾞ', 'ズ': 'ｽﾞ', 'ゼ': 'ｾﾞ', 'ゾ': 'ｿﾞ', 'ダ': 'ﾀﾞ', 'ヂ': 'ﾁﾞ', 'ヅ': 'ﾂﾞ', 'デ': 'ﾃﾞ', 'ド': 'ﾄﾞ', 'バ': 'ﾊﾞ', 'ビ': 'ﾋﾞ', 'ブ': 'ﾌﾞ', 'ベ': 'ﾍﾞ', 'ボ': 'ﾎﾞ', 'パ': 'ﾊﾟ', 'ピ': 'ﾋﾟ', 'プ': 'ﾌﾟ', 'ペ': 'ﾍﾟ', 'ポ': 'ﾎﾟ'};
-    final Map<String, List<String>> rowMap = {'あ': ['ア', 'イ', 'ウ', 'エ', 'オ'], 'か': ['カ', 'キ', 'ク', 'ケ', 'コ', 'ガ', 'ギ', 'グ', 'ゲ', 'ゴ'], 'さ': ['サ', 'シ', 'ス', 'セ', 'ソ', 'ザ', 'ジ', 'ズ', 'ゼ', 'ゾ'], 'た': ['タ', 'チ', 'ツ', 'テ', 'ト', 'ダ', 'ヂ', 'ヅ', 'デ', 'ド'], 'な': ['ナ', 'ニ', 'ヌ', 'ネ', 'ノ'], 'ハ': ['ハ', 'ヒ', 'フ', 'ヘ', 'ホ', 'バ', 'ビ', 'ブ', 'ベ', 'ボ', 'パ', 'ピ', 'プ', 'ペ', 'ポ'], 'ま': ['マ', 'ミ', 'ム', 'メ', 'モ'], 'や': ['ヤ', 'ユ', 'ヨ'], 'ら': ['ラ', 'リ', 'ル', 'レ', 'ロ'], 'わ': ['ワ', 'ヲ', 'ン']};
-    final full = rowMap[initialRow] ?? [];
-    final List<String> all = [];
-    for (var p in full) { all.add(p); if (toHalf.containsKey(p)) all.add(toHalf[p]!); }
-    return all;
+  List<String> _getPrefixes(String initial) {
+    // 全ての五十音に対して、対応する全角カタカナをマッピング (濁音・半濁音含む)
+    final Map<String, List<String>> charMap = {
+      'あ': ['ア'], 'い': ['イ'], 'う': ['ウ'], 'え': ['エ'], 'お': ['オ'],
+      'か': ['カ', 'ガ'], 'き': ['キ', 'ギ'], 'く': ['ク', 'グ'], 'け': ['ケ', 'ゲ'], 'こ': ['コ', 'ゴ'],
+      'さ': ['サ', 'ザ'], 'し': ['シ', 'ジ'], 'す': ['ス', 'ズ'], 'せ': ['セ', 'ゼ'], 'そ': ['ソ', 'ゾ'],
+      'た': ['タ', 'ダ'], 'ち': ['チ', 'ヂ'], 'つ': ['ツ', 'ヅ'], 'て': ['テ', 'デ'], 'と': ['ト', 'ド'],
+      'な': ['ナ'], 'に': ['ニ'], 'ぬ': ['ヌ'], 'ね': ['ネ'], 'の': ['ノ'],
+      'は': ['ハ', 'バ', 'パ'], 'ひ': ['ヒ', 'ビ', 'ピ'], 'ふ': ['フ', 'ブ', 'プ'], 'へ': ['ヘ', 'ベ', 'ペ'], 'ほ': ['ホ', 'ボ', 'ポ'],
+      'ま': ['マ'], 'み': ['ミ'], 'む': ['ム'], 'め': ['メ'], 'も': ['モ'],
+      'や': ['ヤ'], 'ゆ': ['ユ'], 'よ': ['ヨ'],
+      'ら': ['ラ'], 'り': ['リ'], 'る': ['ル'], 'れ': ['レ'], 'ろ': ['ロ'],
+      'わ': ['ワ'], 'を': ['ヲ'], 'ん': ['ン'],
+    };
+
+    // 全角カタカナを半角カタカナへ変換するためのテーブル (濁点・半濁点対応)
+    final Map<String, String> toHalf = {
+      'ア': 'ｱ', 'イ': 'ｲ', 'ウ': 'ｳ', 'エ': 'ｴ', 'オ': 'ｵ',
+      'カ': 'ｶ', 'キ': 'ｷ', 'ク': 'ｸ', 'ケ': 'ｹ', 'コ': 'ｺ',
+      'サ': 'ｻ', 'シ': 'ｼ', 'ス': 'ｽ', 'セ': 'ｾ', 'ソ': 'ｿ',
+      'タ': 'ﾀ', 'チ': 'ﾁ', 'ツ': 'ﾂ', 'テ': 'ﾃ', 'ト': 'ﾄ',
+      'ナ': 'ﾅ', 'ニ': 'ﾆ', 'ヌ': 'ﾇ', 'ネ': 'ﾈ', 'ノ': 'ﾉ',
+      'ハ': 'ﾊ', 'ヒ': 'ﾋ', 'フ': 'ﾌ', 'ヘ': 'ﾍ', 'ホ': 'ﾎ',
+      'マ': 'ﾏ', 'ミ': 'ﾐ', 'ム': 'ﾑ', 'メ': 'ﾒ', 'モ': 'ﾓ',
+      'ヤ': 'ﾔ', 'ユ': 'ﾕ', 'ヨ': 'ヨ',
+      'ラ': 'ﾗ', 'リ': 'ﾘ', 'ル': 'ﾙ', 'レ': 'ﾚ', 'ロ': 'ﾛ',
+      'わ': 'ﾜ', 'ヲ': 'ｦ', 'ン': 'ﾝ',
+      'ガ': 'ｶﾞ', 'ギ': 'ｷﾞ', 'グ': 'ｸﾞ', 'ゲ': 'ｹﾞ', 'ゴ': 'ｺﾞ',
+      'ザ': 'ｻﾞ', 'ジ': 'ｼﾞ', 'ズ': 'ｽﾞ', 'ゼ': 'ｾﾞ', 'ゾ': 'ｿﾞ',
+      'ダ': 'ﾀﾞ', 'ヂ': 'ﾁﾞ', 'ヅ': 'ﾂﾞ', 'デ': 'ﾃﾞ', 'ド': 'ﾄﾞ',
+      'バ': 'ﾊﾞ', 'ビ': 'ﾋﾞ', 'ブ': 'ﾌﾞ', 'ベ': 'ﾍﾞ', 'ボ': 'ﾎﾞ',
+      'パ': 'ﾊﾟ', 'ピ': 'ﾋﾟ', 'プ': 'ﾌﾟ', 'ペ': 'ﾍﾟ', 'ポ': 'ﾎﾟ'
+    };
+
+    // あ行などのグループ検索も念のためサポート
+    final Map<String, List<String>> rowMap = {
+      'あ': ['ア', 'イ', 'ウ', 'エ', 'オ'], 'か': ['カ', 'キ', 'ク', 'ケ', 'コ', 'ガ', 'ギ', 'グ', 'ゲ', 'ゴ'], 
+      'さ': ['サ', 'シ', 'ス', 'セ', 'ソ', 'ザ', 'ジ', 'ズ', 'ゼ', 'ゾ'], 'た': ['タ', 'チ', 'ツ', 'て', 'と', 'ダ', 'ヂ', 'ヅ', 'デ', 'ド'], 
+      'な': ['ナ', 'ニ', 'ヌ', 'ネ', 'ノ'], 'は': ['ハ', 'ヒ', 'フ', 'ヘ', 'ホ', 'バ', 'ビ', 'ブ', 'ベ', 'ボ', 'パ', 'ピ', 'プ', 'ペ', 'ポ'], 
+      'ま': ['マ', 'ミ', 'ム', 'メ', 'モ'], 'や': ['ヤ', 'ユ', 'ヨ'], 'ら': ['ら', 'り', 'る', 'れ', 'ろ'], 'わ': ['ワ', 'を', 'ん']
+    };
+
+    List<String> targets = charMap[initial] ?? rowMap[initial] ?? [];
+    
+    final List<String> result = [];
+    for (var t in targets) {
+      result.add(t);
+      if (toHalf.containsKey(t)) {
+        result.add(toHalf[t]!);
+      }
+    }
+    return result;
   }
 }

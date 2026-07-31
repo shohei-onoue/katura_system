@@ -109,19 +109,36 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
 
   void _goBack() {
     setState(() {
-      if (_currentStep == SearchStep.category) _currentStep = SearchStep.method;
-      else if (_currentStep == SearchStep.subCategory) _currentStep = SearchStep.category;
-      else if (_currentStep == SearchStep.prefecture) _currentStep = SearchStep.subCategory;
-      else if (_currentStep == SearchStep.city) _currentStep = SearchStep.prefecture;
-      else if (_currentStep == SearchStep.town) _currentStep = SearchStep.city;
-      else if (_currentStep == SearchStep.finalForm) _currentStep = SearchStep.town;
+      if (_currentStep == SearchStep.category) {
+        _currentStep = SearchStep.method;
+      } else if (_currentStep == SearchStep.subCategory) {
+        _currentStep = SearchStep.category;
+      } else if (_currentStep == SearchStep.prefecture) {
+        _currentStep = SearchStep.subCategory;
+      } else if (_currentStep == SearchStep.city) {
+        _currentStep = SearchStep.prefecture;
+      } else if (_currentStep == SearchStep.town) {
+        _currentStep = SearchStep.city;
+      } else if (_currentStep == SearchStep.finalForm) {
+        _currentStep = SearchStep.town;
+      }
       _displayOptions = [];
     });
     _autoPopulateOptions();
   }
 
   Future<void> _autoPopulateOptions() async {
-    if (_currentStep == SearchStep.prefecture) {
+    if (_currentStep == SearchStep.category) {
+      setState(() {
+        _displayOptions = facilityCategories.keys.toList();
+        _isLoading = false;
+      });
+    } else if (_currentStep == SearchStep.subCategory) {
+      setState(() {
+        _displayOptions = facilityCategories[_selectedCategory!] ?? [];
+        _isLoading = false;
+      });
+    } else if (_currentStep == SearchStep.prefecture) {
       setState(() => _isLoading = true);
       try {
         final results = await _addressService.getPrefectures();
@@ -146,13 +163,18 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
   }
 
   Future<void> _handleInputPadTap(String initial) async {
-    if (_currentStep != SearchStep.prefecture && _currentStep != SearchStep.city && _currentStep != SearchStep.town) return;
+    if (_currentStep == SearchStep.method || _currentStep == SearchStep.finalForm) return;
 
     setState(() => _isLoading = true);
 
     try {
       List<String> results = [];
-      if (_currentStep == SearchStep.prefecture) {
+      if (_currentStep == SearchStep.category) {
+        // カテゴリの読み（仮定）に基づき簡易フィルタリング
+        results = _filterByInitial(facilityCategories.keys.toList(), initial);
+      } else if (_currentStep == SearchStep.subCategory) {
+        results = _filterByInitial(facilityCategories[_selectedCategory!] ?? [], initial);
+      } else if (_currentStep == SearchStep.prefecture) {
         results = await _addressService.getPrefecturesByInitial(initial);
       } else if (_currentStep == SearchStep.city) {
         results = await _addressService.getCitiesByInitial(_selectedState!, initial);
@@ -173,8 +195,36 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
     }
   }
 
+  List<String> _filterByInitial(List<String> list, String initial) {
+    if (initial == 'すべて') return list;
+    // 簡易的なカタカナ読みマッピング（現場のスピード重視）
+    final Map<String, String> rowMap = {
+      'あ': 'アイウエオ', 'か': 'カキクケコガギグゲゴ', 'さ': 'サシスセソザジズゼゾ',
+      'た': 'タチツテトダヂヅデド', 'な': 'ナニヌネノ', 'は': 'ハヒフヘホバビブベボパピプペポ',
+      'ま': 'マミムメモ', 'や': 'ヤユヨ', 'ら': 'ラリルレロ', 'わ': 'ワヲン'
+    };
+    final targets = rowMap[initial] ?? '';
+    return list.where((item) {
+      if (targets.isEmpty) return false;
+      final firstChar = item.substring(0, 1);
+      return targets.contains(firstChar);
+    }).toList();
+  }
+
   void _handleOptionSelect(String value) async {
-    if (_currentStep == SearchStep.prefecture) {
+    if (_currentStep == SearchStep.category) {
+      setState(() {
+        _selectedCategory = value;
+        _currentStep = SearchStep.subCategory;
+      });
+      _autoPopulateOptions();
+    } else if (_currentStep == SearchStep.subCategory) {
+      setState(() {
+        _selectedSubCategory = value;
+        _currentStep = SearchStep.prefecture;
+      });
+      _autoPopulateOptions();
+    } else if (_currentStep == SearchStep.prefecture) {
       setState(() {
         _selectedState = value;
         _selectedCity = null;
@@ -200,7 +250,9 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
       if (latLng != null) {
         final pos = LatLng(latLng['lat']!, latLng['lng']!);
         setState(() => _selectedLocation = pos);
-        _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+        if (mounted) {
+          _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+        }
       }
     }
   }
@@ -230,6 +282,7 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
 
   @override
   void dispose() {
+    _mapController = null;
     _facilityController.dispose();
     _addressController.dispose();
     _receiverController.dispose();

@@ -98,20 +98,53 @@ class AddressSearchPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('1. 施設カテゴリ'),
-        ...facilityCategories.keys.map((cat) => _buildSelectionItem(cat, () => onCategorySelect(cat))),
+        _buildSectionTitle('1. 施設カテゴリの選択'),
+        _buildGuidanceBox('下のパネルからカテゴリを選択してください'),
       ],
     );
   }
 
   Widget _buildSubCategorySelection() {
-    final subCats = facilityCategories[selectedCategory!] ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('2. 種別 ($selectedCategory)'),
-        ...subCats.map((sub) => _buildSelectionItem(sub, () => onSubCategorySelect(sub))),
+        _buildSectionTitle('2. 種別の選択'),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('選択中のカテゴリ', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+              const SizedBox(height: 4),
+              Text(selectedCategory ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildGuidanceBox('下のパネルから詳細な種別を選択してください'),
       ],
+    );
+  }
+
+  Widget _buildGuidanceBox(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300, style: BorderStyle.dashed),
+      ),
+      child: Center(
+        child: Text(text, 
+          style: const TextStyle(color: Colors.blueGrey, fontSize: 16, fontWeight: FontWeight.w500)),
+      ),
     );
   }
 
@@ -144,14 +177,18 @@ class AddressSearchPanel extends StatelessWidget {
 
   Widget _buildOptionArea() {
     if (displayOptions.isEmpty && !isLoading) {
+      String message = '右側の入力パッドで絞り込むか\n選択肢が表示されるのをお待ちください';
+      if (currentStep == SearchStep.category || currentStep == SearchStep.subCategory) {
+        message = '選択肢がありません';
+      }
       return Container(
         height: 300,
         width: double.infinity,
         color: Colors.grey[100],
-        child: const Center(
-          child: Text('右側の入力パッドで「あ・か・さ…」を\nタップして絞り込んでください', 
+        child: Center(
+          child: Text(message, 
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.blueGrey, fontSize: 16, fontWeight: FontWeight.bold)),
+            style: const TextStyle(color: Colors.blueGrey, fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       );
     }

@@ -42,6 +42,7 @@ class OrderFormSidebar extends StatefulWidget {
   final VoidCallback onSidebarResultsClose;
   final Function(Map<String, dynamic>) onFacilitySelect;
   final VoidCallback onForceApiSearch;
+  final bool isSearchResultsDialogOpen;
 
   const OrderFormSidebar({
     super.key,
@@ -72,6 +73,7 @@ class OrderFormSidebar extends StatefulWidget {
     required this.onSidebarResultsClose,
     required this.onFacilitySelect,
     required this.onForceApiSearch,
+    this.isSearchResultsDialogOpen = false,
   });
 
   @override
@@ -91,15 +93,24 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           color: Colors.white, 
           border: Border(left: BorderSide(color: Colors.grey.shade200))
         ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // 小数点誤差を排除した絶対ピクセル計算
-            final totalHeight = constraints.maxHeight.floorToDouble();
-            final halfHeight = (totalHeight / 2).floorToDouble();
-            final bottomAreaHeight = totalHeight - halfHeight - 1.0;
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                // 小数点誤差を排除した絶対ピクセル計算
+                final totalHeight = constraints.maxHeight.floorToDouble();
+                final halfHeight = (totalHeight / 2).floorToDouble();
+                final bottomAreaHeight = totalHeight - halfHeight - 1.0;
 
-            return _buildContent(halfHeight, bottomAreaHeight);
-          },
+                return _buildContent(halfHeight, bottomAreaHeight);
+              },
+            ),
+            if (widget.isLoading)
+              Container(
+                color: Colors.white.withValues(alpha: 0.6),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+          ],
         ),
       ),
     );
@@ -149,14 +160,29 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         // 上部 50%: マップ (物理サイズ固定でエラー封殺)
         SizedBox(
           height: halfHeight,
-          child: GoogleMap(
-            key: _mapKey,
-            initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
-            onMapCreated: widget.onMapCreated,
-            markers: widget.markers,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: true,
-          ),
+          child: widget.isSearchResultsDialogOpen
+              ? Container(
+                  color: Colors.grey.shade100,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.map_outlined, size: rs(context, 48), color: Colors.grey.shade400),
+                        SizedBox(height: rs(context, 12)),
+                        Text('施設を選択中...', 
+                          style: TextStyle(fontSize: rf(context, 16), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                )
+              : GoogleMap(
+                  key: _mapKey,
+                  initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
+                  onMapCreated: widget.onMapCreated,
+                  markers: widget.markers,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: true,
+                ),
         ),
         const Divider(height: 1, thickness: 1),
         // 下部 50%: 情報表示エリア
@@ -167,19 +193,15 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               // 固定表示: 顧客・配達先テキスト
               _buildInfoTextSection(),
               
-              // 残りのスペース: スクロール可能な詳細情報
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      if (widget.facilitySearchCandidates.isNotEmpty) 
-                        SidebarSearchResults(
-                          results: widget.facilitySearchCandidates, 
-                          onClose: widget.onSidebarResultsClose, 
-                          onSelect: widget.onFacilitySelect, 
-                          onForceApiSearch: widget.onForceApiSearch
-                        ) 
-                      else ...[
+              // 配達先の確定ステップ (Step 2) の場合はここで終了 (マップと情報のみにする)
+              if (widget.currentStep == 2) const Spacer(),
+
+              // ステップ3以降はサマリーや分析を表示
+              if (widget.currentStep > 2)
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
                         if (widget.selectedHistoryItem != null) 
                           SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
                         else 
@@ -199,10 +221,9 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -236,6 +257,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           SizedBox(height: rs(context, 8)),
           _buildInfoRow('顧客名：', widget.currentCustomer?.name ?? "-", valueStyle),
           _buildInfoRow('企業名：', widget.currentCustomer?.companyName ?? "-", valueStyle),
+          _buildInfoRow('電話番号：', widget.currentCustomer?.phoneNumber ?? "-", valueStyle),
           
           const Divider(height: 16),
           

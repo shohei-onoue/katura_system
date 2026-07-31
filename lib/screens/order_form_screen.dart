@@ -9,6 +9,7 @@ import '../services/customer_service.dart';
 import '../services/menu_service.dart';
 import '../services/staff_service.dart';
 import '../services/order_service.dart';
+import '../constants/address_constants.dart';
 import '../widgets/k_stepper.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
@@ -57,11 +58,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final Map<String, int> _selectedQuantities = {};
   List<Map<String, dynamic>> _confirmedItems = [];
   List<Staff> _staffList = [];
-  bool _isLoading = false;
-  OrderModel? _duplicateOrder; // String? _duplicateOrderAlert から変更
+  final _isLoadingNotifier = ValueNotifier<bool>(false);
+  final _facilityResultsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+  bool _isSearchResultsDialogOpen = false;
+  OrderModel? _duplicateOrder;
   bool _isHistoryMode = true;
   String _selectedHistoryCategory = 'すべて';
-  List<Map<String, dynamic>> _facilitySearchCandidates = [];
   String _lastPhoneQuery = '';
 
   int _searchTabIndex = 0;
@@ -87,7 +89,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   void initState() {
     super.initState();
     _keywordQueryController.addListener(_syncSearchQuery);
-    _loadData().then((_) { if (widget.initialOrder != null) _populateForm(widget.initialOrder!); });
+    _loadData().then((_) { 
+      if (widget.initialOrder != null) {
+        _populateForm(widget.initialOrder!);
+      } else {
+        _setInitialBranchMarker();
+      }
+    });
+  }
+
+  void _setInitialBranchMarker() {
+    final start = _branchCoordinates[_branchName] ?? _initialCenter;
+    setState(() {
+      _markers = {
+        Marker(
+          markerId: const MarkerId('start'), 
+          position: start, 
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: InfoWindow(title: _branchName)
+        )
+      };
+    });
   }
 
   Future<void> _loadData() async {
@@ -100,41 +122,47 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _syncSearchQuery();
   }
 
-  Future<void> _updatePrefList(String initial) async {
+  Future<List<String>> _updatePrefList(String initial) async {
     final list = await _customerService.getAddressService().getPrefecturesByInitial(initial);
     setState(() {
       _searchPrefInitial = initial;
       _prefList = list;
-      if (list.isNotEmpty && !list.contains(_searchPrefecture)) {
-        _searchPrefecture = list.first;
-        _updateCityList(_searchPrefecture, _searchCityInitial);
-      }
     });
     _syncSearchQuery();
+    return list;
   }
 
-  Future<void> _updateCityList(String pref, String initial) async {
+  Future<List<String>> _updateCityList(String pref, String initial) async {
     final list = await _customerService.getAddressService().getCitiesByInitial(pref, initial);
     setState(() {
       _searchPrefecture = pref;
+      _searchCity = ''; // 都道府県が変わったら市区町村をクリア
+      _searchTown = '（すべて）';
       _searchCityInitial = initial;
       _cityList = list;
-      if (list.isNotEmpty && !list.contains(_searchCity)) {
-        _searchCity = list.first;
-        _updateTownList(pref, _searchCity, _searchTownInitial);
-      }
     });
     _syncSearchQuery();
+    return list;
   }
 
-  Future<void> _updateTownList(String pref, String city, String initial) async {
+  Future<List<String>> _updateTownList(String pref, String city, String initial) async {
     final list = await _customerService.getAddressService().getTownsByInitial(pref, city, initial);
     setState(() {
       _searchPrefecture = pref;
       _searchCity = city;
+      _searchTown = '（すべて）'; // 市区町村が変わったら町名をすべてにリセット
       _searchTownInitial = initial;
       _townList = ['（すべて）', ...list];
-      _searchTown = '（すべて）';
+    });
+    _syncSearchQuery();
+    return list;
+  }
+
+  void _onAddressConfirmed(String pref, String city, String town) {
+    setState(() {
+      _searchPrefecture = pref;
+      _searchCity = city;
+      _searchTown = town;
     });
     _syncSearchQuery();
   }
@@ -154,23 +182,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _confirmedItems = List.from(order.items);
     });
     final coords = _parseCoordsFromAddress(order.address);
-    if (coords != null && coords.latitude != 0) WidgetsBinding.instance.addPostFrameCallback((_) => _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName));
+    if (coords != null && coords.latitude != 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName);
+      });
+    }
   }
 
   Future<void> _lookupCustomer(String phone) async {
     final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
     _lastPhoneQuery = cleanDigits;
     if (cleanDigits.length >= 4) {
-      setState(() => _isLoading = true);
+      _isLoadingNotifier.value = true;
       final candidates = await _customerService.searchByPhoneSuffix(cleanDigits);
-      if (candidates.length == 1 && cleanDigits.length >= 10) { _selectCustomer(candidates.first); } else { setState(() { _isLoading = false; _phoneSearchCandidates = candidates; _currentCustomer = null; }); }
+      if (candidates.length == 1 && cleanDigits.length >= 10) { _selectCustomer(candidates.first); } else { setState(() { _isLoadingNotifier.value = false; _phoneSearchCandidates = candidates; _currentCustomer = null; }); }
       return;
     }
-    setState(() { _currentCustomer = null; _phoneSearchCandidates = []; _isLoading = false; });
+    setState(() { _currentCustomer = null; _phoneSearchCandidates = []; _isLoadingNotifier.value = false; });
   }
 
   void _selectCustomer(Customer customer) async {
-    setState(() => _isLoading = true);
+    _isLoadingNotifier.value = true;
     
     // 全注文データを再取得
     final allOrders = await _orderService.getAllOrders();
@@ -242,7 +275,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
     
     setState(() { 
-      _isLoading = false; 
+      _isLoadingNotifier.value = false; 
       _currentCustomer = customer; 
       _customerOrderHistory = myHistory; 
       _companyOrderHistory = companyHistory; 
@@ -365,45 +398,138 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   void _updateMap(LatLng position, String title) {
     final start = _branchCoordinates[_branchName] ?? _initialCenter;
-    setState(() { _markers = { Marker(markerId: const MarkerId('start'), position: start, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue)), Marker(markerId: const MarkerId('dest'), position: position, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: InfoWindow(title: title)) }; });
+    setState(() { 
+      _markers = { 
+        Marker(markerId: const MarkerId('start'), position: start, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue), infoWindow: InfoWindow(title: _branchName)), 
+        Marker(markerId: const MarkerId('dest'), position: position, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: InfoWindow(title: title)) 
+      }; 
+    });
     
     // レイアウト確定後に実行
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_mapController == null) return;
-      
-      // 位置が近すぎる、または同じ場合に LatLngBounds でエラーになるのを防ぐ
-      final distance = sqrt(pow(start.latitude - position.latitude, 2) + pow(start.longitude - position.longitude, 2));
-      if (distance < 0.001) {
-        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(position, 15.0));
-      } else {
-        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(min(start.latitude, position.latitude), min(start.longitude, position.longitude)), 
-            northeast: LatLng(max(start.latitude, position.latitude), max(start.longitude, position.longitude))
-          ), 
-          80.0
-        ));
-      }
+      if (!mounted) return;
+      _fitMapToMarkers();
     });
   }
 
+  void _fitMapToMarkers() {
+    if (!mounted || _mapController == null || _markers.isEmpty) return;
+
+    if (_markers.length == 1) {
+      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_markers.first.position, 15.0));
+      return;
+    }
+
+    double minLat = 90.0;
+    double maxLat = -90.0;
+    double minLng = 180.0;
+    double maxLng = -180.0;
+
+    for (final marker in _markers) {
+      if (marker.position.latitude < minLat) minLat = marker.position.latitude;
+      if (marker.position.latitude > maxLat) maxLat = marker.position.latitude;
+      if (marker.position.longitude < minLng) minLng = marker.position.longitude;
+      if (marker.position.longitude > maxLng) maxLng = marker.position.longitude;
+    }
+
+    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+      LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      ),
+      80.0, // padding
+    ));
+  }
+
   Future<void> _onSearchSubmit({bool forceApi = false, bool ignoreFilter = false}) async {
-    setState(() => _isLoading = true);
+    _isLoadingNotifier.value = true;
+    _facilityResultsNotifier.value = [];
     List<Map<String, dynamic>> results = [];
+    
     if (_searchTabIndex == 0 || _searchTabIndex == 2) {
-      if (!forceApi && !ignoreFilter) results = _searchTabIndex == 0 ? await _customerService.getAddressService().searchByLocationAndCategory(prefecture: _searchPrefecture, city: _searchCity, category: _searchCategory!, genre: _searchGenre!) : await _customerService.getAddressService().searchByLocationAndKeyword(prefecture: _searchPrefecture, city: _searchCity, keyword: _keywordQueryController.text);
-      if (results.isEmpty || forceApi || ignoreFilter) {
-        final kw = _combinedSearchController.text.trim(); if (kw.isEmpty) { setState(() => _isLoading = false); return; }
-        final raw = await _customerService.getGoogleMapsService().searchPlacesByText(kw, location: _branchCoordinates[_branchName]);
-        if (ignoreFilter) results = raw; else {
-          final nC = _normalize(_searchCity), nT = _normalize(_searchTown == '（すべて）' ? '' : _searchTown), nP = _normalize(_searchPrefecture);
-          results = raw.where((i) { final nA = _normalize(i['address'] ?? ''), nN = _normalize(i['name'] ?? ''); return (nA.contains(nC) || nN.contains(nC)) && (nA.contains('都') || nA.contains('道') || nA.contains('府') || nA.contains('県') ? nA.contains(nP) : true) && (_normalize(_searchTown == '（すべて）' ? '' : _searchTown).isEmpty || nA.contains(nT) || nN.contains(nT)); }).toList();
-        }
-        if (results.isEmpty && raw.isNotEmpty && !ignoreFilter && mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('指定エリア外ですが、付近に ${raw.length} 件あります'), action: SnackBarAction(label: '全表示', onPressed: () => _onSearchSubmit(ignoreFilter: true))));
-        for (var i in results) await _customerService.getAddressService().upsertKigyouEntity(name: i['name'], address: i['address'], lat: i['lat'], lng: i['lng']);
+      // 1. ローカルDBまたはカスタムサービスからの検索
+      if (!forceApi && !ignoreFilter) {
+        results = _searchTabIndex == 0 
+          ? await _customerService.getAddressService().searchByLocationAndCategory(prefecture: _searchPrefecture, city: _searchCity, town: _searchTown, category: _searchCategory!, genre: _searchGenre!) 
+          : await _customerService.getAddressService().searchByLocationAndKeyword(prefecture: _searchPrefecture, city: _searchCity, town: _searchTown, keyword: _keywordQueryController.text);
       }
-    } else if (_searchTabIndex == 1) results = await _customerService.getAddressService().searchByAddressOrZip(_addressQueryController.text);
-    setState(() { _isLoading = false; _facilitySearchCandidates = results; });
+      
+      // 2. Google Maps API または フィルタリングが必要な場合
+      if (results.isEmpty || forceApi || ignoreFilter) {
+        // ジャンルに関連するキーワードを取得 (コンビニなら「セブン」「ローソン」等)
+        final List<String> genreKeywords = (_searchTabIndex == 0 && _searchCategory != null && _searchGenre != null)
+            ? (AddressConstants.categoryHierarchy[_searchCategory]?[_searchGenre] ?? [])
+            : [];
+
+        final kw = _combinedSearchController.text.trim();
+        if (kw.isEmpty) { _isLoadingNotifier.value = false; return; }
+        
+        final raw = await _customerService.getGoogleMapsService().searchPlacesByText(kw, location: _branchCoordinates[_branchName]);
+        
+        final nC = _normalize(_searchCity);
+        final nT = _normalize(_searchTown == '（すべて）' ? '' : _searchTown);
+        final nP = _normalize(_searchPrefecture);
+
+        // 各結果にエリア判定タグを付与
+        final processed = raw.map((item) {
+          final nA = _normalize(item['address'] ?? '');
+          final nN = _normalize(item['name'] ?? '');
+          
+          // 指定地域内かどうかの判定
+          bool isMatch = (nA.contains(nC) || nN.contains(nC)) && 
+                         (nA.contains('都') || nA.contains('道') || nA.contains('府') || nA.contains('県') ? nA.contains(nP) : true) && 
+                         (nT.isEmpty || nA.contains(nT) || nN.contains(nT));
+          
+          // ジャンルキーワードとの一致確認 (コンビニ検索なのにスーパーが出るのを防ぐ)
+          bool matchesGenre = genreKeywords.isEmpty || 
+                              genreKeywords.any((k) => nN.contains(_normalize(k)) || nA.contains(_normalize(k)));
+
+          return {
+            ...item,
+            'isNearby': !isMatch,
+            'matchesGenre': matchesGenre,
+          };
+        }).toList();
+
+        // フィルタリング戦略: 
+        // 1. 指定地域内で、かつジャンルに合致するものを最優先
+        // 2. 指定地域付近（Nearby）でも、ジャンルに合致するものを優先 (コンビニ優先!)
+        // 3. なければ、指定地域内の全候補
+        // 4. 最後はGoogle検索の全候補
+        
+        final inAreaMatchGenre = processed.where((i) => !i['isNearby'] && i['matchesGenre']).toList();
+        final nearbyMatchGenre = processed.where((i) => i['isNearby'] && i['matchesGenre']).toList();
+        final inAreaAll = processed.where((i) => !i['isNearby']).toList();
+
+        if (inAreaMatchGenre.isNotEmpty && !ignoreFilter) {
+          results = inAreaMatchGenre;
+        } else if (nearbyMatchGenre.isNotEmpty && !ignoreFilter) {
+          results = nearbyMatchGenre;
+        } else if (inAreaAll.isNotEmpty && !ignoreFilter) {
+          results = inAreaAll;
+        } else {
+          results = processed;
+        }
+        
+        for (var i in results) {
+          await _customerService.getAddressService().upsertKigyouEntity(
+            name: i['name'], 
+            address: i['address'], 
+            lat: i['lat'], 
+            lng: i['lng'],
+            prefecture: _searchPrefecture,
+            city: _searchCity,
+          );
+        }
+      }
+    } else if (_searchTabIndex == 1) {
+      final raw = await _customerService.getAddressService().searchByAddressOrZip(_addressQueryController.text);
+      results = raw.map((i) => {...i, 'isNearby': false}).toList();
+    }
+    
+    // 結果の反映
+    _isLoadingNotifier.value = false;
+    _facilityResultsNotifier.value = List.from(results); // 確実にリビルドを走らせる
   }
 
   String _normalize(String i) => i.replaceAll(RegExp(r'[ 　〒()（）.]'), '').replaceAll('１', '1').replaceAll('２', '2').replaceAll('３', '3').replaceAll('４', '4').replaceAll('５', '5').replaceAll('６', '6').replaceAll('７', '7').replaceAll('８', '8').replaceAll('９', '9').replaceAll('０', '0');
@@ -426,7 +552,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             flex: 62,
             child: Column(
               children: [
-                KStepper(currentStep: _currentStep, steps: _stepLabels, onStepTapped: (s) { if (s < _currentStep) setState(() => _currentStep = s); }),
+                KStepper(currentStep: _currentStep, steps: _stepLabels, onStepTapped: (s) { 
+                  if (s < _currentStep) {
+                    setState(() {
+                      _currentStep = s;
+                      if (s == 0) {
+                        // 番号確認に戻る場合は入力した下4桁等を復元
+                        _phoneController.text = _lastPhoneQuery;
+                        _lookupCustomer(_lastPhoneQuery);
+                      }
+                    });
+                  }
+                }),
                 // ステップ2 (配達先確定) のみ重複警告を表示
                 if (_duplicateOrder != null && _currentStep == 2) _buildDuplicateAlert(),
                 Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildStepContent())),
@@ -436,12 +573,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           OrderFormSidebar(
             currentStep: _currentStep, 
             phoneController: _phoneController, 
-            isLoading: _isLoading, 
+            isLoading: _isLoadingNotifier.value, 
             currentCustomer: _currentCustomer,
             allMenus: _menus,
             customerOrderHistory: _customerOrderHistory, 
             companyOrderHistory: _companyOrderHistory,
-            facilitySearchCandidates: _facilitySearchCandidates, 
+            facilitySearchCandidates: _facilityResultsNotifier.value, 
             selectedHistoryItem: _selectedHistoryItem, 
             deliveryDate: _deliveryDate, 
             selectedTime: _selectedTime, 
@@ -457,10 +594,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
             onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
             onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
-            onMapCreated: (c) => _mapController = c, 
-            onSidebarResultsClose: () => setState(() => _facilitySearchCandidates = []), 
-            onFacilitySelect: (f) async { setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilitySearchCandidates = []; }); LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; if (pos == null) { final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); if (latLng != null) { pos = LatLng(latLng['lat']!, latLng['lng']!); await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); } } if (pos != null) _updateMap(pos, f['name']); }, 
-            onForceApiSearch: () => _onSearchSubmit(forceApi: true)
+            onMapCreated: (c) {
+              _mapController = c;
+              _fitMapToMarkers(); // マップ生成直後（再表示時含む）にフィットさせる
+            }, 
+            onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
+            onFacilitySelect: (f) async { setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; if (pos == null) { final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); if (latLng != null) { pos = LatLng(latLng['lat']!, latLng['lng']!); await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); } } if (pos != null) _updateMap(pos, f['name']); }, 
+            onForceApiSearch: () => _onSearchSubmit(forceApi: true),
+            isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
           ),
         ],
       ),
@@ -469,7 +610,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   Widget _buildStepContent() {
     switch (_currentStep) {
-      case 0: return PhoneConfirmStep(phoneController: _phoneController, isLoading: _isLoading, candidates: _phoneSearchCandidates, currentCustomer: _currentCustomer, onNext: () => setState(() => _currentStep = 1), onSelectCustomer: _selectCustomer);
+      case 0: return PhoneConfirmStep(phoneController: _phoneController, isLoading: _isLoadingNotifier.value, candidates: _phoneSearchCandidates, currentCustomer: _currentCustomer, onNext: () => setState(() => _currentStep = 1), onSelectCustomer: _selectCustomer);
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController, 
           currentCustomer: _currentCustomer, 
@@ -482,10 +623,63 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             });
           }
       );
-      case 2: return DeliveryDestinationStep(currentCustomer: _currentCustomer, phoneDisplay: _phoneController.text, isHistoryMode: _isHistoryMode, selectedHistoryCategory: _selectedHistoryCategory, facilityControllerText: _facilityController.text, addressControllerText: _addressController.text, nameController: _nameController, facilityController: _facilityController, addressController: _addressController, receiverController: _receiverController, deliveryLocationController: _deliveryLocationController, addressQueryController: _addressQueryController, keywordQueryController: _keywordQueryController, combinedSearchController: _combinedSearchController, prefList: _prefList, cityList: _cityList, townList: _townList, searchPrefecture: _searchPrefecture, searchCity: _searchCity, searchTown: _searchTown, searchPrefInitial: _searchPrefInitial, searchCityInitial: _searchCityInitial, searchTownInitial: _searchTownInitial, searchCategory: _searchCategory, searchGenre: _searchGenre, searchTabIndex: _searchTabIndex, onNext: () => setState(() => _currentStep = 3), onModeToggle: (v) => setState(() => _isHistoryMode = v), onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v), onAddressSelected: _onAddressSelectedFromList, onSearchTabChanged: (v) { setState(() => _searchTabIndex = v); _syncSearchQuery(); }, onPrefChanged: (v) => _updateCityList(v, _searchCityInitial), onCityChanged: (v) => _updateTownList(_searchPrefecture, v, _searchTownInitial), onTownChanged: (v) { setState(() => _searchTown = v); _syncSearchQuery(); }, onPrefInitialChanged: (v) => _updatePrefList(v), onCityInitialChanged: (v) => _updateCityList(_searchPrefecture, v), onTownInitialChanged: (v) => _updateTownList(_searchPrefecture, _searchCity, v), onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); }, onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); }, onSearchSubmit: _onSearchSubmit);
+      case 2: return DeliveryDestinationStep(
+          currentCustomer: _currentCustomer, 
+          phoneDisplay: _phoneController.text, 
+          isHistoryMode: _isHistoryMode, 
+          selectedHistoryCategory: _selectedHistoryCategory, 
+          facilityControllerText: _facilityController.text, 
+          addressControllerText: _addressController.text, 
+          nameController: _nameController, 
+          facilityController: _facilityController, 
+          addressController: _addressController, 
+          receiverController: _receiverController, 
+          deliveryLocationController: _deliveryLocationController, 
+          addressQueryController: _addressQueryController, 
+          keywordQueryController: _keywordQueryController, 
+          combinedSearchController: _combinedSearchController, 
+          prefList: _prefList, 
+          cityList: _cityList, 
+          townList: _townList, 
+          searchPrefecture: _searchPrefecture, 
+          searchCity: _searchCity, 
+          searchTown: _searchTown, 
+          searchPrefInitial: _searchPrefInitial, 
+          searchCityInitial: _searchCityInitial, 
+          searchTownInitial: _searchTownInitial, 
+          searchCategory: _searchCategory, 
+          searchGenre: _searchGenre, 
+          searchTabIndex: _searchTabIndex, 
+          facilityResultsListenable: _facilityResultsNotifier,
+          isLoadingListenable: _isLoadingNotifier,
+          onNext: () => setState(() => _currentStep = 3), 
+          onModeToggle: (v) => setState(() => _isHistoryMode = v), 
+          onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v), 
+          onAddressSelected: _onAddressSelectedFromList, 
+          onSearchTabChanged: (v) { setState(() => _searchTabIndex = v); _syncSearchQuery(); }, 
+          onPrefChanged: (v) => _updateCityList(v, 'すべて'), 
+          onCityChanged: (v) => _updateTownList(_searchPrefecture, v, 'すべて'), 
+          onTownChanged: (v) { setState(() => _searchTown = v); _syncSearchQuery(); }, 
+          onAddressConfirmed: _onAddressConfirmed,
+          onPrefInitialChanged: _updatePrefList, 
+          onCityInitialChanged: _updateCityList, 
+          onTownInitialChanged: _updateTownList, 
+          onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); }, 
+          onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); }, 
+          onSearchSubmit: _onSearchSubmit,
+          onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v)
+      );
       case 3: return DeliveryTimeStep(deliveryDate: _deliveryDate, deliveryType: _deliveryType, selectedTime: _selectedTime, onDateSelected: (v) => setState(() => _deliveryDate = v), onTypeSelected: (v) => setState(() => _deliveryType = v), onTimeSelected: (v) => setState(() { _selectedTime = v; _currentStep = 4; }));
       case 4: return ItemsSelectionStep(menus: _menus, confirmedItems: _confirmedItems, selectedQuantities: _selectedQuantities, riceAmount: _calculateRiceAmount(), packaging: _totalCount >= 20 ? 'ダンボール' : '紙袋', totalPrice: _totalPrice, onAddItem: (m) => setState(() { _selectedQuantities[m.id] = (_selectedQuantities[m.id] ?? 0) + 1; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onQuantityChanged: (id, v) => setState(() { _selectedQuantities[id] = v; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onNext: () => setState(() => _currentStep = 5));
-      case 5: return FinalizeStep(branchName: _branchName, paymentMethod: _paymentMethod, collectContainer: _collectContainer, selectedReceiverId: _selectedReceiverId, staffList: _staffList, onBranchChanged: (v) { setState(() => _branchName = v); final m = _markers.where((x) => x.markerId.value == 'dest'); if (m.isNotEmpty) _updateMap(m.first.position, _facilityController.text); }, onPaymentChanged: (v) => setState(() => _paymentMethod = v), onCollectChanged: (v) => setState(() => _collectContainer = v), onReceiverChanged: (v) => setState(() => _selectedReceiverId = v), onSave: _handleSave);
+      case 5: return FinalizeStep(branchName: _branchName, paymentMethod: _paymentMethod, collectContainer: _collectContainer, selectedReceiverId: _selectedReceiverId, staffList: _staffList, onBranchChanged: (v) { 
+        setState(() => _branchName = v); 
+        final m = _markers.where((x) => x.markerId.value == 'dest'); 
+        if (m.isNotEmpty) {
+          _updateMap(m.first.position, _facilityController.text);
+        } else {
+          _setInitialBranchMarker();
+        }
+      }, onPaymentChanged: (v) => setState(() => _paymentMethod = v), onCollectChanged: (v) => setState(() => _collectContainer = v), onReceiverChanged: (v) => setState(() => _selectedReceiverId = v), onSave: _handleSave);
       default: return Container();
     }
   }
@@ -526,5 +720,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   @override
-  void dispose() { _phoneController.dispose(); _nameController.dispose(); _receiverController.dispose(); _facilityController.dispose(); _addressController.dispose(); _deliveryLocationController.dispose(); _addressQueryController.dispose(); _keywordQueryController.dispose(); _combinedSearchController.dispose(); super.dispose(); }
+  void dispose() {
+    _mapController = null;
+    _phoneController.dispose();
+    _nameController.dispose();
+    _receiverController.dispose();
+    _facilityController.dispose();
+    _addressController.dispose();
+    _deliveryLocationController.dispose();
+    _addressQueryController.dispose();
+    _keywordQueryController.dispose();
+    _combinedSearchController.dispose();
+    super.dispose();
+  }
 }
