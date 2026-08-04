@@ -139,7 +139,7 @@ class AddressSearchPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300, style: BorderStyle.dashed),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: Center(
         child: Text(text, 

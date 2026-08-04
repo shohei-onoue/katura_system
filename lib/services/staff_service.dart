@@ -1,9 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/staff_model.dart';
 
 class StaffService {
   final CollectionReference _staffCollection =
-      FirebaseFirestore.instance.collection('staff');
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('staff');
 
   Future<List<Staff>> getAllStaff() async {
     final snapshot = await _staffCollection.where('isActive', isEqualTo: true).get();

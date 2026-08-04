@@ -46,7 +46,7 @@ class GoogleMapsService {
     return [];
   }
 
-  Future<Map<String, double>?> getLatLngFromAddress(String address) async {
+  Future<Map<String, dynamic>?> getLatLngFromAddress(String address) async {
     final cleanAddress = address.split(RegExp(r'[(\（]'))[0].trim();
     final urlStr = 'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(cleanAddress)}&key=$_apiKey&language=ja';
     final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
@@ -58,12 +58,35 @@ class GoogleMapsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'OK') {
-          final loc = data['results'][0]['geometry']['location'];
-          return {'lat': loc['lat'] as double, 'lng': loc['lng'] as double};
+          final geom = data['results'][0]['geometry'];
+          final loc = geom['location'];
+          return {
+            'lat': loc['lat'] as double, 
+            'lng': loc['lng'] as double,
+            'location_type': geom['location_type'] as String,
+          };
         }
       }
     } catch (e) {
       debugPrint('Geocoding Error: $e');
+    }
+    return null;
+  }
+
+  Future<String?> getAddressFromLatLng(LatLng position) async {
+    final urlStr = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.latitude},${position.longitude}&key=$_apiKey&language=ja';
+    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          return (data['results'][0]['formatted_address'] as String).replaceFirst('日本、', '');
+        }
+      }
+    } catch (e) {
+      debugPrint('Reverse Geocoding Error: $e');
     }
     return null;
   }

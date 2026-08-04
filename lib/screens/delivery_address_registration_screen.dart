@@ -250,8 +250,23 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
       if (latLng != null) {
         final pos = LatLng(latLng['lat']!, latLng['lng']!);
         setState(() => _selectedLocation = pos);
+        
+        // 代表地点（ROOFTOP以外）の場合に警告を表示
+        if (latLng['location_type'] != 'ROOFTOP' && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ 正確な番地が特定できませんでした。地図のピンが「代表地点」の可能性があります。必ず地図上で場所を確認し、微調整してください。'),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 8),
+            ),
+          );
+        }
         if (mounted) {
-          _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+          try {
+            _mapController?.animateCamera(CameraUpdate.newLatLng(pos));
+          } catch (e) {
+            debugPrint('GoogleMapController Error: $e');
+          }
         }
       }
     }

@@ -1,9 +1,10 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
 
 class OrderService {
   final CollectionReference _orderCollection =
-      FirebaseFirestore.instance.collection('orders');
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('orders');
 
   Future<void> saveOrder(OrderModel order) async {
     await _orderCollection.doc(order.id).set(order.toMap());

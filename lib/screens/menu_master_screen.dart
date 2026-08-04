@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/menu_model.dart';
 import '../services/menu_service.dart';
 
@@ -12,28 +14,9 @@ class MenuMasterScreen extends StatefulWidget {
 
 class _MenuMasterScreenState extends State<MenuMasterScreen> {
   final _menuService = MenuService();
+  final _imagePicker = ImagePicker();
   List<MenuModel> _menus = [];
   bool _isLoading = true;
-
-  final List<String> _photoCollection = [
-    'assets/img/a_combo.webp',
-    'assets/img/b_combo.webp',
-    'assets/img/c_combo.webp',
-    'assets/img/hourai_beef.webp',
-    'assets/img/adult_steak.jpg',
-    'assets/img/special_steak.webp',
-    'assets/img/a5_fillet.jpg',
-    'assets/img/mikawa_fillet.webp',
-    'assets/img/hors_3.jpg',
-    'assets/img/hors_6.jpg',
-    'assets/img/roast_beef.webp',
-    'assets/img/shrimp_fry.webp',
-    'assets/img/fillet_special.webp',
-    'assets/img/shimofuri_hamburg.jpg',
-    'assets/img/teriyaki_hamburg.webp',
-    'assets/img/steak_uchimomo.webp',
-    'assets/img/kids_bowl.webp',
-  ];
 
   @override
   void initState() {
@@ -44,17 +27,26 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
   Future<void> _loadMenus() async {
     try {
       final data = await _menuService.getAllMenus();
-      setState(() {
-        _menus = data;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _menus = data;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('メニューの取得に失敗しました: $e')),
+        );
+      }
     }
   }
 
   ImageProvider _getImageProvider(String url) {
     if (url.isEmpty) return const AssetImage('assets/img/placeholder.png');
+    if (url.startsWith('http')) return NetworkImage(url);
+    if (url.startsWith('assets/')) return AssetImage(url);
     if (url.startsWith('data:image')) {
       try {
         return MemoryImage(base64Decode(url.split(',').last));
@@ -62,72 +54,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         return const AssetImage('assets/img/placeholder.png');
       }
     }
-    return AssetImage(url);
-  }
-
-  void _showPhotoPicker(Function(String) onSelected) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('写真コレクション'),
-        content: SizedBox(
-          width: 800,
-          height: 600,
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
-            itemCount: _photoCollection.length,
-            itemBuilder: (context, index) {
-              final path = _photoCollection[index];
-              final fileName = path.split('/').last;
-              return InkWell(
-                onTap: () {
-                  onSelected(path);
-                  Navigator.pop(context);
-                },
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: Image.asset(
-                          path,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Text('Error\n$fileName',
-                                  style: const TextStyle(fontSize: 8),
-                                  textAlign: TextAlign.center),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      fileName,
-                      style: const TextStyle(fontSize: 10),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
-        ],
-      ),
-    );
+    return const AssetImage('assets/img/placeholder.png');
   }
 
   void _showMenuDetail(MenuModel menu) {
@@ -165,18 +92,22 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                 _detailItem('価格 (税込)', '¥${menu.price}'),
                 _detailItem('説明', menu.description),
                 const Divider(height: 32),
-                ...menu.ingredients.entries.map((entry) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle, size: 16, color: Colors.orange),
-                      const SizedBox(width: 8),
-                      Text(entry.key),
-                      const Spacer(),
-                      Text(entry.value, style: const TextStyle(color: Colors.blueGrey)),
-                    ],
-                  ),
-                )),
+                if (menu.ingredients.isNotEmpty) ...[
+                  const Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ...menu.ingredients.entries.map((entry) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, size: 16, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Text(entry.key),
+                        const Spacer(),
+                        Text(entry.value, style: const TextStyle(color: Colors.blueGrey)),
+                      ],
+                    ),
+                  )),
+                ],
               ],
             ),
           ),
@@ -194,14 +125,17 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     final priceController = TextEditingController(text: menu?.price.toString() ?? '');
     final descriptionController = TextEditingController(text: menu?.description ?? '');
     String currentImageUrl = menu?.imageUrl ?? '';
+    Uint8List? pendingImageBytes;
+    
     final ingredientsController = TextEditingController(
         text: menu?.ingredients.entries.map((e) => '${e.key}:${e.value}').join(', ') ?? '');
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(menu == null ? '新規登録' : '編集'),
+          title: Text(menu == null ? '新規メニュー登録' : 'メニュー編集'),
           content: SizedBox(
             width: 500,
             child: SingleChildScrollView(
@@ -209,7 +143,16 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   InkWell(
-                    onTap: () => _showPhotoPicker((path) => setDialogState(() => currentImageUrl = path)),
+                    onTap: () async {
+                      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+                      if (image != null) {
+                        final bytes = await image.readAsBytes();
+                        setDialogState(() {
+                          pendingImageBytes = bytes;
+                          currentImageUrl = ""; // ローカル表示優先
+                        });
+                      }
+                    },
                     child: Container(
                       width: double.infinity,
                       height: 200,
@@ -218,20 +161,32 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
-                      child: currentImageUrl.isNotEmpty
+                      child: pendingImageBytes != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image(image: _getImageProvider(currentImageUrl), fit: BoxFit.cover),
+                              child: Image.memory(pendingImageBytes!, fit: BoxFit.cover),
                             )
-                          : const Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                          : currentImageUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image(image: _getImageProvider(currentImageUrl), fit: BoxFit.cover),
+                                )
+                              : const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                                    SizedBox(height: 8),
+                                    Text('写真をアップロード', style: TextStyle(color: Colors.grey)),
+                                  ],
+                                ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  TextField(controller: nameController, decoration: const InputDecoration(labelText: '商品名')),
-                  TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'カテゴリー')),
-                  TextField(controller: priceController, decoration: const InputDecoration(labelText: '価格')),
-                  TextField(controller: ingredientsController, decoration: const InputDecoration(labelText: '材料:分量 (カンマ区切り)')),
-                  TextField(controller: descriptionController, decoration: const InputDecoration(labelText: '説明'), maxLines: 2),
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: '商品名', hintText: '例：特製ステーキ弁当')),
+                  TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'カテゴリー', hintText: '例：お弁当、高級弁当')),
+                  TextField(controller: priceController, decoration: const InputDecoration(labelText: '価格 (税込)', hintText: '例：1800'), keyboardType: TextInputType.number),
+                  TextField(controller: ingredientsController, decoration: const InputDecoration(labelText: '材料:分量 (カンマ区切り)', hintText: '例：牛ステーキ肉:150g, 白米:250g')),
+                  TextField(controller: descriptionController, decoration: const InputDecoration(labelText: '説明', hintText: '商品の詳細説明を入力してください'), maxLines: 2),
                 ],
               ),
             ),
@@ -240,22 +195,71 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
             ElevatedButton(
               onPressed: () async {
-                final Map<String, String> ingredientsMap = {};
-                for (var pair in ingredientsController.text.split(',')) {
-                  final parts = pair.split(':');
-                  if (parts.length == 2) ingredientsMap[parts[0].trim()] = parts[1].trim();
+                if (nameController.text.isEmpty || priceController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('商品名と価格を入力してください')));
+                  return;
                 }
-                final newMenu = MenuModel(
-                  id: menu?.id ?? '',
-                  name: nameController.text,
-                  category: categoryController.text,
-                  price: int.tryParse(priceController.text) ?? 0,
-                  description: descriptionController.text,
-                  imageUrl: currentImageUrl,
-                  ingredients: ingredientsMap,
+
+                debugPrint('MenuMasterScreen: Save button pressed.');
+                // インジケータを表示
+                showDialog(
+                  context: context, 
+                  barrierDismissible: false, 
+                  builder: (_) => const Center(child: CircularProgressIndicator())
                 );
-                menu == null ? await _menuService.createMenu(newMenu) : await _menuService.updateMenu(newMenu);
-                if (mounted) { Navigator.pop(context); _loadMenus(); }
+                
+                try {
+                  final Map<String, String> ingredientsMap = {};
+                  if (ingredientsController.text.isNotEmpty) {
+                    for (var pair in ingredientsController.text.split(',')) {
+                      final parts = pair.split(':');
+                      if (parts.length == 2) ingredientsMap[parts[0].trim()] = parts[1].trim();
+                    }
+                  }
+
+                  final newMenu = MenuModel(
+                    id: menu?.id ?? '',
+                    name: nameController.text,
+                    category: categoryController.text,
+                    price: int.tryParse(priceController.text) ?? 0,
+                    description: descriptionController.text,
+                    imageUrl: currentImageUrl,
+                    ingredients: ingredientsMap,
+                  );
+
+                  debugPrint('MenuMasterScreen: Calling MenuService...');
+                  if (menu == null) {
+                    await _menuService.createMenu(newMenu, imageBytes: pendingImageBytes);
+                  } else {
+                    await _menuService.updateMenu(newMenu, imageBytes: pendingImageBytes);
+                  }
+                  debugPrint('MenuMasterScreen: MenuService returned successfully.');
+
+                  if (mounted) {
+                    Navigator.of(context).pop(); // インジケータを閉じる
+                    Navigator.of(context).pop(); // ダイアログを閉じる
+                    _loadMenus();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('メニューを保存しました')),
+                    );
+                  }
+                } catch (e, stack) {
+                  debugPrint('MenuMasterScreen Error during save: $e');
+                  debugPrint('Stack trace: $stack');
+                  if (mounted) {
+                    Navigator.of(context).pop(); // インジケータを閉じる
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('保存失敗', style: TextStyle(color: Colors.red)),
+                        content: Text('エラーが発生しました：\n$e\n\nネットワーク接続や権限を確認してください。'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('了解')),
+                        ],
+                      ),
+                    );
+                  }
+                }
               },
               child: const Text('保存'),
             ),
@@ -281,7 +285,6 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               await _menuService.deleteMenu(menu.id);
               if (mounted) {
                 Navigator.pop(context);
-                _loadCustomers();
                 _loadMenus();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('メニューを削除しました')),
@@ -296,9 +299,42 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     );
   }
 
-  // 顧客管理用と競合しないよう修正
-  Future<void> _loadCustomers() async {
-    // 顧客一覧の更新が必要な場合のダミー（または削除）
+  void _showResetConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('初期データでリセット'),
+        content: const Text('現在のメニューデータをすべて削除し、初期データで上書きします。よろしいですか？\n※自分で登録したメニューも消去されます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+              try {
+                await _menuService.seedMenuData();
+                if (mounted) {
+                  Navigator.pop(context);
+                  _loadMenus();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('メニューマスタをリセットしました')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('リセットに失敗しました: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            child: const Text('リセット実行'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _detailItem(String label, String value) {
@@ -324,12 +360,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () async {
-              showDialog(context: context, builder: (_) => const Center(child: CircularProgressIndicator()));
-              await _menuService.seedMenuData();
-              if (mounted) Navigator.pop(context);
-              _loadMenus();
-            },
+            onPressed: _showResetConfirmDialog,
             tooltip: '初期データでリセット',
           ),
           const SizedBox(width: 8),

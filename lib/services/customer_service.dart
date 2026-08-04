@@ -1,15 +1,17 @@
 import 'dart:math';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer_model.dart';
 import 'address_service.dart';
 import 'google_maps_service.dart';
+import 'menu_service.dart';
 
 
 class CustomerService {
   final CollectionReference _customerCollection =
-      FirebaseFirestore.instance.collection('customers');
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('customers');
   final CollectionReference _menuCollection =
-      FirebaseFirestore.instance.collection('menu');
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('menu');
   final _addressService = AddressService();
   final _googleMapsService = GoogleMapsService();
 
@@ -94,16 +96,16 @@ class CustomerService {
     while (true) {
       final snapshot = await _customerCollection.limit(500).get();
       if (snapshot.docs.isEmpty) break;
-      final batch = FirebaseFirestore.instance.batch();
+      final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
       for (var doc in snapshot.docs) { batch.delete(doc.reference); }
       await batch.commit();
     }
     // 関連する注文データの削除（ダミー再生成時に一貫性を保つため）
-    final orderCollection = FirebaseFirestore.instance.collection('orders');
+    final orderCollection = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('orders');
     while (true) {
       final snapshot = await orderCollection.limit(500).get();
       if (snapshot.docs.isEmpty) break;
-      final batch = FirebaseFirestore.instance.batch();
+      final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
       for (var doc in snapshot.docs) { batch.delete(doc.reference); }
       await batch.commit();
     }
@@ -175,7 +177,13 @@ class CustomerService {
       await deleteAllCustomers();
 
       // メニュー情報の取得
-      final menuSnapshot = await _menuCollection.get();
+      var menuSnapshot = await _menuCollection.get();
+      if (menuSnapshot.docs.isEmpty) {
+        // メニューが空の場合は初期データを投入
+        await MenuService().seedMenuData();
+        menuSnapshot = await _menuCollection.get();
+      }
+
       final menus = menuSnapshot.docs.map((doc) {
         final data = doc.data() as Map;
         return {
@@ -186,7 +194,7 @@ class CustomerService {
       }).toList();
 
       if (menus.isEmpty) {
-        throw Exception('メニューマスタが空です。先にメニューを登録してください。');
+        throw Exception('メニューマスタの初期化に失敗しました。');
       }
 
       // 岡崎市の実在施設データを取得
@@ -195,12 +203,12 @@ class CustomerService {
         throw Exception('住所データベースから岡崎市のデータを取得できませんでした。');
       }
 
-      final Map<String, Map<String, double>> geoCache = {};
+      final Map<String, Map<String, dynamic>> geoCache = {};
       final branches = ['岡崎本店', '名古屋店', '岐阜店'];
       final lastNames = ['佐藤', '鈴木', '高橋', '田中', '伊藤', '渡辺', '山本', '中村', '小林', '加藤', '吉田', '山田', '佐々木', '山口', '松本', '井上', '木村', '林', '斎藤', '清水'];
       final firstNames = ['健一', '直樹', '恵子', '由美子', '和也', '大輔', '雅弘', '美穂', '沙織', '翔太', '陽子', '真一', '愛', '健太', '美咲', '大樹', '彩', '拓海', '七海', '駿'];
 
-      final orderCollection = FirebaseFirestore.instance.collection('orders');
+      final orderCollection = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('orders');
       final now = DateTime.now();
 
       int totalCreated = 0;
@@ -239,7 +247,7 @@ class CustomerService {
           
           List<String> historyStrings = [];
           int historyCount = random.nextInt(6) + 3;
-          final batch = FirebaseFirestore.instance.batch();
+          final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
 
           for (int h = 0; h < historyCount; h++) {
             final orderDate = now.subtract(Duration(days: random.nextInt(360)));

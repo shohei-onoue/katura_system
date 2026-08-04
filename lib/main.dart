@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/main_screen.dart';
 import 'firebase_options.dart';
 
@@ -8,6 +9,15 @@ void main() async {
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Firestoreの設定（Web版の接続安定化）
+  FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: 'katura-system-database',
+  ).settings = const Settings(
+    persistenceEnabled: false,
+    sslEnabled: true, // experimentalForceLongPollingの代わりにSSL有効化を確認
   );
 
   runApp(const KaturaSystemApp());

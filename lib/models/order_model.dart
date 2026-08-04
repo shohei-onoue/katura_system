@@ -16,7 +16,9 @@ class OrderModel {
   final bool collectContainer; // 容器回収
   final String paymentMethod;
   final String status;
-  final String branchName; // 追加: 店舗名
+  final String branchName; // 店舗名
+  final String remarks;    // 備考（音声・手書き対応）
+  final String? deliveryDestinationImageUrl; // 配達先画像（ストリートビューなど）
 
   OrderModel({
     required this.id,
@@ -37,6 +39,8 @@ class OrderModel {
     required this.paymentMethod,
     this.status = '受注済み',
     this.branchName = '岡崎本店',
+    this.remarks = '',
+    this.deliveryDestinationImageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -59,6 +63,8 @@ class OrderModel {
       'paymentMethod': paymentMethod,
       'status': status,
       'branchName': branchName,
+      'remarks': remarks,
+      'deliveryDestinationImageUrl': deliveryDestinationImageUrl,
     };
   }
 
@@ -76,6 +82,8 @@ class OrderModel {
       totalCount: 0,
       packagingType: '',
       paymentMethod: '',
+      remarks: '',
+      deliveryDestinationImageUrl: null,
     );
   }
 
@@ -101,6 +109,8 @@ class OrderModel {
       paymentMethod: map['paymentMethod'] ?? '',
       status: map['status'] ?? '受注済み',
       branchName: map['branchName'] ?? '岡崎本店',
+      remarks: map['remarks'] ?? '',
+      deliveryDestinationImageUrl: map['deliveryDestinationImageUrl'],
     );
   }
 }

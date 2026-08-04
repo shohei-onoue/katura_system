@@ -11,8 +11,11 @@ import '../services/staff_service.dart';
 import '../services/order_service.dart';
 import '../constants/address_constants.dart';
 import '../widgets/k_stepper.dart';
+import '../widgets/k_location_adjustment_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
 
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
@@ -39,6 +42,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _addressQueryController = TextEditingController();
   final _keywordQueryController = TextEditingController();
   final _combinedSearchController = TextEditingController();
+  final _remarksController = TextEditingController();
 
   int _currentStep = 0;
   DateTime _receptionDate = DateTime.now();
@@ -75,6 +79,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _searchTownInitial = 'すべて';
   String? _searchCategory;
   String? _searchGenre;
+  bool _isApproximateLocation = false;
+  String? _pendingStreetViewImageUrl;
   List<String> _prefList = [];
   List<String> _cityList = [];
   List<String> _townList = [];
@@ -357,6 +363,32 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
+  Future<void> _showLocationAdjustmentDialog() async {
+    final destMarker = _markers.any((m) => m.markerId.value == 'dest') 
+        ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+    final initialPos = destMarker?.position ?? _initialCenter;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => KLocationAdjustmentDialog(
+        initialPosition: initialPos,
+        initialAddress: _addressController.text,
+        getAddressFromLatLng: (pos) => _customerService.getGoogleMapsService().getAddressFromLatLng(pos),
+      ),
+    );
+
+    if (result != null) {
+      final pos = result['position'] as LatLng;
+      final imageUrl = result['staticImageUrl'] as String;
+      
+      await _onMapPositionAdjusted(pos);
+      setState(() {
+        _pendingStreetViewImageUrl = imageUrl;
+      });
+    }
+  }
+
   Future<void> _onAddressSelectedFromList(String fullAddr) async {
     final parts = fullAddr.split(': ');
     final facilityNamePart = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
@@ -385,8 +417,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     LatLng? pos = _parseCoordsFromAddress(fullAddr);
     if (pos == null || (pos.latitude == 0 && pos.longitude == 0)) {
       final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("$facilityNamePart $addressOnlyPart");
-      if (latLng != null) pos = LatLng(latLng['lat']!, latLng['lng']!);
+      if (latLng != null) {
+        pos = LatLng(latLng['lat']!, latLng['lng']!);
+        final isApprox = latLng['location_type'] != 'ROOFTOP';
+        
+        setState(() {
+          _isApproximateLocation = isApprox;
+        });
+      }
+    } else {
+      setState(() {
+        _isApproximateLocation = false;
+      });
     }
+
     setState(() { if (matchingOrder.id.isNotEmpty) _selectedHistoryItem = matchingOrder; if (pos != null) _updateMap(pos, facilityNamePart); _addressController.text = addressOnlyPart; _facilityController.text = facilityNamePart; if (matchingOrder.id.isNotEmpty) { _receiverController.text = matchingOrder.receiverName; _deliveryLocationController.text = matchingOrder.deliveryLocation; } });
   }
 
@@ -394,6 +438,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final matches = RegExp(r'[(（]([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)[)）]').allMatches(fullAddr);
     if (matches.isNotEmpty) { try { return LatLng(double.parse(matches.last.group(1)!), double.parse(matches.last.group(2)!)); } catch (_) {} }
     return null;
+  }
+
+  Future<void> _onMapPositionAdjusted(LatLng position) async {
+    // 住所の逆引きを実行
+    final newAddress = await _customerService.getGoogleMapsService().getAddressFromLatLng(position);
+
+    setState(() {
+      _isApproximateLocation = false; // 手動調整されたため警告解除
+      if (newAddress != null) {
+        _addressController.text = newAddress;
+      }
+      
+      final destMarker = Marker(
+        markerId: const MarkerId('dest'),
+        position: position,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: InfoWindow(title: _facilityController.text.isNotEmpty ? _facilityController.text : '指定地点'),
+        draggable: true,
+        onDragEnd: _onMapPositionAdjusted,
+      );
+
+      _markers = _markers.where((m) => m.markerId.value != 'dest').toSet()..add(destMarker);
+    });
   }
 
   void _updateMap(LatLng position, String title) {
@@ -413,32 +480,36 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _fitMapToMarkers() {
-    if (!mounted || _mapController == null || _markers.isEmpty) return;
+    if (!mounted || _mapController == null || _markers.isEmpty || _isSearchResultsDialogOpen) return;
 
-    if (_markers.length == 1) {
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_markers.first.position, 15.0));
-      return;
+    try {
+      if (_markers.length == 1) {
+        _mapController?.animateCamera(CameraUpdate.newLatLngZoom(_markers.first.position, 15.0));
+        return;
+      }
+
+      double minLat = 90.0;
+      double maxLat = -90.0;
+      double minLng = 180.0;
+      double maxLng = -180.0;
+
+      for (final marker in _markers) {
+        if (marker.position.latitude < minLat) minLat = marker.position.latitude;
+        if (marker.position.latitude > maxLat) maxLat = marker.position.latitude;
+        if (marker.position.longitude < minLng) minLng = marker.position.longitude;
+        if (marker.position.longitude > maxLng) maxLng = marker.position.longitude;
+      }
+
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLng),
+          northeast: LatLng(maxLat, maxLng),
+        ),
+        80.0, // padding
+      ));
+    } catch (e) {
+      debugPrint('GoogleMapController Error in _fitMapToMarkers: $e');
     }
-
-    double minLat = 90.0;
-    double maxLat = -90.0;
-    double minLng = 180.0;
-    double maxLng = -180.0;
-
-    for (final marker in _markers) {
-      if (marker.position.latitude < minLat) minLat = marker.position.latitude;
-      if (marker.position.latitude > maxLat) maxLat = marker.position.latitude;
-      if (marker.position.longitude < minLng) minLng = marker.position.longitude;
-      if (marker.position.longitude > maxLng) maxLng = marker.position.longitude;
-    }
-
-    _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-      LatLngBounds(
-        southwest: LatLng(minLat, minLng),
-        northeast: LatLng(maxLat, maxLng),
-      ),
-      80.0, // padding
-    ));
   }
 
   Future<void> _onSearchSubmit({bool forceApi = false, bool ignoreFilter = false}) async {
@@ -538,8 +609,65 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   int get _totalPrice => _confirmedItems.fold(0, (s, i) => s + (i['price'] as int) * (i['quantity'] as int));
 
   Future<void> _handleSave() async {
-    final order = OrderModel(id: widget.initialOrder?.id ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}', customerName: _nameController.text, receiverName: _receiverController.text, facilityName: _facilityController.text, address: _addressController.text, deliveryLocation: _deliveryLocationController.text, phoneNumber: _phoneController.text, receptionDate: _receptionDate, deliveryDate: _deliveryDate, deliveryTime: "${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}", deliveryType: _deliveryType, items: _confirmedItems, totalCount: _totalCount, packagingType: _totalCount >= 20 ? 'ダンボール' : '紙袋', collectContainer: _collectContainer, paymentMethod: _paymentMethod, branchName: _branchName);
-    await _orderService.saveOrder(order); if (mounted) widget.onSaveSuccess?.call();
+    setState(() => _isLoadingNotifier.value = true);
+
+    String? imageUrl;
+    if (_pendingStreetViewImageUrl != null) {
+      try {
+        final response = await http.get(Uri.parse(_pendingStreetViewImageUrl!));
+        if (response.statusCode == 200) {
+          final orderId = widget.initialOrder?.id ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+          final storageRef = FirebaseStorage.instance.ref().child('delivery_destinations/$orderId.jpg');
+          await storageRef.putData(response.bodyBytes);
+          imageUrl = await storageRef.getDownloadURL();
+        }
+      } catch (e) {
+        debugPrint('Street View Image Upload Error: $e');
+      }
+    }
+
+    final order = OrderModel(
+      id: widget.initialOrder?.id ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}', 
+      customerName: _nameController.text, 
+      receiverName: _receiverController.text, 
+      facilityName: _facilityController.text, 
+      address: _addressController.text, 
+      deliveryLocation: _deliveryLocationController.text, 
+      phoneNumber: _phoneController.text, 
+      receptionDate: _receptionDate, 
+      deliveryDate: _deliveryDate, 
+      deliveryTime: "${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}", 
+      deliveryType: _deliveryType, 
+      items: _confirmedItems, 
+      totalCount: _totalCount, 
+      packagingType: _totalCount >= 20 ? 'ダンボール' : '紙袋', 
+      collectContainer: _collectContainer, 
+      paymentMethod: _paymentMethod, 
+      branchName: _branchName, 
+      remarks: _remarksController.text,
+      deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+    );
+    
+    // 注文確定時に配達先情報を顧客マスターへ登録
+    if (_currentCustomer != null && _addressController.text.isNotEmpty) {
+      final destMarker = _markers.any((m) => m.markerId.value == 'dest') 
+          ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+      if (destMarker != null) {
+        String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
+        if (imageUrl != null) {
+          displayEntry += " [IMG:$imageUrl]";
+        }
+        final exists = _currentCustomer!.deliveryAddresses.any((a) => a.contains(_addressController.text));
+        if (!exists) {
+          final newList = List<String>.from(_currentCustomer!.deliveryAddresses)..add(displayEntry);
+          await _customerService.updateCustomer(_currentCustomer!.copyWith(deliveryAddresses: newList));
+        }
+      }
+    }
+
+    await _orderService.saveOrder(order); 
+    setState(() => _isLoadingNotifier.value = false);
+    if (mounted) widget.onSaveSuccess?.call();
   }
 
   @override
@@ -599,8 +727,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               _fitMapToMarkers(); // マップ生成直後（再表示時含む）にフィットさせる
             }, 
             onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
-            onFacilitySelect: (f) async { setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; if (pos == null) { final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); if (latLng != null) { pos = LatLng(latLng['lat']!, latLng['lng']!); await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); } } if (pos != null) _updateMap(pos, f['name']); }, 
+            onFacilitySelect: (f) async { 
+              setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
+              LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
+              if (pos == null) { 
+                final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
+                if (latLng != null) { 
+                  pos = LatLng(latLng['lat']!, latLng['lng']!); 
+                  await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
+                  
+                  // 代表地点（ROOFTOP以外）の場合に精度フラグを更新
+                  if (mounted) {
+                    setState(() {
+                      _isApproximateLocation = latLng['location_type'] != 'ROOFTOP';
+                    });
+                  }
+                } 
+              } 
+              if (pos != null) _updateMap(pos, f['name']); 
+            }, 
             onForceApiSearch: () => _onSearchSubmit(forceApi: true),
+            onMapTap: _onMapPositionAdjusted,
+            onMarkerDragEnd: _onMapPositionAdjusted,
+            deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
             isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
           ),
         ],
@@ -650,6 +799,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           searchCategory: _searchCategory, 
           searchGenre: _searchGenre, 
           searchTabIndex: _searchTabIndex, 
+          isApproximateLocation: _isApproximateLocation,
+          remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
           onNext: () => setState(() => _currentStep = 3), 
@@ -667,7 +818,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); }, 
           onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); }, 
           onSearchSubmit: _onSearchSubmit,
-          onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v)
+          onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
+          onAdjustTap: _showLocationAdjustmentDialog
       );
       case 3: return DeliveryTimeStep(deliveryDate: _deliveryDate, deliveryType: _deliveryType, selectedTime: _selectedTime, onDateSelected: (v) => setState(() => _deliveryDate = v), onTypeSelected: (v) => setState(() => _deliveryType = v), onTimeSelected: (v) => setState(() { _selectedTime = v; _currentStep = 4; }));
       case 4: return ItemsSelectionStep(menus: _menus, confirmedItems: _confirmedItems, selectedQuantities: _selectedQuantities, riceAmount: _calculateRiceAmount(), packaging: _totalCount >= 20 ? 'ダンボール' : '紙袋', totalPrice: _totalPrice, onAddItem: (m) => setState(() { _selectedQuantities[m.id] = (_selectedQuantities[m.id] ?? 0) + 1; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onQuantityChanged: (id, v) => setState(() { _selectedQuantities[id] = v; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onNext: () => setState(() => _currentStep = 5));
@@ -731,6 +883,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _addressQueryController.dispose();
     _keywordQueryController.dispose();
     _combinedSearchController.dispose();
+    _remarksController.dispose();
     super.dispose();
   }
 }

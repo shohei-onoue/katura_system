@@ -160,6 +160,13 @@ class AddressService {
     final isZip = RegExp(r'^[0-9\-]+$').hasMatch(query);
     if (isZip) {
       final cleanZip = query.replaceAll('-', '');
+      final postResults = _db!.select(
+        "SELECT prefecture as name, city, town, prefecture || city || town as address, NULL as lat, NULL as lng, '郵便番号一致' as type "
+        "FROM post_all WHERE zip_code = ? OR zip_code = ? LIMIT 100", 
+        [cleanZip, query]
+      );
+      if (postResults.isNotEmpty) return postResults.map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
+
       return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '郵便番号一致' as type FROM kigyou WHERE zip_code = ? OR zip_code = ? LIMIT 100", [cleanZip, query]).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
     }
     return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '住所検索' as type FROM kigyou WHERE address LIKE ? OR city LIKE ? OR town LIKE ? LIMIT 100", ['%$query%', '%$query%', '%$query%']).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();

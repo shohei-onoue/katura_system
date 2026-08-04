@@ -40,49 +40,52 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const String _generalApiKey = 'AIzaSyAGqDBjV4ounHAldaU-N8wBZqc_aWq4FMM';
+  static const String _webApiKey = 'AIzaSyDLNOudyf0exTSAh1_37ccownObPfWZxro';
+
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Web用Firebase APIキー
-    appId: '1:698860566876:web:44c7e7a8fecb23016fa999', // アプリケーション固有の識別子 (App ID)
-    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
-    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
-    authDomain: 'fir-2d6ea.firebaseapp.com', // Firebase Authentication 用のドメイン
-    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
-    measurementId: 'G-3W33JLLJRH', // Google Analytics (Analytics) 用の測定 ID
+    apiKey: _webApiKey,
+    appId: '1:639111103872:web:d6138be46fc39a6af6ed65',
+    messagingSenderId: '639111103872',
+    projectId: 'katura-system-dfc8b',
+    authDomain: 'katura-system-dfc8b.firebaseapp.com',
+    storageBucket: 'katura-system-dfc8b.firebasestorage.app',
+    measurementId: 'G-WV3WXWWDDW',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Android用Firebase & Google Maps APIキー
-    appId: '1:698860566876:android:98ca0d0b6b26f7386fa999', // アプリケーション固有の識別子 (App ID)
-    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
-    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
-    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
+    apiKey: _generalApiKey,
+    appId: '1:639111103872:android:f67e8da9026810f2f6ed65',
+    messagingSenderId: '639111103872',
+    projectId: 'katura-system-dfc8b',
+    storageBucket: 'katura-system-dfc8b.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // iOS用Firebase APIキー
-    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999', // アプリケーション固有の識別子 (App ID)
-    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
-    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
-    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
-    iosBundleId: 'com.katura.katuraSystem', // iOS のバンドル識別子 (Bundle ID)
+    apiKey: _generalApiKey,
+    appId: '1:639111103872:ios:f0aa28d591b44a72f6ed65',
+    messagingSenderId: '639111103872',
+    projectId: 'katura-system-dfc8b',
+    storageBucket: 'katura-system-dfc8b.firebasestorage.app',
+    iosBundleId: 'com.katura.katuraSystem',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // macOS用Firebase APIキー
-    appId: '1:698860566876:ios:a26c0d67c2e32c586fa999', // アプリケーション固有の識別子 (App ID)
-    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
-    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
-    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
-    iosBundleId: 'com.katura.katuraSystem', // macOS のバンドル識別子 (Bundle ID)
+    apiKey: _generalApiKey,
+    appId: '1:639111103872:ios:f0aa28d591b44a72f6ed65',
+    messagingSenderId: '639111103872',
+    projectId: 'katura-system-dfc8b',
+    storageBucket: 'katura-system-dfc8b.firebasestorage.app',
+    iosBundleId: 'com.katura.katuraSystem',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M', // Windows用Firebase APIキー
-    appId: '1:698860566876:web:59fdc88c79cb48b26fa999', // アプリケーション固有の識別子 (App ID)
-    messagingSenderId: '698860566876', // Cloud Messaging (FCM) 用の送信者 ID
-    projectId: 'fir-2d6ea', // Firebase プロジェクト ID
-    authDomain: 'fir-2d6ea.firebaseapp.com', // Firebase Authentication 用のドメイン
-    storageBucket: 'fir-2d6ea.firebasestorage.app', // Cloud Storage 用のバケット名
-    measurementId: 'G-8T673QR5WF', // Google Analytics (Analytics) 用の測定 ID
+    apiKey: _webApiKey,
+    appId: '1:639111103872:web:d6138be46fc39a6af6ed65',
+    messagingSenderId: '639111103872',
+    projectId: 'katura-system-dfc8b',
+    authDomain: 'katura-system-dfc8b.firebaseapp.com',
+    storageBucket: 'katura-system-dfc8b.firebasestorage.app',
+    measurementId: 'G-WV3WXWWDDW',
   );
 }

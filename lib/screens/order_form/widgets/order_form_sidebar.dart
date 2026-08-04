@@ -34,6 +34,7 @@ class OrderFormSidebar extends StatefulWidget {
   final int totalCount;
   final Set<Marker> markers;
   final LatLng initialCenter;
+  final String? deliveryDestinationImageUrl;
   
   final Function(String) onPhoneInput;
   final VoidCallback onPhoneClear;
@@ -42,6 +43,8 @@ class OrderFormSidebar extends StatefulWidget {
   final VoidCallback onSidebarResultsClose;
   final Function(Map<String, dynamic>) onFacilitySelect;
   final VoidCallback onForceApiSearch;
+  final Function(LatLng)? onMapTap;
+  final Function(LatLng)? onMarkerDragEnd;
   final bool isSearchResultsDialogOpen;
 
   const OrderFormSidebar({
@@ -73,6 +76,9 @@ class OrderFormSidebar extends StatefulWidget {
     required this.onSidebarResultsClose,
     required this.onFacilitySelect,
     required this.onForceApiSearch,
+    this.onMapTap,
+    this.onMarkerDragEnd,
+    this.deliveryDestinationImageUrl,
     this.isSearchResultsDialogOpen = false,
   });
 
@@ -179,7 +185,16 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   key: _mapKey,
                   initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
                   onMapCreated: widget.onMapCreated,
-                  markers: widget.markers,
+                  onTap: widget.onMapTap,
+                  markers: widget.markers.map((m) {
+                    if (m.markerId.value == 'dest') {
+                      return m.copyWith(
+                        draggableParam: true,
+                        onDragEndParam: widget.onMarkerDragEnd,
+                      );
+                    }
+                    return m;
+                  }).toSet(),
                   myLocationButtonEnabled: false,
                   zoomControlsEnabled: true,
                 ),
@@ -188,43 +203,38 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         // 下部 50%: 情報表示エリア
         SizedBox(
           height: bottomHeight,
-          child: Column(
-            children: [
-              // 固定表示: 顧客・配達先テキスト
-              _buildInfoTextSection(),
-              
-              // 配達先の確定ステップ (Step 2) の場合はここで終了 (マップと情報のみにする)
-              if (widget.currentStep == 2) const Spacer(),
-
-              // ステップ3以降はサマリーや分析を表示
-              if (widget.currentStep > 2)
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        if (widget.selectedHistoryItem != null) 
-                          SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
-                        else 
-                          SidebarSummary(
-                            date: widget.deliveryDate, 
-                            time: widget.selectedTime, 
-                            customerName: widget.customerName, 
-                            receiverName: widget.receiverName, 
-                            totalPrice: widget.totalPrice, 
-                            totalCount: widget.totalCount
-                          ),
-                        const Divider(height: 1),
-                        Padding(
-                          padding: EdgeInsets.all(rs(context, 24)),
-                          child: SidebarAnalysis(
-                            history: widget.customerOrderHistory, 
-                          ),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // 固定表示: 配達先テキスト
+                _buildInfoTextSection(),
+                
+                // ステップ3以降はサマリーや分析を表示
+                if (widget.currentStep > 2)
+                  Column(
+                    children: [
+                      if (widget.selectedHistoryItem != null) 
+                        SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
+                      else 
+                        SidebarSummary(
+                          date: widget.deliveryDate, 
+                          time: widget.selectedTime, 
+                          customerName: widget.customerName, 
+                          receiverName: widget.receiverName, 
+                          totalPrice: widget.totalPrice, 
+                          totalCount: widget.totalCount
                         ),
-                      ],
-                    ),
+                      const Divider(height: 1),
+                      Padding(
+                        padding: EdgeInsets.all(rs(context, 24)),
+                        child: SidebarAnalysis(
+                          history: widget.customerOrderHistory, 
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -253,14 +263,6 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('[顧客情報]', style: labelStyle),
-          SizedBox(height: rs(context, 8)),
-          _buildInfoRow('顧客名：', widget.currentCustomer?.name ?? "-", valueStyle),
-          _buildInfoRow('企業名：', widget.currentCustomer?.companyName ?? "-", valueStyle),
-          _buildInfoRow('電話番号：', widget.currentCustomer?.phoneNumber ?? "-", valueStyle),
-          
-          const Divider(height: 16),
-          
           Text('[配達先情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
           _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, 
@@ -269,6 +271,26 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               widget.address.isEmpty ? unconfirmedStyle : valueStyle),
           _buildInfoRow('座標：', coordsText ?? "未確定", 
               coordsText == null ? unconfirmedStyle : valueStyle),
+
+          if (widget.deliveryDestinationImageUrl != null) ...[
+            const Divider(height: 16),
+            Text('[配達先写真]', style: labelStyle),
+            SizedBox(height: rs(context, 8)),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                widget.deliveryDestinationImageUrl!,
+                height: rs(context, 200),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: rs(context, 150),
+                  color: Colors.grey.shade100,
+                  child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

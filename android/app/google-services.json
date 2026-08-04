@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "698860566876",
-    "project_id": "fir-2d6ea",
-    "storage_bucket": "fir-2d6ea.firebasestorage.app"
+    "project_number": "639111103872",
+    "project_id": "katura-system-dfc8b",
+    "storage_bucket": "katura-system-dfc8b.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:698860566876:android:98ca0d0b6b26f7386fa999",
+        "mobilesdk_app_id": "1:639111103872:android:f67e8da9026810f2f6ed65",
         "android_client_info": {
           "package_name": "com.katura.katura_system"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCIOfgr12r9rjOTF9QcS_mGdA5VsPjy9_M"
+          "current_key": "AIzaSyAGqDBjV4ounHAldaU-N8wBZqc_aWq4FMM"
         }
       ],
       "services": {
