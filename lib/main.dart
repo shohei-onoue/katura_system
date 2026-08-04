@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'screens/main_screen.dart';
 import 'firebase_options.dart';
 
@@ -17,8 +18,11 @@ void main() async {
     databaseId: 'katura-system-database',
   ).settings = const Settings(
     persistenceEnabled: false,
-    sslEnabled: true, // experimentalForceLongPollingの代わりにSSL有効化を確認
+    sslEnabled: true,
   );
+
+  // 日本語ロケールの初期化
+  await initializeDateFormatting('ja_JP', null);
 
   runApp(const KaturaSystemApp());
 }

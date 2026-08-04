@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 // Date and Time picker without external dependencies
 enum KPickerType { date, time }
@@ -9,6 +10,7 @@ class KDateTimePicker extends StatelessWidget {
   final KPickerType type;
   final ValueChanged<DateTime> onSelected;
   final IconData icon;
+  final bool showLabel;
 
   const KDateTimePicker({
     super.key,
@@ -17,6 +19,7 @@ class KDateTimePicker extends StatelessWidget {
     this.type = KPickerType.date,
     required this.onSelected,
     required this.icon,
+    this.showLabel = true,
   });
 
   String _formatValue(DateTime dt) {
@@ -35,7 +38,7 @@ class KDateTimePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
       child: InkWell(
         onTap: () async {
           if (type == KPickerType.date) {
@@ -57,16 +60,34 @@ class KDateTimePicker extends StatelessWidget {
             }
           }
         },
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(icon),
-            border: const OutlineInputBorder(),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Container(
+          height: rs(context, 50),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white,
           ),
-          child: Text(
-            _formatValue(value),
-            style: const TextStyle(fontSize: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Colors.blueGrey),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (showLabel && label.isNotEmpty)
+                      Text(label, style: TextStyle(fontSize: rf(context, 10), color: Colors.grey)),
+                    Text(
+                      _formatValue(value),
+                      style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_drop_down, color: Colors.grey),
+            ],
           ),
         ),
       ),

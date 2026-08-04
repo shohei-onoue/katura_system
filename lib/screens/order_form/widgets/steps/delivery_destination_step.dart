@@ -274,15 +274,15 @@ class DeliveryDestinationStep extends StatelessWidget {
           child: Row(
             children: [
               _buildSearchTab(context, 0, '地域・カテゴリ', Icons.category),
-              _buildSearchTab(context, 1, '住所・郵便番号', Icons.pin_drop),
-              _buildSearchTab(context, 2, '地域・キーワード', Icons.search),
+              _buildSearchTab(context, 1, '地域・キーワード', Icons.search),
+              _buildSearchTab(context, 2, '住所・郵便番号', Icons.pin_drop),
             ],
           ),
         ),
         SizedBox(height: rs(context, 24)),
         if (searchTabIndex == 0) _buildAreaCategorySearchUI(context),
-        if (searchTabIndex == 1) _buildDirectSearchUI(context),
-        if (searchTabIndex == 2) _buildAreaKeywordSearchUI(context),
+        if (searchTabIndex == 1) _buildAreaKeywordSearchUI(context),
+        if (searchTabIndex == 2) _buildDirectSearchUI(context),
         
         SizedBox(height: rs(context, 16)),
         KMultimodalTextField(
@@ -331,22 +331,20 @@ class DeliveryDestinationStep extends StatelessWidget {
                 warningLabel: '代表地点',
               ),
             ),
-            if (isApproximateLocation) ...[
-              SizedBox(width: rs(context, 12)),
-              SizedBox(
-                height: rs(context, 50),
-                child: ElevatedButton.icon(
-                  onPressed: onAdjustTap,
-                  icon: const Icon(Icons.map, size: 20),
-                  label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
+            SizedBox(width: rs(context, 12)),
+            SizedBox(
+              height: rs(context, 50),
+              child: ElevatedButton.icon(
+                onPressed: onAdjustTap,
+                icon: const Icon(Icons.map, size: 20),
+                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ],
@@ -368,22 +366,20 @@ class DeliveryDestinationStep extends StatelessWidget {
                 warningLabel: '代表地点',
               ),
             ),
-            if (isApproximateLocation) ...[
-              SizedBox(width: rs(context, 12)),
-              SizedBox(
-                height: rs(context, 50),
-                child: ElevatedButton.icon(
-                  onPressed: onAdjustTap,
-                  icon: const Icon(Icons.map, size: 20),
-                  label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
+            SizedBox(width: rs(context, 12)),
+            SizedBox(
+              height: rs(context, 50),
+              child: ElevatedButton.icon(
+                onPressed: onAdjustTap,
+                icon: const Icon(Icons.map, size: 20),
+                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
               ),
-            ],
+            ),
           ],
         ),
       ],
@@ -421,22 +417,20 @@ class DeliveryDestinationStep extends StatelessWidget {
               warningLabel: '代表地点',
             ),
           ),
-          if (isApproximateLocation) ...[
-            SizedBox(width: rs(context, 12)),
-            SizedBox(
-              height: rs(context, 50),
-              child: ElevatedButton.icon(
-                onPressed: onAdjustTap,
-                icon: const Icon(Icons.map, size: 20),
-                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+          SizedBox(width: rs(context, 12)),
+          SizedBox(
+            height: rs(context, 50),
+            child: ElevatedButton.icon(
+              onPressed: onAdjustTap,
+              icon: const Icon(Icons.map, size: 20),
+              label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
-          ],
+          ),
         ],
       ),
     ]);
@@ -1893,7 +1887,8 @@ class _AddressDialField extends StatelessWidget {
           onTap: isEnabled ? onTap : null,
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 12)),
+            height: rs(context, 50), // 高さを50に固定してボタンと統一
+            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), // 上下パディングを抜いて中央配置
             decoration: BoxDecoration(
               color: isWarning ? Colors.pink.shade50 : (isEnabled ? Colors.white : Colors.grey.shade50),
               border: Border.all(color: isWarning ? Colors.pink.shade200 : (isEnabled ? Colors.grey.shade300 : Colors.grey.shade200), width: isWarning ? 2 : 1),

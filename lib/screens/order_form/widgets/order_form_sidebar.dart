@@ -209,8 +209,8 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 // 固定表示: 配達先テキスト
                 _buildInfoTextSection(),
                 
-                // ステップ3以降はサマリーや分析を表示
-                if (widget.currentStep > 2)
+                // ステップ4以降はサマリーや分析を表示
+                if (widget.currentStep > 3)
                   Column(
                     children: [
                       if (widget.selectedHistoryItem != null) 

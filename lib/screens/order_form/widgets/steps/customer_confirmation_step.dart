@@ -68,14 +68,16 @@ class CustomerConfirmationStep extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: rs(context, 20)),
-                    side: const BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+                child: SizedBox(
+                  height: rs(context, 50), // KButtonと同じ50に統一
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+                    ),
+                    onPressed: onBack,
+                    child: Text('選び直す', style: TextStyle(fontSize: rf(context, 18), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                   ),
-                  onPressed: onBack,
-                  child: Text('選び直す', style: TextStyle(fontSize: rf(context, 18), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                 ),
               ),
               SizedBox(width: rs(context, 16)),

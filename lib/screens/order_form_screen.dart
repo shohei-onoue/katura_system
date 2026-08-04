@@ -48,7 +48,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   String _deliveryType = '配送';
-  DateTime _selectedTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 12, 0);
+  DateTime _selectedTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 11, 0);
+  
+  // 時間設定のカスタマイズ用
+  int _timePickerInterval = 15;
+  TimeOfDay _timePickerMin = const TimeOfDay(hour: 11, minute: 0);
+  TimeOfDay _timePickerMax = const TimeOfDay(hour: 12, minute: 0);
+
   String _paymentMethod = '現金';
   String _branchName = '岡崎本店';
   String? _selectedReceiverId;
@@ -517,7 +523,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _facilityResultsNotifier.value = [];
     List<Map<String, dynamic>> results = [];
     
-    if (_searchTabIndex == 0 || _searchTabIndex == 2) {
+    if (_searchTabIndex == 0 || _searchTabIndex == 1) {
       // 1. ローカルDBまたはカスタムサービスからの検索
       if (!forceApi && !ignoreFilter) {
         results = _searchTabIndex == 0 
@@ -593,7 +599,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           );
         }
       }
-    } else if (_searchTabIndex == 1) {
+    } else if (_searchTabIndex == 2) {
+      // 住所・郵便番号
       final raw = await _customerService.getAddressService().searchByAddressOrZip(_addressQueryController.text);
       results = raw.map((i) => {...i, 'isNearby': false}).toList();
     }
@@ -648,20 +655,44 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
     );
     
-    // 注文確定時に配達先情報を顧客マスターへ登録
-    if (_currentCustomer != null && _addressController.text.isNotEmpty) {
-      final destMarker = _markers.any((m) => m.markerId.value == 'dest') 
-          ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
-      if (destMarker != null) {
-        String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
-        if (imageUrl != null) {
-          displayEntry += " [IMG:$imageUrl]";
+    // 注文確定時に配達先情報と受取人履歴を顧客マスターへ登録
+    if (_currentCustomer != null) {
+      bool customerUpdated = false;
+      Customer updatedCustomer = _currentCustomer!;
+
+      // 1. 住所・座標の登録
+      if (_addressController.text.isNotEmpty) {
+        final destMarker = _markers.any((m) => m.markerId.value == 'dest') 
+            ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+        if (destMarker != null) {
+          String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
+          if (imageUrl != null) displayEntry += " [IMG:$imageUrl]";
+          
+          final exists = updatedCustomer.deliveryAddresses.any((a) => a.contains(_addressController.text));
+          if (!exists) {
+            final newList = List<String>.from(updatedCustomer.deliveryAddresses)..add(displayEntry);
+            updatedCustomer = updatedCustomer.copyWith(deliveryAddresses: newList);
+            customerUpdated = true;
+          }
         }
-        final exists = _currentCustomer!.deliveryAddresses.any((a) => a.contains(_addressController.text));
-        if (!exists) {
-          final newList = List<String>.from(_currentCustomer!.deliveryAddresses)..add(displayEntry);
-          await _customerService.updateCustomer(_currentCustomer!.copyWith(deliveryAddresses: newList));
+      }
+
+      // 2. 受取人履歴の登録
+      if (_receiverController.text.isNotEmpty && _facilityController.text.isNotEmpty) {
+        final facility = _facilityController.text;
+        final receiver = _receiverController.text;
+        final currentReceivers = List<String>.from(updatedCustomer.facilityReceivers[facility] ?? []);
+        if (!currentReceivers.contains(receiver)) {
+          currentReceivers.add(receiver);
+          final newMap = Map<String, List<String>>.from(updatedCustomer.facilityReceivers);
+          newMap[facility] = currentReceivers;
+          updatedCustomer = updatedCustomer.copyWith(facilityReceivers: newMap);
+          customerUpdated = true;
         }
+      }
+
+      if (customerUpdated) {
+        await _customerService.updateCustomer(updatedCustomer);
       }
     }
 
@@ -821,7 +852,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog
       );
-      case 3: return DeliveryTimeStep(deliveryDate: _deliveryDate, deliveryType: _deliveryType, selectedTime: _selectedTime, onDateSelected: (v) => setState(() => _deliveryDate = v), onTypeSelected: (v) => setState(() => _deliveryType = v), onTimeSelected: (v) => setState(() { _selectedTime = v; _currentStep = 4; }));
+      case 3: return DeliveryTimeStep(
+          deliveryDate: _deliveryDate, 
+          deliveryType: _deliveryType, 
+          selectedTime: _selectedTime, 
+          timeMin: _timePickerMin,
+          timeMax: _timePickerMax,
+          timeInterval: _timePickerInterval,
+          receiverController: _receiverController,
+          currentCustomer: _currentCustomer,
+          facilityName: _facilityController.text,
+          onDateSelected: (v) => setState(() => _deliveryDate = v), 
+          onTypeSelected: (v) => setState(() => _deliveryType = v), 
+          onTimeSelected: (v) => setState(() => _selectedTime = v),
+          onTimeSettingsChanged: (min, max, interval) {
+            setState(() {
+              _timePickerMin = min;
+              _timePickerMax = max;
+              _timePickerInterval = interval;
+            });
+          },
+          onNext: () => setState(() => _currentStep = 4)
+      );
       case 4: return ItemsSelectionStep(menus: _menus, confirmedItems: _confirmedItems, selectedQuantities: _selectedQuantities, riceAmount: _calculateRiceAmount(), packaging: _totalCount >= 20 ? 'ダンボール' : '紙袋', totalPrice: _totalPrice, onAddItem: (m) => setState(() { _selectedQuantities[m.id] = (_selectedQuantities[m.id] ?? 0) + 1; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onQuantityChanged: (id, v) => setState(() { _selectedQuantities[id] = v; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), onNext: () => setState(() => _currentStep = 5));
       case 5: return FinalizeStep(branchName: _branchName, paymentMethod: _paymentMethod, collectContainer: _collectContainer, selectedReceiverId: _selectedReceiverId, staffList: _staffList, onBranchChanged: (v) { 
         setState(() => _branchName = v); 

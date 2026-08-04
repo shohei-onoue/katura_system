@@ -7,12 +7,14 @@ class KMultimodalTextField extends StatefulWidget {
   final String label;
   final TextEditingController controller;
   final IconData? icon;
+  final int maxLines;
 
   const KMultimodalTextField({
     super.key,
     required this.label,
     required this.controller,
     this.icon,
+    this.maxLines = 3,
   });
 
   @override
@@ -87,7 +89,7 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
           SizedBox(height: rs(context, 4)),
           TextField(
             controller: widget.controller,
-            maxLines: 3,
+            maxLines: widget.maxLines,
             decoration: InputDecoration(
               prefixIcon: widget.icon != null ? Icon(widget.icon) : null,
               suffixIcon: Row(
