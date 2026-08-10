@@ -116,6 +116,39 @@ class MenuService {
     }
   }
 
+  Future<void> migrateCategories() async {
+    try {
+      debugPrint('MenuService: Starting category migration...');
+      final snapshot = await _menuCollection.get();
+      final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
+      bool changed = false;
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        String category = data['category'] ?? '';
+        String newCategory = category;
+
+        if (category == '肉弁当' || category == 'お弁当') newCategory = '厳選牛ステーキ弁当';
+        if (category == 'トッピング' || category == 'その他') newCategory = 'ドリンク・サイドメニュー';
+        if (category == '丼・重') newCategory = '丼もの';
+
+        if (newCategory != category) {
+          batch.update(doc.reference, {'category': newCategory});
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        await batch.commit();
+        debugPrint('MenuService: Migration completed.');
+      } else {
+        debugPrint('MenuService: No migration needed.');
+      }
+    } catch (e) {
+      debugPrint('MenuService Error (migrateCategories): $e');
+    }
+  }
+
   Future<void> seedMenuData() async {
     try {
       debugPrint('MenuService: Seeding initial menu data...');
@@ -129,21 +162,21 @@ class MenuService {
       final menus = [
         {
           'name': 'Bコンビ(特製ステーキ＆ハンバーグ)弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 1800,
           'imageUrl': 'assets/img/b_combo.webp',
           'ingredients': {'牛ステーキ肉': '100g', 'ハンバーグ': '120g', '白米': '250g'}
         },
         {
           'name': 'Aコンビ(ローストビーフ＆特製ステーキ)弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 1800,
           'imageUrl': 'assets/img/a_combo.webp',
           'ingredients': {'牛もも肉': '80g', '牛ステーキ肉': '100g', '白米': '250g'}
         },
         {
           'name': 'Cコンビ弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 1800,
           'imageUrl': 'assets/img/c_combo.webp',
           'ingredients': {'牛ステーキ肉': '100g', '唐揚げ': '2個', '白米': '250g'}
@@ -171,7 +204,7 @@ class MenuService {
         },
         {
           'name': 'ローストビーフ弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 1620,
           'imageUrl': 'assets/img/roast_beef.webp',
           'ingredients': {'牛もも肉': '120g', '白米': '250g'}
@@ -192,14 +225,14 @@ class MenuService {
         },
         {
           'name': '霜降りハンバーグ弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 2160,
           'imageUrl': 'assets/img/shimofuri_hamburg.jpg',
           'ingredients': {'和牛ハンバーグ': '180g', '白米': '250g'}
         },
         {
           'name': 'テリヤキハンバーグ弁当',
-          'category': 'お弁当',
+          'category': '厳選牛ステーキ弁当',
           'price': 1620,
           'imageUrl': 'assets/img/teriyaki_hamburg.webp',
           'ingredients': {'ハンバーグ': '150g', '照り焼きソース': '20ml'}

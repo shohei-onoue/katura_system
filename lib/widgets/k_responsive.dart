@@ -8,14 +8,12 @@ class KR {
   /// 現在の画面幅に基づくスケーリング係数を取得
   static double scale(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    // 制限を外して「同じ比率」を優先 (極端なサイズでも比率を維持)
     return screenWidth / baseWidth;
   }
 
   /// レスポンシブなフォントサイズを計算
   static double rf(BuildContext context, double baseFontSize) {
     double s = scale(context);
-    // 文字が消えないよう、最低 4px 程度は維持
     return (baseFontSize * s).clamp(4.0, 500.0);
   }
 
@@ -23,6 +21,18 @@ class KR {
   static double rs(BuildContext context, double baseSize) {
     return baseSize * scale(context);
   }
+
+  // --- 標準フォントサイズ定義 ---
+  static double fontTiny(BuildContext context) => rf(context, 11);
+  static double fontSmall(BuildContext context) => rf(context, 13);
+  static double fontMedium(BuildContext context) => rf(context, 15);
+  static double fontLarge(BuildContext context) => rf(context, 18);
+  static double fontXLarge(BuildContext context) => rf(context, 24);
+  static double fontHuge(BuildContext context) => rf(context, 48);
+
+  // --- 共通カラー定義 ---
+  static const Color backgroundLight = Color(0xFFF5F5F7);
+  static const Color cardBorder = Color(0xFFE0E0E4);
 }
 
 /// 短縮関数

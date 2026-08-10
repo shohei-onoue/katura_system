@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart' hide Ink;
-import 'package:flutter/cupertino.dart';
 import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_recognition.dart' as mlkit;
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
-import '../../../../widgets/k_text_field.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_dial_pad.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
@@ -42,7 +40,7 @@ class DeliveryDestinationStep extends StatelessWidget {
   final TextEditingController remarksController;
   final ValueNotifier<List<Map<String, dynamic>>> facilityResultsListenable;
   final ValueNotifier<bool> isLoadingListenable;
-  
+
   final VoidCallback onNext;
   final Function(bool) onModeToggle;
   final Function(String) onHistoryCategoryChanged;
@@ -208,9 +206,9 @@ class DeliveryDestinationStep extends StatelessWidget {
         ),
         ...filteredAddresses.map((fullAddr) {
           final parts = fullAddr.split(': ');
-          final facilityName = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
-          final addressOnly = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
-          final isSelected = addressControllerText == addressOnly && facilityControllerText == facilityName;
+          final fName = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
+          final aOnly = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
+          final isSelected = addressControllerText == aOnly && facilityControllerText == fName;
 
           return Card(
             margin: EdgeInsets.only(bottom: rs(context, 8)),
@@ -228,11 +226,11 @@ class DeliveryDestinationStep extends StatelessWidget {
                   children: [
                     Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
                     SizedBox(width: rs(context, 12)),
-                    SizedBox(width: rs(context, 90), child: Text('【${_extractGenre(facilityName)}】', style: TextStyle(fontSize: rf(context, 13), color: Colors.deepPurple, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: rs(context, 90), child: Text('【${_extractGenre(fName)}】', style: TextStyle(fontSize: rf(context, 13), color: Colors.deepPurple, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
                     SizedBox(width: rs(context, 8)),
-                    SizedBox(width: rs(context, 220), child: Text(facilityName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: rs(context, 220), child: Text(fName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
                     SizedBox(width: rs(context, 16)),
-                    Expanded(child: Text(addressOnly, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
+                    Expanded(child: Text(aOnly, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
                     if (isSelected) Icon(Icons.check_circle, color: Colors.orange, size: rs(context, 20)),
                   ],
                 ),
@@ -567,34 +565,24 @@ class DeliveryDestinationStep extends StatelessWidget {
 
   String _cleanResultAddress(String addr) {
     String res = addr.replaceAll('　', ' ').trim();
-    
-    // 1. "愛知県岡崎市" などの基本情報を取得
     final pref = '愛知県';
     final city = '岡崎市';
-    
-    // 2. 連続した重複を置換 (例: 愛知県愛知県 -> 愛知県)
     final List<String> regions = [pref, city];
     for (var region in regions) {
       while (res.contains('$region$region')) {
         res = res.replaceAll('$region$region', region);
       }
     }
-    
-    // 3. 全体構造としての重複を正規表現で一掃 (例: 愛知県岡崎市...愛知県岡崎市...)
-    // 前方一致の重複を削る (Google Maps API特有の「建物名 住所」連結への対策)
     final fullRegion = '$pref$city';
     if (res.startsWith(fullRegion)) {
       final tail = res.substring(fullRegion.length);
       if (tail.contains(fullRegion)) {
-        res = tail.trim(); // 後方の住所を生かし、前方の重複を削る
+        res = tail.trim();
       }
     }
-    
-    // 4. それでも頭に都道府県がない場合は補完 (検索条件に合わせる)
     if (!res.startsWith(pref) && !res.contains('県')) {
       res = '$pref$city$res';
     }
-
     return res.trim();
   }
 }
@@ -813,7 +801,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                           Text(step['title'], style: TextStyle(fontSize: rf(context, 11), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                           Text(isCompleted ? step['value'] : (isActive ? '選択中' : '-'), 
                             style: TextStyle(
-                              fontSize: rf(context, 13), 
+                              fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
                               color: isActive ? Colors.orange : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
@@ -855,7 +843,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         setState(() {
-                          tempPref = res['name'] ?? ""; // Prefecture
+                          tempPref = res['name'] ?? ""; 
                           tempCity = res['city'] ?? "";
                           tempTown = res['town'] ?? "";
                           phase = 3;
@@ -935,7 +923,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
           });
         },
         icon: Icon(isNumericMode ? Icons.abc : Icons.pin_drop),
-        label: Text(isNumericMode ? '地域名で選択' : '郵便番号で入力', 
+        label: Text(isNumericMode ? '地域名で選択' : '郵便番号で入力',
           style: const TextStyle(fontWeight: FontWeight.bold)),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: Colors.deepPurple, width: 2),
@@ -958,7 +946,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
         onTap: () => _handleKanaTap(baseChar, cycle, isMatch),
       ));
     }
-    keys.add(KDialKey(label: 'すべて', isHighlight: selectedInitial == 'すべて', onTap: () => setState(() { selectedInitial = 'すべて'; _refreshItems(); })));
+    keys.add(KDialKey(label: 'すべて', isHighlight: selectedInitial == 'すべて', onTap: _handleAllTap));
     if (phase > 0) keys.add(KDialKey(label: '戻る', onTap: _handleBack));
     return KDialPad(keys: keys);
   }
@@ -1021,6 +1009,14 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
     String next = isMatch ? cycle[(cycle.indexOf(selectedInitial) + 1) % cycle.length] : base;
     setState(() {
       selectedInitial = next;
+      isSearching = true;
+    });
+    _refreshItems();
+  }
+
+  Future<void> _handleAllTap() async {
+    setState(() {
+      selectedInitial = 'すべて';
       isSearching = true;
     });
     _refreshItems();
@@ -1113,7 +1109,7 @@ class _IntegratedAddressPickerDialog extends StatefulWidget {
 }
 
 class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPickerDialog> {
-  int phase = 0; // 0: Pref, 1: City, 2: Town, 3: Category/Genre or Keyword
+  int phase = 0; 
   String selectedInitial = 'すべて';
   List<String> items = [];
   bool isSearching = false;
@@ -1124,7 +1120,6 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   String? tempCategory;
   String? tempGenre;
 
-  // Keyword mode fields
   final mlkit.Ink _ink = mlkit.Ink();
   final KPenCanvasController _canvasController = KPenCanvasController();
   List<mlkit.StrokePoint> _currentStrokePoints = [];
@@ -1162,7 +1157,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     }
 
     if (tempPref.isNotEmpty && tempCity.isNotEmpty) {
-      phase = 2; // 町名選択から開始
+      phase = 2; 
       if (tempTown.isEmpty) {
         tempTown = "（すべて）";
         widget.onTownConfirmed(tempTown);
@@ -1170,7 +1165,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       }
       _loadTowns();
     } else if (tempPref.isNotEmpty) {
-      phase = 1; // 市区町村選択から開始
+      phase = 1; 
       _loadCities();
     } else {
       phase = 0;
@@ -1220,14 +1215,14 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
         width: rs(context, 900),
-        height: rs(context, 680), // ステッパー分少し高さを広げる
+        height: rs(context, 680), 
         padding: EdgeInsets.all(rs(context, 24)),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('地域・施設カテゴリの検索', 
+                Text('地域・施設カテゴリの検索',
                   style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepPurple)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
@@ -1247,13 +1242,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 height: rs(context, 60),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.isKeywordMode 
+                    backgroundColor: widget.isKeywordMode
                         ? (_recognizedKeyword.isNotEmpty ? Colors.deepPurple : Colors.grey)
                         : (tempCategory != null && tempGenre != null ? Colors.deepPurple : Colors.grey),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                   ),
-                  onPressed: widget.isKeywordMode 
+                  onPressed: widget.isKeywordMode
                       ? (_recognizedKeyword.isNotEmpty ? widget.onSearchSubmit : null)
                       : (tempCategory != null && tempGenre != null ? widget.onSearchSubmit : null),
                   child: Text('この条件で検索', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
@@ -1272,7 +1267,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       {'title': '市区町村', 'value': tempCity, 'phase': 1},
       {'title': '町名', 'value': tempTown, 'phase': 2},
       {
-        'title': widget.isKeywordMode ? 'キーワード' : 'カテゴリ', 
+        'title': widget.isKeywordMode ? 'キーワード' : 'カテゴリ',
         'value': widget.isKeywordMode ? _recognizedKeyword : (tempCategory ?? ''), 
         'phase': 3
       },
@@ -1335,7 +1330,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                             style: TextStyle(fontSize: rf(context, 11), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                           Text(isCompleted ? step['value'] : (isActive ? '選択中' : '-'), 
                             style: TextStyle(
-                              fontSize: rf(context, 13), 
+                              fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
                               color: isActive ? Colors.orange : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
@@ -1411,12 +1406,10 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
 
   Widget _buildKanaDialPad() {
     final List<KDialKey> keys = [];
-    
     for (var entry in kanaMap.entries) {
       final baseChar = entry.key;
       final cycle = entry.value;
       final isMatch = cycle.contains(selectedInitial);
-
       keys.add(KDialKey(
         label: isMatch ? selectedInitial : baseChar,
         subLabel: cycle.join(''),
@@ -1424,20 +1417,8 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         onTap: () => _handleKanaTap(baseChar, cycle, isMatch),
       ));
     }
-
-    keys.add(KDialKey(
-      label: 'すべて',
-      isHighlight: selectedInitial == 'すべて',
-      onTap: () => _handleAllTap(),
-    ));
-
-    if (phase > 0) {
-      keys.add(KDialKey(
-        label: '戻る',
-        onTap: () => _handleBack(),
-      ));
-    }
-
+    keys.add(KDialKey(label: 'すべて', isHighlight: selectedInitial == 'すべて', onTap: _handleAllTap));
+    if (phase > 0) keys.add(KDialKey(label: '戻る', onTap: _handleBack));
     return KDialPad(keys: keys);
   }
 
@@ -1602,13 +1583,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   }
 
   Widget _buildCategoryGenreSelector(BuildContext context) {
-    // ... 既存のカテゴリ選択UI ...
     final categories = AddressService.categoryHierarchy.keys.toList();
     final genres = tempCategory != null ? AddressService.categoryHierarchy[tempCategory]!.keys.toList() : [];
 
     return Row(
       children: [
-        // 左側: カテゴリリスト
         Expanded(
           flex: 4,
           child: Column(
@@ -1652,7 +1631,6 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         
         VerticalDivider(width: 32, color: Colors.grey.shade200),
 
-        // 右側: ジャンルリスト
         Expanded(
           flex: 6,
           child: Column(
@@ -1660,7 +1638,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             children: [
               Padding(
                 padding: EdgeInsets.only(bottom: rs(context, 12)),
-                child: Text(tempCategory == null ? '2. カテゴリを選択してください' : '2. ジャンルを選択 ($tempCategory)', 
+                child: Text(tempCategory == null ? '2. カテゴリを選択してください' : '2. ジャンルを選択 ($tempCategory)',
                   style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
               ),
               Expanded(
@@ -1706,40 +1684,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   }
 
   Future<void> _handleKanaTap(String base, List<String> cycle, bool isMatch) async {
-    String next;
-    if (!isMatch) {
-      next = base;
-    } else {
-      int idx = cycle.indexOf(selectedInitial);
-      next = cycle[(idx + 1) % cycle.length];
-    }
-    
-    // UIを即座に更新 (連打対応)
+    String next = isMatch ? cycle[(cycle.indexOf(selectedInitial) + 1) % cycle.length] : base;
     setState(() {
       selectedInitial = next;
       isSearching = true;
     });
-
-    try {
-      List<String> newList;
-      if (phase == 0) {
-        newList = await widget.onPrefInitialChanged(next);
-      } else if (phase == 1) {
-        newList = await widget.onCityInitialChanged(tempPref, next);
-      } else {
-        newList = await widget.onTownInitialChanged(tempPref, tempCity, next);
-      }
-
-      if (mounted) {
-        setState(() {
-          items = (phase == 2) ? ['（すべて）', ...newList] : newList;
-        });
-      }
-    } catch (e) {
-      debugPrint("Kana search error: $e");
-    } finally {
-      if (mounted) setState(() => isSearching = false);
-    }
+    _refreshItems();
   }
 
   Future<void> _handleAllTap() async {
@@ -1747,115 +1697,72 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       selectedInitial = 'すべて';
       isSearching = true;
     });
+    _refreshItems();
+  }
 
-    try {
-      List<String> newList;
-      if (phase == 0) {
-        newList = await widget.onPrefInitialChanged('すべて');
-      } else if (phase == 1) {
-        newList = await widget.onCityInitialChanged(tempPref, 'すべて');
-      } else {
-        newList = await widget.onTownInitialChanged(tempPref, tempCity, 'すべて');
-      }
-      
-      if (mounted) {
-        setState(() {
-          items = (phase == 2) ? ['（すべて）', ...newList] : newList;
-        });
-      }
-    } catch (e) {
-      debugPrint("All search error: $e");
-    } finally {
-      if (mounted) setState(() => isSearching = false);
+  Future<void> _refreshItems() async {
+    List<String> newList;
+    if (phase == 0) {
+      newList = await widget.onPrefInitialChanged(selectedInitial);
+    } else if (phase == 1) {
+      newList = await widget.onCityInitialChanged(tempPref, selectedInitial);
+    } else {
+      newList = await widget.onTownInitialChanged(tempPref, tempCity, selectedInitial);
+    }
+
+    if (mounted) {
+      setState(() {
+        items = (phase == 2 && selectedInitial == 'すべて') ? ['（すべて）', ...newList] : newList;
+        isSearching = false;
+      });
     }
   }
 
   Future<void> _handleItemSelect(String item) async {
     setState(() => isSearching = true);
-    try {
-      if (phase == 0) {
-        final newList = await widget.onCityInitialChanged(item, 'すべて');
-        widget.onPrefConfirmed(item);
-        if (mounted) {
-          setState(() {
-            tempPref = item;
-            tempCity = "";
-            tempTown = "";
-            phase = 1;
-            selectedInitial = 'すべて';
-            items = newList;
-          });
-        }
-      } else if (phase == 1) {
-        final newList = await widget.onTownInitialChanged(tempPref, item, 'すべて');
-        widget.onCityConfirmed(item);
-        if (mounted) {
-          setState(() {
-            tempCity = item;
-            tempTown = "（すべて）"; // デフォルトで「すべて」を選択
-            phase = 2;
-            selectedInitial = 'すべて';
-            items = ['（すべて）', ...newList];
-          });
-          // 親コンポーネントの状態も即座に更新
-          widget.onTownConfirmed("（すべて）");
-          widget.onAddressConfirmed(tempPref, item, "（すべて）");
-        }
-      } else if (phase == 2) {
-        widget.onTownConfirmed(item);
-        widget.onAddressConfirmed(tempPref, tempCity, item);
-        if (mounted) {
-          setState(() {
-            tempTown = item;
-            phase = 3; // カテゴリ・ジャンル選択へ
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Item selection error: $e");
-    } finally {
-      if (mounted) setState(() => isSearching = false);
+    if (phase == 0) {
+      final newList = await widget.onCityInitialChanged(item, 'すべて');
+      widget.onPrefConfirmed(item);
+      setState(() {
+        tempPref = item;
+        tempCity = "";
+        tempTown = "";
+        phase = 1;
+        selectedInitial = 'すべて';
+        items = newList;
+        isSearching = false;
+      });
+    } else if (phase == 1) {
+      final newList = await widget.onTownInitialChanged(tempPref, item, 'すべて');
+      widget.onCityConfirmed(item);
+      setState(() {
+        tempCity = item;
+        tempTown = "（すべて）"; 
+        phase = 2;
+        selectedInitial = 'すべて';
+        items = ['（すべて）', ...newList];
+        isSearching = false;
+      });
+      widget.onTownConfirmed("（すべて）");
+      widget.onAddressConfirmed(tempPref, item, "（すべて）");
+    } else if (phase == 2) {
+      widget.onTownConfirmed(item);
+      widget.onAddressConfirmed(tempPref, tempCity, item);
+      setState(() {
+        tempTown = item;
+        phase = 3; 
+        isSearching = false;
+      });
     }
   }
 
   Future<void> _handleBack() async {
     setState(() {
-      if (phase == 1) {
-        phase = 0;
-        tempPref = "";
-        tempCity = "";
-        tempTown = "";
-      } else if (phase == 2) {
-        phase = 1;
-        tempCity = "";
-        tempTown = "";
-      } else if (phase == 3) {
-        phase = 2;
-      }
+      if (phase == 1) { phase = 0; tempPref = ""; items = List.from(widget.initialPrefList); }
+      else if (phase == 2) { phase = 1; tempCity = ""; _loadCities(); }
+      else if (phase == 3) { phase = 2; _loadTowns(); }
       selectedInitial = 'すべて';
-      isSearching = true;
     });
-    
-    try {
-      List<String> newList = [];
-      if (phase == 0) {
-        newList = await widget.onPrefInitialChanged('すべて');
-      } else if (phase == 1) {
-        newList = await widget.onCityInitialChanged(tempPref, 'すべて');
-      } else if (phase == 2) {
-        newList = await widget.onTownInitialChanged(tempPref, tempCity, 'すべて');
-      }
-      
-      if (mounted) {
-        setState(() {
-          items = (phase == 2) ? ['（すべて）', ...newList] : newList;
-        });
-      }
-    } catch (e) {
-      debugPrint("Back error: $e");
-    } finally {
-      if (mounted) setState(() => isSearching = false);
-    }
   }
 }
 
@@ -1887,8 +1794,8 @@ class _AddressDialField extends StatelessWidget {
           onTap: isEnabled ? onTap : null,
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Container(
-            height: rs(context, 50), // 高さを50に固定してボタンと統一
-            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), // 上下パディングを抜いて中央配置
+            height: rs(context, 50), 
+            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), 
             decoration: BoxDecoration(
               color: isWarning ? Colors.pink.shade50 : (isEnabled ? Colors.white : Colors.grey.shade50),
               border: Border.all(color: isWarning ? Colors.pink.shade200 : (isEnabled ? Colors.grey.shade300 : Colors.grey.shade200), width: isWarning ? 2 : 1),
@@ -1901,7 +1808,7 @@ class _AddressDialField extends StatelessWidget {
                   child: Text(
                     value.isEmpty ? '未選択' : value,
                     style: TextStyle(
-                      fontSize: rf(context, 14), 
+                      fontSize: rf(context, 14),
                       color: !isEnabled ? Colors.grey.shade400 : (value.isEmpty ? Colors.grey : Colors.black87),
                       fontWeight: value.isNotEmpty ? FontWeight.bold : FontWeight.normal,
                     ),

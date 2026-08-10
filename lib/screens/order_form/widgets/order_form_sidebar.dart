@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../../models/order_model.dart';
 import '../../../models/customer_model.dart';
 import '../../../models/menu_model.dart';
 import '../../../../widgets/k_responsive.dart';
-import 'order_form_parts.dart';
+import '../../../../widgets/k_button.dart';
+import '../../../../widgets/k_date_time_display.dart';
 import 'sidebar/sidebar_phone_pad.dart';
-import 'sidebar/sidebar_results.dart';
 import 'sidebar/sidebar_history_detail.dart';
 import 'sidebar/sidebar_summary.dart';
 import 'sidebar/sidebar_analysis.dart';
 import 'sidebar/sidebar_ranking.dart';
-import 'sidebar/sidebar_destination_info.dart';
 
 class OrderFormSidebar extends StatefulWidget {
   final int currentStep;
@@ -23,8 +23,12 @@ class OrderFormSidebar extends StatefulWidget {
   final List<OrderModel> companyOrderHistory;
   final List<Map<String, dynamic>> facilitySearchCandidates;
   final OrderModel? selectedHistoryItem;
+  final String deliveryType;
   final DateTime deliveryDate;
   final DateTime selectedTime;
+  final bool isDateSelected;
+  final bool isTimeSelected;
+  final bool isTypeSelected;
   final String customerName;
   final String facilityName;
   final String address;
@@ -35,7 +39,14 @@ class OrderFormSidebar extends StatefulWidget {
   final Set<Marker> markers;
   final LatLng initialCenter;
   final String? deliveryDestinationImageUrl;
+  final List<Map<String, dynamic>> confirmedItems;
+  final Function(String, int)? onQuantityChanged;
   
+  // ゴミ回収情報
+  final bool trashPickupRequested;
+  final DateTime? trashPickupDateTime;
+  final String trashPickupLocation;
+
   final Function(String) onPhoneInput;
   final VoidCallback onPhoneClear;
   final VoidCallback onPhoneBackspace;
@@ -43,6 +54,7 @@ class OrderFormSidebar extends StatefulWidget {
   final VoidCallback onSidebarResultsClose;
   final Function(Map<String, dynamic>) onFacilitySelect;
   final VoidCallback onForceApiSearch;
+  final VoidCallback? onNext;
   final Function(LatLng)? onMapTap;
   final Function(LatLng)? onMarkerDragEnd;
   final bool isSearchResultsDialogOpen;
@@ -58,8 +70,12 @@ class OrderFormSidebar extends StatefulWidget {
     required this.companyOrderHistory,
     required this.facilitySearchCandidates,
     required this.selectedHistoryItem,
+    required this.deliveryType,
     required this.deliveryDate,
     required this.selectedTime,
+    this.isDateSelected = false,
+    this.isTimeSelected = false,
+    this.isTypeSelected = false,
     required this.customerName,
     required this.facilityName,
     required this.address,
@@ -69,6 +85,13 @@ class OrderFormSidebar extends StatefulWidget {
     required this.totalCount,
     required this.markers,
     required this.initialCenter,
+    this.onMarkerDragEnd,
+    this.deliveryDestinationImageUrl,
+    this.confirmedItems = const [],
+    this.onQuantityChanged,
+    required this.trashPickupRequested,
+    this.trashPickupDateTime,
+    required this.trashPickupLocation,
     required this.onPhoneInput,
     required this.onPhoneClear,
     required this.onPhoneBackspace,
@@ -76,9 +99,8 @@ class OrderFormSidebar extends StatefulWidget {
     required this.onSidebarResultsClose,
     required this.onFacilitySelect,
     required this.onForceApiSearch,
+    this.onNext,
     this.onMapTap,
-    this.onMarkerDragEnd,
-    this.deliveryDestinationImageUrl,
     this.isSearchResultsDialogOpen = false,
   });
 
@@ -103,12 +125,22 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
-                // 小数点誤差を排除した絶対ピクセル計算
                 final totalHeight = constraints.maxHeight.floorToDouble();
-                final halfHeight = (totalHeight / 2).floorToDouble();
-                final bottomAreaHeight = totalHeight - halfHeight - 1.0;
+                final width = constraints.maxWidth.floorToDouble();
 
-                return _buildContent(halfHeight, bottomAreaHeight);
+                // マップが表示されるステップ(2)では正方形(幅と同じ高さ)にする
+                final double topAreaHeight;
+                if (widget.currentStep == 2) {
+                  topAreaHeight = width;
+                } else if (widget.currentStep == 3) {
+                  topAreaHeight = 0; // ステップ3ではマップを非表示
+                } else {
+                  topAreaHeight = (totalHeight / 2).floorToDouble();
+                }
+
+                final bottomAreaHeight = totalHeight - topAreaHeight - 1.0;
+
+                return _buildContent(topAreaHeight, bottomAreaHeight);
               },
             ),
             if (widget.isLoading)
@@ -122,7 +154,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     );
   }
 
-  Widget _buildContent(double halfHeight, double bottomHeight) {
+  Widget _buildContent(double topAreaHeight, double bottomHeight) {
     // ステップ0 (番号入力)
     if (widget.currentStep == 0) {
       return SingleChildScrollView(
@@ -140,7 +172,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       return Column(
         children: [
           SizedBox(
-            height: halfHeight,
+            height: topAreaHeight,
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
               child: SidebarAnalysis(
@@ -160,84 +192,325 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       );
     }
 
-    // ステップ2 (配達先確定) 以降
-    return Column(
-      children: [
-        // 上部 50%: マップ (物理サイズ固定でエラー封殺)
-        SizedBox(
-          height: halfHeight,
-          child: widget.isSearchResultsDialogOpen
-              ? Container(
-                  color: Colors.grey.shade100,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.map_outlined, size: rs(context, 48), color: Colors.grey.shade400),
-                        SizedBox(height: rs(context, 12)),
-                        Text('施設を選択中...', 
-                          style: TextStyle(fontSize: rf(context, 16), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                      ],
+    // ステップ2 (配達先確定)
+    if (widget.currentStep == 2) {
+      return Column(
+        children: [
+          SizedBox(
+            height: topAreaHeight,
+            child: widget.isSearchResultsDialogOpen
+                ? Container(
+                    color: Colors.grey.shade100,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map_outlined, size: rs(context, 48), color: Colors.grey.shade400),
+                          SizedBox(height: rs(context, 12)),
+                          Text('施設を選択中...', 
+                            style: TextStyle(fontSize: rf(context, 16), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  )
+                : GoogleMap(
+                    key: _mapKey,
+                    initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
+                    onMapCreated: widget.onMapCreated,
+                    onTap: widget.onMapTap,
+                    markers: widget.markers.map((m) {
+                      if (m.markerId.value == 'dest') {
+                        return m.copyWith(
+                          draggableParam: true,
+                          onDragEndParam: widget.onMarkerDragEnd,
+                        );
+                      }
+                      return m;
+                    }).toSet(),
+                    myLocationButtonEnabled: false,
+                    zoomControlsEnabled: true,
+                  ),
+          ),
+          const Divider(height: 1, thickness: 1),
+          SizedBox(
+            height: bottomHeight,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildInfoTextSection(),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ステップ3 (配達日時) - 決定事項を大きく表示
+    if (widget.currentStep == 3) {
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(rs(context, 16)),
+            color: Colors.blueGrey.shade50,
+            child: Row(
+              children: [
+                Icon(Icons.fact_check, color: Colors.blueGrey, size: rs(context, 20)),
+                SizedBox(width: 8),
+                Text('現在の決定事項', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade900)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(rs(context, 16)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDecisionCard(
+                    title: '配達・引取情報',
+                    icon: Icons.local_shipping,
+                    color: Colors.deepPurple,
+                    child: KDateTimeDisplay(
+                      label: '', 
+                      dateTime: widget.isDateSelected && widget.isTimeSelected 
+                        ? widget.deliveryDate.copyWith(hour: widget.selectedTime.hour, minute: widget.selectedTime.minute) 
+                        : null,
+                      onTap: () {}, // サイドバーからは操作不可
+                      themeColor: Colors.deepPurple,
                     ),
                   ),
-                )
-              : GoogleMap(
-                  key: _mapKey,
-                  initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
-                  onMapCreated: widget.onMapCreated,
-                  onTap: widget.onMapTap,
-                  markers: widget.markers.map((m) {
-                    if (m.markerId.value == 'dest') {
-                      return m.copyWith(
-                        draggableParam: true,
-                        onDragEndParam: widget.onMarkerDragEnd,
-                      );
-                    }
-                    return m;
-                  }).toSet(),
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: true,
-                ),
-        ),
-        const Divider(height: 1, thickness: 1),
-        // 下部 50%: 情報表示エリア
-        SizedBox(
-          height: bottomHeight,
+                  SizedBox(height: rs(context, 16)),
+                  if (widget.trashPickupRequested)
+                    _buildDecisionCard(
+                      title: 'ゴミ回収情報',
+                      icon: Icons.delete_outline,
+                      color: Colors.orange,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          KDateTimeDisplay(
+                            label: '', 
+                            dateTime: widget.trashPickupDateTime,
+                            onTap: () {},
+                            themeColor: Colors.orange,
+                          ),
+                          SizedBox(height: rs(context, 8)),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+                            child: Row(
+                              children: [
+                                Icon(Icons.place_outlined, size: 14, color: Colors.orange.shade700),
+                                SizedBox(width: 8),
+                                Text('回収場所: ${widget.trashPickupLocation}', 
+                                  style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.orange.shade900)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    _buildDecisionCard(
+                      title: 'ゴミ回収',
+                      icon: Icons.delete_sweep_outlined,
+                      color: Colors.grey,
+                      child: const Text('ゴミ回収希望なし', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    ),
+                  
+                  const Divider(height: 48),
+                  Text('[基本情報]', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                  SizedBox(height: 8),
+                  _buildInfoRow('顧客名：', widget.customerName, TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+                  _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, TextStyle(fontSize: rf(context, 14))),
+                  _buildInfoRow('受取人：', widget.receiverName.isEmpty ? "未確定" : widget.receiverName, TextStyle(fontSize: rf(context, 14))),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // ステップ4 (注文内容) - カート表示
+    if (widget.currentStep == 4) {
+      return _buildCartView();
+    }
+
+    // ステップ5 (支払・完了) 以降
+    return Column(
+      children: [
+        Expanded(
           child: SingleChildScrollView(
             child: Column(
               children: [
-                // 固定表示: 配達先テキスト
-                _buildInfoTextSection(),
-                
-                // ステップ4以降はサマリーや分析を表示
-                if (widget.currentStep > 3)
-                  Column(
-                    children: [
-                      if (widget.selectedHistoryItem != null) 
-                        SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
-                      else 
-                        SidebarSummary(
-                          date: widget.deliveryDate, 
-                          time: widget.selectedTime, 
-                          customerName: widget.customerName, 
-                          receiverName: widget.receiverName, 
-                          totalPrice: widget.totalPrice, 
-                          totalCount: widget.totalCount
-                        ),
-                      const Divider(height: 1),
-                      Padding(
-                        padding: EdgeInsets.all(rs(context, 24)),
-                        child: SidebarAnalysis(
-                          history: widget.customerOrderHistory, 
-                        ),
-                      ),
-                    ],
+                if (widget.selectedHistoryItem != null) 
+                  SidebarHistoryDetail(order: widget.selectedHistoryItem!) 
+                else 
+                  SidebarSummary(
+                    date: widget.deliveryDate, 
+                    time: widget.selectedTime, 
+                    customerName: widget.customerName, 
+                    receiverName: widget.receiverName, 
+                    totalPrice: widget.totalPrice, 
+                    totalCount: widget.totalCount
                   ),
+                const Divider(height: 1),
+                Padding(
+                  padding: EdgeInsets.all(rs(context, 24)),
+                  child: SidebarAnalysis(
+                    history: widget.customerOrderHistory, 
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDecisionCard({required String title, required IconData icon, required Color color, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(rs(context, 16)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              SizedBox(width: 8),
+              Text(title, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: color)),
+            ],
+          ),
+          SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCartView() {
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(rs(context, 16)),
+          color: Colors.deepOrange.shade50,
+          child: Row(
+            children: [
+              Icon(Icons.shopping_cart, color: Colors.deepOrange, size: rs(context, 20)),
+              SizedBox(width: 8),
+              Text('カートの中身', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.deepOrange.shade900)),
+              Spacer(),
+              Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: widget.confirmedItems.isEmpty
+              ? Center(child: Text('カートは空です', style: TextStyle(color: Colors.grey)))
+              : ListView.separated(
+                  padding: EdgeInsets.all(rs(context, 16)),
+                  itemCount: widget.confirmedItems.length,
+                  separatorBuilder: (_, __) => Divider(height: 24),
+                  itemBuilder: (context, i) {
+                    final item = widget.confirmedItems[i];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item['name'], style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('¥${item['price']}', style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 12))),
+                            Spacer(),
+                            _buildCompactCounter(item),
+                          ],
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text('小計: ¥${item['price'] * item['quantity']}', 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 13))),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+        Container(
+          padding: EdgeInsets.all(rs(context, 20)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('合計金額', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey.shade700)),
+                  Text('¥${widget.totalPrice}', style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                ],
+              ),
+              SizedBox(height: 4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('合計数量', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey.shade700)),
+                  Text('${widget.totalCount} 個', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+                ],
+              ),
+              if (widget.confirmedItems.isNotEmpty) ...[
+                SizedBox(height: 20),
+                KButton(
+                  label: '注文内容を確定する',
+                  onPressed: widget.onNext ?? () {},
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactCounter(Map<String, dynamic> item) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _counterBtn(Icons.remove, () {
+          if (item['quantity'] > 0) widget.onQuantityChanged?.call(item['id'], item['quantity'] - 1);
+        }),
+        Container(
+          width: rs(context, 40),
+          alignment: Alignment.center,
+          child: Text('${item['quantity']}', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+        ),
+        _counterBtn(Icons.add, () {
+          widget.onQuantityChanged?.call(item['id'], item['quantity'] + 1);
+        }),
+      ],
+    );
+  }
+
+  Widget _counterBtn(IconData icon, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(icon, size: 16, color: Colors.deepPurple),
+      ),
     );
   }
 
@@ -263,6 +536,14 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('[顧客情報]', style: labelStyle),
+          SizedBox(height: rs(context, 8)),
+          _buildInfoRow('顧客名：', widget.currentCustomer?.name ?? "-", valueStyle),
+          _buildInfoRow('企業名：', widget.currentCustomer?.companyName ?? "-", valueStyle),
+          _buildInfoRow('電話番号：', widget.currentCustomer?.phoneNumber ?? "-", valueStyle),
+          
+          const Divider(height: 16),
+
           Text('[配達先情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
           _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, 
@@ -271,6 +552,18 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               widget.address.isEmpty ? unconfirmedStyle : valueStyle),
           _buildInfoRow('座標：', coordsText ?? "未確定", 
               coordsText == null ? unconfirmedStyle : valueStyle),
+
+          const Divider(height: 16),
+          Text('[配達日時情報]', style: labelStyle),
+          SizedBox(height: rs(context, 8)),
+          _buildInfoRow('区分：', widget.isTypeSelected ? widget.deliveryType : "未確定", 
+              widget.isTypeSelected ? valueStyle : unconfirmedStyle),
+          _buildInfoRow('配達日：', widget.isDateSelected ? DateFormat('yyyy/MM/dd(E)', 'ja_JP').format(widget.deliveryDate) : "未確定", 
+              widget.isDateSelected ? valueStyle : unconfirmedStyle),
+          _buildInfoRow('時間：', widget.isTimeSelected ? "${widget.selectedTime.hour}:${widget.selectedTime.minute.toString().padLeft(2, '0')}" : "未確定", 
+              widget.isTimeSelected ? valueStyle : unconfirmedStyle),
+          _buildInfoRow('受取人：', widget.receiverName.isEmpty ? "未確定" : widget.receiverName, 
+              widget.receiverName.isEmpty ? unconfirmedStyle : valueStyle),
 
           if (widget.deliveryDestinationImageUrl != null) ...[
             const Divider(height: 16),

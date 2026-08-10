@@ -8,6 +8,9 @@ class KMultimodalTextField extends StatefulWidget {
   final TextEditingController controller;
   final IconData? icon;
   final int maxLines;
+  final bool showLabel;
+  final double? height;
+  final String? prefixText;
 
   const KMultimodalTextField({
     super.key,
@@ -15,6 +18,9 @@ class KMultimodalTextField extends StatefulWidget {
     required this.controller,
     this.icon,
     this.maxLines = 3,
+    this.showLabel = true,
+    this.height,
+    this.prefixText,
   });
 
   @override
@@ -80,35 +86,64 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: widget.height != null ? 0 : 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(widget.label, 
-            style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-          SizedBox(height: rs(context, 4)),
-          TextField(
-            controller: widget.controller,
-            maxLines: widget.maxLines,
-            decoration: InputDecoration(
-              prefixIcon: widget.icon != null ? Icon(widget.icon) : null,
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(_isListening ? Icons.mic : Icons.mic_none, 
-                      color: _isListening ? Colors.red : Colors.deepPurple),
-                    onPressed: _listen,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, color: Colors.deepPurple),
-                    onPressed: _openPenInput,
-                  ),
-                ],
+          if (widget.showLabel && widget.label.isNotEmpty) ...[
+            Text(widget.label, 
+              style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+            SizedBox(height: rs(context, 4)),
+          ],
+          SizedBox(
+            height: widget.height,
+            child: TextField(
+              controller: widget.controller,
+              maxLines: widget.maxLines,
+              textAlignVertical: widget.height != null ? TextAlignVertical.center : null,
+              decoration: InputDecoration(
+                isDense: widget.height != null,
+                contentPadding: widget.height != null 
+                    ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8) 
+                    : null,
+                prefixIcon: widget.icon != null ? Icon(widget.icon, size: widget.height != null ? 18 : null) : null,
+                prefix: widget.prefixText != null 
+                  ? Text(
+                      widget.prefixText!,
+                      style: TextStyle(
+                        fontSize: rf(context, 14),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    )
+                  : null,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(_isListening ? Icons.mic : Icons.mic_none, 
+                        color: _isListening ? Colors.red : Colors.deepPurple,
+                        size: widget.height != null ? 18 : null),
+                      onPressed: _listen,
+                      padding: EdgeInsets.zero,
+                      constraints: widget.height != null ? const BoxConstraints() : null,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.edit, 
+                        color: Colors.deepPurple,
+                        size: widget.height != null ? 18 : null),
+                      onPressed: _openPenInput,
+                      padding: EdgeInsets.zero,
+                      constraints: widget.height != null ? const BoxConstraints() : null,
+                    ),
+                    if (widget.height != null) const SizedBox(width: 8),
+                  ],
+                ),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(widget.height != null ? 8 : 12)),
+                filled: true,
+                fillColor: Colors.white,
               ),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              filled: true,
-              fillColor: Colors.white,
             ),
           ),
         ],

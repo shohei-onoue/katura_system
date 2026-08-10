@@ -4,6 +4,8 @@ import '../../../widgets/k_responsive.dart';
 
 class CustomerDataTable extends StatelessWidget {
   final List<Customer> customers;
+  final String? selectedCustomerId;
+  final Function(Customer) onSelect;
   final Function(Customer) onShowDetail;
   final Function(Customer) onEdit;
   final Function(Customer) onDelete;
@@ -11,6 +13,8 @@ class CustomerDataTable extends StatelessWidget {
   const CustomerDataTable({
     super.key,
     required this.customers,
+    this.selectedCustomerId,
+    required this.onSelect,
     required this.onShowDetail,
     required this.onEdit,
     required this.onDelete,
@@ -18,10 +22,9 @@ class CustomerDataTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 列幅の定義 (レスポンシブ)
+    // 列幅の定義 (レスポンスシブ)
     final double nameWidth = rs(context, 160);
     final double companyWidth = rs(context, 200);
-    final double phoneWidth = rs(context, 150);
     final double actionWidth = rs(context, 60);
 
     return Padding(
@@ -35,6 +38,7 @@ class CustomerDataTable extends StatelessWidget {
         ),
         child: Column(
           children: [
+            // 固定ヘッダー
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
               decoration: BoxDecoration(
@@ -51,12 +55,8 @@ class CustomerDataTable extends StatelessWidget {
                     width: companyWidth,
                     child: Text('企業名', style: _headerStyle(context)),
                   ),
-                  SizedBox(
-                    width: phoneWidth,
-                    child: Text('電話番号', style: _headerStyle(context)),
-                  ),
                   Expanded(
-                    child: Text('住所', style: _headerStyle(context)),
+                    child: Text('電話番号', style: _headerStyle(context)),
                   ),
                   SizedBox(
                     width: actionWidth,
@@ -72,67 +72,56 @@ class CustomerDataTable extends StatelessWidget {
                 separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100]),
                 itemBuilder: (context, index) {
                   final customer = customers[index];
-                  return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // 氏名列
-                        SizedBox(
-                          width: nameWidth,
-                          child: Text(
-                            customer.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: rf(context, 14),
-                              color: Colors.black87,
+                  final isSelected = customer.id == selectedCustomerId;
+
+                  return InkWell(
+                    onTap: () => onSelect(customer),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      color: isSelected ? Colors.deepPurple.withValues(alpha: 0.05) : null,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // 氏名列
+                          SizedBox(
+                            width: nameWidth,
+                            child: Text(
+                              customer.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: rf(context, 14),
+                                color: isSelected ? Colors.deepPurple : Colors.black87,
+                              ),
                             ),
                           ),
-                        ),
-                        // 企業名
-                        SizedBox(
-                          width: companyWidth,
-                          child: Text(
-                            customer.companyName.isEmpty ? '-' : customer.companyName,
-                            style: TextStyle(fontSize: rf(context, 14)),
-                          ),
-                        ),
-                        // 電話番号
-                        SizedBox(
-                          width: phoneWidth,
-                          child: Text(
-                            customer.phoneNumber,
-                            style: TextStyle(fontSize: rf(context, 14)),
-                          ),
-                        ),
-                        // 住所 (自動改行)
-                        Expanded(
-                          child: Text(
-                            customer.address,
-                            style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey[700]),
-                            softWrap: true,
-                          ),
-                        ),
-                        // 操作 (PopupMenu)
-                        SizedBox(
-                          width: actionWidth,
-                          child: Center(
-                            child: PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert, color: Colors.grey),
-                              onSelected: (value) {
-                                if (value == 'detail') onShowDetail(customer);
-                                if (value == 'edit') onEdit(customer);
-                                if (value == 'delete') onDelete(customer);
-                              },
-                              itemBuilder: (context) => [
-                                _buildPopupItem('detail', Icons.info_outline, '詳細確認', Colors.deepOrange),
-                                _buildPopupItem('edit', Icons.edit, '編集', Colors.blue),
-                                _buildPopupItem('delete', Icons.delete_outline, '削除', Colors.red),
-                              ],
+                          // 電話番号
+                          Expanded(
+                            child: Text(
+                              customer.phoneNumber,
+                              style: TextStyle(fontSize: rf(context, 14)),
                             ),
                           ),
-                        ),
-                      ],
+                          // 操作 (PopupMenu)
+                          SizedBox(
+                            width: actionWidth,
+                            child: Center(
+                              child: PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                onSelected: (value) {
+                                  if (value == 'detail') onShowDetail(customer);
+                                  if (value == 'edit') onEdit(customer);
+                                  if (value == 'delete') onDelete(customer);
+                                },
+                                itemBuilder: (context) => [
+                                  _buildPopupItem('detail', Icons.info_outline, '詳細確認', Colors.deepOrange),
+                                  _buildPopupItem('edit', Icons.edit, '編集', Colors.blue),
+                                  _buildPopupItem('delete', Icons.delete_outline, '削除', Colors.red),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },

@@ -7,6 +7,7 @@ import '../order_form_parts.dart';
 class CustomerConfirmationStep extends StatelessWidget {
   final TextEditingController phoneController;
   final Customer? currentCustomer;
+  final String phoneDisplay; // 受電番号
   final VoidCallback onNext;
   final VoidCallback onBack;
 
@@ -14,6 +15,7 @@ class CustomerConfirmationStep extends StatelessWidget {
     super.key,
     required this.phoneController,
     required this.currentCustomer,
+    required this.phoneDisplay,
     required this.onNext,
     required this.onBack,
   });
@@ -27,8 +29,11 @@ class CustomerConfirmationStep extends StatelessWidget {
     return OrderFormCard(
       title: '受注者（本人）の確認',
       icon: Icons.person_search,
-      trailing: daysSince != null 
-          ? Container(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (daysSince != null) ...[
+            Container(
               padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 6)),
               decoration: BoxDecoration(
                 color: (daysSince > 90) ? Colors.red.shade50 : Colors.blue.shade50,
@@ -50,8 +55,13 @@ class CustomerConfirmationStep extends StatelessWidget {
                   ),
                 ],
               ),
-            )
-          : null,
+            ),
+            SizedBox(width: rs(context, 16)),
+          ],
+          Text('受電: $phoneDisplay', 
+            style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+        ],
+      ),
       child: Column(
         children: [
           TextField(
@@ -69,7 +79,7 @@ class CustomerConfirmationStep extends StatelessWidget {
             children: [
               Expanded(
                 child: SizedBox(
-                  height: rs(context, 50), // KButtonと同じ50に統一
+                  height: rs(context, 50),
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.grey),

@@ -42,7 +42,7 @@ class KDialPad extends StatelessWidget {
 
         return ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: key.backgroundColor ?? 
+            backgroundColor: key.backgroundColor ??
               (key.isHighlight ? Colors.deepPurple : (isSpecial ? Colors.orange.shade800 : Colors.grey.shade50)),
             foregroundColor: key.foregroundColor ?? (key.isHighlight || isSpecial ? Colors.white : Colors.black87),
             elevation: key.isHighlight ? 4 : 0,
@@ -53,16 +53,16 @@ class KDialPad extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(key.label, 
+              Text(key.label,
                 style: TextStyle(
-                  fontSize: rf(context, key.label.length > 2 ? 16 : 24), 
+                  fontSize: rf(context, key.label.length > 2 ? 16 : 24),
                   fontWeight: FontWeight.bold
                 )
               ),
               if (key.subLabel != null)
-                Text(key.subLabel!, 
+                Text(key.subLabel!,
                   style: TextStyle(
-                    fontSize: rf(context, 9), 
+                    fontSize: rf(context, 9),
                     color: key.isHighlight ? Colors.white70 : Colors.grey
                   )
                 ),

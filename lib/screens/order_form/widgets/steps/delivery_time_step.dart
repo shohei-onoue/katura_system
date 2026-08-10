@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_choice_group.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_button.dart';
+import '../../../../widgets/k_date_time_selection_dialog.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_dial_pad.dart';
 import '../order_form_parts.dart';
@@ -16,13 +16,32 @@ class DeliveryTimeStep extends StatefulWidget {
   final TimeOfDay timeMin;
   final TimeOfDay timeMax;
   final int timeInterval;
+  final bool isDateSelected;
+  final bool isTimeSelected;
+  final bool isTypeSelected;
   final TextEditingController receiverController;
   final Customer? currentCustomer;
   final String facilityName;
+  final String phoneDisplay;
+
+  final bool trashPickupRequested;
+  final DateTime? trashPickupDateTime;
+  final String trashPickupLocation;
+  final TextEditingController trashPickupLocationController;
+  
+  final TimeOfDay trashTimeMin;
+  final TimeOfDay trashTimeMax;
+  final int trashTimeInterval;
+
+  final Function(bool) onTrashPickupRequestedChanged;
+  final Function(DateTime) onTrashPickupDateTimeChanged;
+  final Function(String) onTrashPickupLocationChanged;
+
   final Function(DateTime) onDateSelected;
   final Function(String) onTypeSelected;
   final Function(DateTime) onTimeSelected;
   final Function(TimeOfDay, TimeOfDay, int) onTimeSettingsChanged;
+  final Function(TimeOfDay, TimeOfDay, int) onTrashTimeSettingsChanged;
   final VoidCallback onNext;
 
   const DeliveryTimeStep({
@@ -33,13 +52,28 @@ class DeliveryTimeStep extends StatefulWidget {
     required this.timeMin,
     required this.timeMax,
     required this.timeInterval,
+    required this.isDateSelected,
+    required this.isTimeSelected,
+    required this.isTypeSelected,
     required this.receiverController,
     required this.currentCustomer,
     required this.facilityName,
+    required this.phoneDisplay,
+    required this.trashPickupRequested,
+    required this.trashPickupDateTime,
+    required this.trashPickupLocation,
+    required this.trashPickupLocationController,
+    required this.trashTimeMin,
+    required this.trashTimeMax,
+    required this.trashTimeInterval,
+    required this.onTrashPickupRequestedChanged,
+    required this.onTrashPickupDateTimeChanged,
+    required this.onTrashPickupLocationChanged,
     required this.onDateSelected,
     required this.onTypeSelected,
     required this.onTimeSelected,
     required this.onTimeSettingsChanged,
+    required this.onTrashTimeSettingsChanged,
     required this.onNext,
   });
 
@@ -48,52 +82,47 @@ class DeliveryTimeStep extends StatefulWidget {
 }
 
 class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
-  String _receiverMode = 'ご本人様'; // 'ご本人様', '履歴', 'その他'
+  String _receiverMode = 'ご本人様'; 
 
   @override
   void initState() {
     super.initState();
-    // 初期値の判定
     if (widget.currentCustomer != null && widget.receiverController.text == widget.currentCustomer!.name) {
       _receiverMode = 'ご本人様';
     } else if (widget.receiverController.text.isNotEmpty) {
-      _receiverMode = 'その他';
+      _receiverMode = '新規追加';
+    } else {
+      if (widget.currentCustomer != null) {
+        widget.receiverController.text = widget.currentCustomer!.name;
+        _receiverMode = 'ご本人様';
+      }
     }
+  }
+
+  bool get _isAllValid {
+    return widget.isDateSelected && 
+           widget.isTimeSelected && 
+           widget.isTypeSelected && 
+           widget.receiverController.text.isNotEmpty;
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<DateTime> slots = [];
-    final int interval = widget.timeInterval > 0 ? widget.timeInterval : 15;
-    final startMinutes = widget.timeMin.hour * 60 + widget.timeMin.minute;
-    final endMinutes = widget.timeMax.hour * 60 + widget.timeMax.minute;
-    
-    int currentM = startMinutes;
-    while (currentM <= endMinutes) {
-      slots.add(DateTime(widget.deliveryDate.year, widget.deliveryDate.month, widget.deliveryDate.day, currentM ~/ 60, currentM % 60));
-      currentM += interval;
-    }
-    if (slots.isEmpty) slots.add(DateTime(widget.deliveryDate.year, widget.deliveryDate.month, widget.deliveryDate.day, 12, 0));
-
-    int initialIndex = slots.indexWhere((dt) => dt.hour == widget.selectedTime.hour && dt.minute == widget.selectedTime.minute);
-    if (initialIndex == -1) initialIndex = 0;
-
     return OrderFormCard(
       title: '配達日時・受取人の詳細設定',
       icon: Icons.timer,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 左側: 区分とカレンダー (40%)
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      trailing: Text('受電: ${widget.phoneDisplay}', 
+        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. 配達・引取り区分
+            _buildSectionHeader('① 配達・引取り区分'),
+            Row(
               children: [
-                Text('配達・引取区分', style: _sectionTitleStyle(context)),
-                SizedBox(height: rs(context, 8)),
-                SizedBox(
-                  height: rs(context, 44),
+                Expanded(
+                  flex: 3,
                   child: KChoiceGroup(
                     label: '', 
                     selectedValue: widget.deliveryType, 
@@ -105,113 +134,295 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                     showLabel: false,
                   ),
                 ),
-                SizedBox(height: rs(context, 24)),
-                Text('配達日を選択', style: _sectionTitleStyle(context)),
-                SizedBox(height: rs(context, 8)),
-                _buildCalendar(context),
+                SizedBox(width: rs(context, 12)),
+                Expanded(
+                  flex: 7,
+                  child: _buildDateTimeDisplayField(
+                    context, 
+                    widget.deliveryDate, 
+                    widget.selectedTime, 
+                    widget.isDateSelected,
+                    widget.isTimeSelected,
+                    Colors.deepPurple,
+                    () => _showDateTimeDialog(context, isTrash: false),
+                    () => _showSettingsCustomDialog(context, isTrash: false),
+                  ),
+                ),
               ],
             ),
-          ),
-          
-          SizedBox(width: rs(context, 32)),
-          VerticalDivider(width: 1, color: Colors.grey.shade200),
-          SizedBox(width: rs(context, 32)),
+            SizedBox(height: rs(context, 10)),
 
-          // 右側: 時間と受取人 (60%)
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 時間選択
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('希望時間（ドラム選択）', style: _sectionTitleStyle(context)),
-                    IconButton(
-                      icon: const Icon(Icons.settings, color: Colors.deepPurple),
-                      onPressed: () => _showTimeSettingsDialog(context),
+            // 2. ゴミ回収の日時
+            _buildSectionHeader('② ゴミ回収の日時'),
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: KChoiceGroup<bool>(
+                      label: '',
+                      selectedValue: widget.trashPickupRequested,
+                      items: [
+                        KChoiceItem(label: 'なし', value: false),
+                        KChoiceItem(label: 'あり', value: true),
+                      ],
+                      onSelected: (val) {
+                        widget.onTrashPickupRequestedChanged(val);
+                      },
+                      showLabel: false,
+                      selectedColor: Colors.orange,
                     ),
+                  ),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(
+                    flex: 7,
+                    child: widget.trashPickupRequested ? _buildDateTimeDisplayField(
+                      context, 
+                      widget.trashPickupDateTime ?? widget.deliveryDate, 
+                      widget.trashPickupDateTime ?? widget.deliveryDate, 
+                      widget.trashPickupDateTime != null,
+                      widget.trashPickupDateTime != null,
+                      Colors.orange,
+                      () => _showDateTimeDialog(context, isTrash: true),
+                      () => _showSettingsCustomDialog(context, isTrash: true),
+                    ) : Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.transparent), // Align with fields
+                            ),
+                            child: Text(
+                              'ゴミ回収なし',
+                              style: TextStyle(
+                                fontSize: rf(context, 14), 
+                                fontWeight: FontWeight.bold, 
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: rs(context, 8)), // Keep consistent spacing
+                        SizedBox(width: rs(context, 32)), 
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: rs(context, 10)),
+            _buildTrashLocationArea(context),
+            SizedBox(height: rs(context, 10)),
+
+            // 3. 受取人の選択
+            _buildSectionHeader('③ 受取人の選択'),
+            _buildReceiverArea(context),
+
+            SizedBox(height: rs(context, 20)),
+            Center(
+              child: KButton(
+                label: '注文商品の選択へ', 
+                onPressed: _isAllValid ? widget.onNext : () {},
+                color: _isAllValid ? Colors.deepPurple : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {Widget? trailing}) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: rs(context, 10)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: TextStyle(
+            fontSize: rf(context, 15), 
+            fontWeight: FontWeight.bold, 
+            color: Colors.blueGrey.shade800,
+          )),
+          trailing ?? const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateTimeDisplayField(
+    BuildContext context, 
+    DateTime date, 
+    DateTime time, 
+    bool isDateSelected,
+    bool isTimeSelected, 
+    Color color,
+    VoidCallback onTap,
+    VoidCallback onSettingsPressed,
+  ) {
+    final String dateText = isDateSelected ? DateFormat('yyyy年M月d日').format(date) : "未設定";
+    final String timeText = isTimeSelected ? "${time.hour}:${time.minute.toString().padLeft(2, '0')}" : "未設定";
+
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text(
+                      "日付：$dateText",
+                      style: TextStyle(
+                        fontSize: rf(context, 14), 
+                        fontWeight: FontWeight.bold, 
+                        color: isDateSelected ? Colors.black87 : Colors.grey,
+                      ),
+                    ),
+                    SizedBox(width: 24),
+                    Text(
+                      "時間：$timeText",
+                      style: TextStyle(
+                        fontSize: rf(context, 14), 
+                        fontWeight: FontWeight.bold, 
+                        color: isTimeSelected ? Colors.black87 : Colors.grey,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.arrow_drop_down, color: Colors.grey.shade400),
                   ],
                 ),
-                Container(
-                  height: rs(context, 140),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.grey.shade50,
-                  ),
-                  child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(initialItem: initialIndex),
-                    itemExtent: rs(context, 40),
-                    onSelectedItemChanged: (index) {
-                      if (index >= 0 && index < slots.length) widget.onTimeSelected(slots[index]);
-                    },
-                    children: slots.map((dt) => Center(
-                      child: Text(
-                        "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}",
-                        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold),
-                      ),
-                    )).toList(),
-                  ),
-                ),
-                
-                SizedBox(height: rs(context, 32)),
-                
-                // 受取人選択
-                Text('受取人の選択', style: _sectionTitleStyle(context)),
-                SizedBox(height: rs(context, 12)),
-                _buildReceiverModeToggle(context),
-                
-                SizedBox(height: rs(context, 20)),
-                _buildReceiverInputArea(context),
-                
-                const SizedBox(height: 64),
-                KButton(label: '注文商品の選択へ', onPressed: widget.onNext, color: Colors.deepPurple),
-              ],
+              ),
             ),
+          ),
+          VerticalDivider(width: 1, thickness: 1, color: Colors.grey.shade200, indent: 8, endIndent: 8),
+          IconButton(
+            icon: Icon(Icons.settings, color: color, size: 20),
+            onPressed: onSettingsPressed,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40),
+            splashRadius: 20,
           ),
         ],
       ),
     );
   }
 
-  TextStyle _sectionTitleStyle(BuildContext context) {
-    return TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700);
-  }
+  void _showDateTimeDialog(BuildContext context, {required bool isTrash}) async {
+    final DateTime initial = isTrash 
+        ? (widget.trashPickupDateTime ?? widget.deliveryDate) 
+        : widget.selectedTime;
 
-  Widget _buildCalendar(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TableCalendar(
-        firstDay: DateTime.now().subtract(const Duration(days: 30)),
-        lastDay: DateTime.now().add(const Duration(days: 365)),
-        focusedDay: widget.deliveryDate,
-        currentDay: DateTime.now(),
-        locale: 'ja_JP',
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        calendarStyle: CalendarStyle(
-          todayDecoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-          selectedDecoration: const BoxDecoration(color: Colors.deepPurple, shape: BoxShape.circle),
-          outsideDaysVisible: false,
-        ),
-        selectedDayPredicate: (day) => isSameDay(widget.deliveryDate, day),
-        onDaySelected: (selectedDay, focusedDay) {
-          widget.onDateSelected(selectedDay);
-        },
-        daysOfWeekStyle: const DaysOfWeekStyle(
-          weekendStyle: TextStyle(color: Colors.red),
-        ),
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (context) => KDateTimeSelectionDialog(
+        initialDateTime: initial,
+        minTime: isTrash ? widget.trashTimeMin : widget.timeMin,
+        maxTime: isTrash ? widget.trashTimeMax : widget.timeMax,
+        interval: isTrash ? widget.trashTimeInterval : widget.timeInterval,
+        title: isTrash ? 'ゴミ回収日時の設定' : '配達日時の設定',
+        themeColor: isTrash ? Colors.orange : Colors.deepPurple,
       ),
     );
+
+    if (result != null) {
+      if (isTrash) {
+        widget.onTrashPickupDateTimeChanged(result);
+      } else {
+        widget.onDateSelected(result);
+        widget.onTimeSelected(result);
+      }
+    }
+  }
+
+  Widget _buildTrashLocationArea(BuildContext context) {
+    final bool enabled = widget.trashPickupRequested;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: rs(context, 10)),
+          child: Text(
+            '■ 回収場所', 
+            style: TextStyle(
+              fontSize: rf(context, 15), 
+              fontWeight: FontWeight.bold, 
+              color: enabled ? Colors.blueGrey.shade800 : Colors.grey,
+            ),
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: KChoiceGroup<String>(
+                label: '',
+                selectedValue: widget.trashPickupLocation,
+                items: [
+                  KChoiceItem(label: '引渡し場所', value: '引渡し場所'),
+                  KChoiceItem(label: '指定場所', value: '指定場所'),
+                ],
+                onSelected: widget.onTrashPickupLocationChanged,
+                showLabel: false,
+                selectedColor: Colors.orange,
+                enabled: enabled,
+              ),
+            ),
+            SizedBox(width: rs(context, 12)),
+            Expanded(
+              flex: 7,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: (widget.trashPickupLocation == '指定場所' && enabled)
+                        ? KMultimodalTextField(
+                            label: '詳細',
+                            controller: widget.trashPickupLocationController,
+                            maxLines: 1,
+                            height: 44,
+                            showLabel: false,
+                            prefixText: '詳細：',
+                          )
+                        : const SizedBox(height: 44), // No label, so just field height
+                  ),
+                  SizedBox(width: rs(context, 8)),
+                  SizedBox(width: rs(context, 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReceiverArea(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildReceiverModeToggle(context),
+        SizedBox(height: rs(context, 12)),
+        _buildReceiverInputArea(context),
+      ],
+    );
+  }
+
+  TextStyle _sectionTitleStyle(BuildContext context) {
+    return TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600);
   }
 
   Widget _buildReceiverModeToggle(BuildContext context) {
@@ -222,7 +433,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        children: ['ご本人様', '履歴から選択', 'その他'].map((mode) {
+        children: ['ご本人様', '履歴から選択', '新規追加'].map((mode) {
           final isSelected = _receiverMode == mode;
           return Expanded(
             child: GestureDetector(
@@ -230,8 +441,8 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                 setState(() => _receiverMode = mode);
                 if (mode == 'ご本人様' && widget.currentCustomer != null) {
                   widget.receiverController.text = widget.currentCustomer!.name;
-                } else if (mode == '履歴から選択') {
-                  // 履歴から選ぶまでは一旦空にするか現状維持
+                } else if (mode == '新規追加') {
+                  widget.receiverController.clear();
                 }
               },
               child: Container(
@@ -243,7 +454,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                 child: Text(
                   mode,
                   style: TextStyle(
-                    fontSize: rf(context, 12),
+                    fontSize: KR.fontSmall(context),
                     fontWeight: FontWeight.bold,
                     color: isSelected ? Colors.white : Colors.blueGrey,
                   ),
@@ -258,43 +469,70 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
 
   Widget _buildReceiverInputArea(BuildContext context) {
     if (_receiverMode == '履歴から選択') {
-      final receivers = widget.currentCustomer?.facilityReceivers[widget.facilityName] ?? [];
-      if (receivers.isEmpty) {
+      final allReceivers = widget.currentCustomer?.facilityReceivers[widget.facilityName] ?? [];
+      final filteredReceivers = allReceivers.where((name) => 
+        widget.currentCustomer == null || name != widget.currentCustomer!.name
+      ).toList();
+
+      if (filteredReceivers.isEmpty) {
         return const Padding(
-          padding: EdgeInsets.all(8.0),
-          child: Text('履歴がありません', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+          child: Text('履歴なし', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
         );
       }
       return Wrap(
         spacing: 8,
-        children: receivers.map((name) => ActionChip(
-          label: Text(name, style: const TextStyle(fontSize: 12)),
+        runSpacing: 8,
+        children: filteredReceivers.map((name) => ActionChip(
+          label: Text(name, style: TextStyle(fontSize: KR.fontTiny(context), fontWeight: FontWeight.bold)),
           onPressed: () {
             widget.receiverController.text = name;
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('「$name」を選択しました'), duration: const Duration(seconds: 1)));
           },
           backgroundColor: Colors.deepPurple.shade50,
+          side: BorderSide(color: Colors.deepPurple.shade100),
         )).toList(),
       );
     }
 
-    // 'ご本人様' または 'その他' の場合は入力フィールド（その他はペンタブ有効）
-    return KMultimodalTextField(
-      label: '',
-      controller: widget.receiverController,
-      icon: Icons.person_outline,
-      maxLines: 1,
+    if (_receiverMode == '新規追加') {
+      return KMultimodalTextField(
+        label: '',
+        controller: widget.receiverController,
+        icon: Icons.person_add_alt_1_outlined,
+        maxLines: 1,
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.blue, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('受取人：${widget.receiverController.text}', 
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: rf(context, 14))),
+          ),
+        ],
+      ),
     );
   }
 
-  void _showTimeSettingsDialog(BuildContext context) {
+  void _showSettingsCustomDialog(BuildContext context, {required bool isTrash}) {
     showDialog(
       context: context,
       builder: (context) => _TimeSettingsCustomDialog(
-        initialMin: widget.timeMin,
-        initialMax: widget.timeMax,
-        initialInterval: widget.timeInterval,
-        onSave: widget.onTimeSettingsChanged,
+        initialMin: isTrash ? widget.trashTimeMin : widget.timeMin,
+        initialMax: isTrash ? widget.trashTimeMax : widget.timeMax,
+        initialInterval: isTrash ? widget.trashTimeInterval : widget.timeInterval,
+        themeColor: isTrash ? Colors.orange : Colors.deepPurple,
+        onSave: isTrash ? widget.onTrashTimeSettingsChanged : widget.onTimeSettingsChanged,
       ),
     );
   }
@@ -304,12 +542,14 @@ class _TimeSettingsCustomDialog extends StatefulWidget {
   final TimeOfDay initialMin;
   final TimeOfDay initialMax;
   final int initialInterval;
+  final Color themeColor;
   final Function(TimeOfDay, TimeOfDay, int) onSave;
 
   const _TimeSettingsCustomDialog({
     required this.initialMin,
     required this.initialMax,
     required this.initialInterval,
+    required this.themeColor,
     required this.onSave,
   });
 
@@ -321,7 +561,8 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
   late String minStr;
   late String maxStr;
   late String intervalStr;
-  int activeField = 0; // 0: 開始時間, 1: 終了時間, 2: 間隔
+  int activeField = 0; 
+  bool _shouldOverwrite = true; 
 
   @override
   void initState() {
@@ -353,23 +594,48 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
   void _handleKeyTap(String key) {
     setState(() {
       if (key == 'クリア') {
-        if (activeField == 0) minStr = "";
-        else if (activeField == 1) maxStr = "";
-        else intervalStr = "";
+        if (activeField == 0) {
+          minStr = "";
+        } else if (activeField == 1) {
+          maxStr = "";
+        } else {
+          intervalStr = "";
+        }
+        _shouldOverwrite = false;
         return;
       }
 
       String current = activeField == 0 ? minStr : (activeField == 1 ? maxStr : intervalStr);
+      
       if (key == '⌫') {
         if (current.isNotEmpty) current = current.substring(0, current.length - 1);
+        _shouldOverwrite = false;
       } else {
-        final int limit = activeField == 2 ? 3 : 4;
-        if (current.length < limit) current += key;
+        if (_shouldOverwrite) {
+          current = key;
+          _shouldOverwrite = false;
+        } else {
+          final int limit = activeField == 2 ? 2 : 4;
+          if (current.length < limit) {
+            String next = current + key;
+            if (activeField == 2) {
+              if ((int.tryParse(next) ?? 0) > 60) next = "60";
+            }
+            current = next;
+          }
+        }
       }
 
       if (activeField == 0) minStr = current;
       else if (activeField == 1) maxStr = current;
       else intervalStr = current;
+    });
+  }
+
+  void _setActiveField(int field) {
+    setState(() {
+      activeField = field;
+      _shouldOverwrite = true;
     });
   }
 
@@ -384,66 +650,89 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
       return KDialKey(
         label: k,
         onTap: () => _handleKeyTap(k),
-        backgroundColor: k == 'クリア' ? Colors.red.shade50 : (k == '⌫' ? Colors.orange.shade50 : null),
-        foregroundColor: k == 'クリア' ? Colors.red : (k == '⌫' ? Colors.orange.shade900 : null),
       );
     }).toList();
 
-    return AlertDialog(
-      title: const Text('時間選択のカスタマイズ', style: TextStyle(fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: rs(context, 750),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: rs(context, 620),
+        padding: const EdgeInsets.all(24),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 左側：項目垂直リスト
-            Expanded(
-              flex: 5,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildInputRow('開始時間', _formatTimeDisplay(minStr), activeField == 0, () => setState(() => activeField = 0)),
-                  const SizedBox(height: 12),
-                  _buildInputRow('終了時間', _formatTimeDisplay(maxStr), activeField == 1, () => setState(() => activeField = 1)),
-                  const SizedBox(height: 12),
-                  _buildInputRow('表示間隔', intervalStr.isEmpty ? "0分" : "$intervalStr分", activeField == 2, () => setState(() => activeField = 2)),
-                  const Spacer(),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text('※各項目をタップしてテンキーで入力してください', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            Text('時間選択のカスタマイズ', style: TextStyle(fontSize: KR.fontLarge(context), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildInputRow('開始時間', _formatTimeDisplay(minStr), activeField == 0, () => _setActiveField(0)),
+                      const SizedBox(height: 8),
+                      _buildInputRow('終了時間', _formatTimeDisplay(maxStr), activeField == 1, () => _setActiveField(1)),
+                      const SizedBox(height: 8),
+                      _buildInputRow('表示間隔', intervalStr.isEmpty ? "0分" : "$intervalStr分", activeField == 2, () => _setActiveField(2)),
+                      const SizedBox(height: 16),
+                      Text('※各項目をタップしてテンキーで入力してください', 
+                        style: TextStyle(fontSize: KR.fontTiny(context), color: Colors.grey), textAlign: TextAlign.center),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const VerticalDivider(width: 48),
-            // 右側：テンキー
-            SizedBox(
-              width: rs(context, 280),
-              child: KDialPad(keys: dialKeys),
+                ),
+                const SizedBox(width: 32),
+                Container(width: 1, height: rs(context, 300), color: Colors.grey.shade200),
+                const SizedBox(width: 32),
+                SizedBox(
+                  width: rs(context, 260),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      KDialPad(keys: dialKeys),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: KButton(
+                              label: '戻る', 
+                              onPressed: () => Navigator.pop(context),
+                              isSecondary: true,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: KButton(
+                              label: '反映', 
+                              onPressed: () {
+                                final minTime = _parse4Digit(minStr);
+                                final maxTime = _parse4Digit(maxStr);
+                                final int? intervalVal = int.tryParse(intervalStr);
+                    
+                                if (minTime == null || maxTime == null || intervalVal == null || intervalVal <= 0 || intervalVal > 60) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力内容が正しくありません（間隔は1〜60分以内）')));
+                                  return;
+                                }
+                                widget.onSave(minTime, maxTime, intervalVal);
+                                Navigator.pop(context);
+                              },
+                              color: widget.themeColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-        ElevatedButton(
-          onPressed: () {
-            final minTime = _parse4Digit(minStr);
-            final maxTime = _parse4Digit(maxStr);
-            final int? intervalVal = int.tryParse(intervalStr);
-
-            if (minTime == null || maxTime == null || intervalVal == null || intervalVal <= 0) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力内容が正しくありません')));
-              return;
-            }
-            widget.onSave(minTime, maxTime, intervalVal);
-            Navigator.pop(context);
-          },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
-          child: const Text('反映する'),
-        ),
-      ],
     );
   }
 
@@ -451,22 +740,22 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? Colors.deepPurple.shade50 : Colors.white,
-          border: Border.all(color: isActive ? Colors.deepPurple : Colors.grey.shade300, width: 2),
+          color: isActive ? widget.themeColor.withValues(alpha: 0.05) : Colors.white,
+          border: Border.all(color: isActive ? widget.themeColor : Colors.grey.shade300, width: 2),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: TextStyle(
-              fontSize: 16, 
+              fontSize: KR.fontSmall(context), 
               fontWeight: FontWeight.bold, 
-              color: isActive ? Colors.deepPurple : Colors.blueGrey
+              color: isActive ? widget.themeColor : Colors.blueGrey
             )),
             Text(value, style: TextStyle(
-              fontSize: 24, 
+              fontSize: KR.fontXLarge(context), 
               fontWeight: FontWeight.bold,
               color: isActive ? Colors.black87 : Colors.blueGrey.shade300
             )),

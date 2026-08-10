@@ -12,7 +12,29 @@ class OrderModel {
   final String deliveryType;
   final List<Map<String, dynamic>> items;
   final int totalCount;
-  final String packagingType;
+  
+  // 梱包設定
+  final String packagingType; // 紙袋, 段ボール, 小分け, その他
+  final int packagingSmallQty; // 小分け数量
+  final String packagingOther; // 梱包その他
+
+  // 受注区分
+  final String orderSource; // 直取, 結膳, デリカ, その他
+  final String orderSourceOther;
+
+  // ゴミ回収設定
+  final bool trashPickupRequested;
+  final DateTime? trashPickupDateTime;
+  final String trashPickupLocation; // 引渡し場所, 指定場所
+  final String trashPickupLocationDetail;
+
+  // お茶設定
+  final String teaOption; // 込み, 別, なし, 特典
+  final int teaQuantity; // 特典本数
+
+  // 事前確認
+  final String preConfirmationMethod; // SNS, 電話
+
   final bool collectContainer; // 容器回収
   final String paymentMethod;
   final String status;
@@ -34,7 +56,18 @@ class OrderModel {
     required this.deliveryType,
     required this.items,
     required this.totalCount,
-    required this.packagingType,
+    this.packagingType = '紙袋',
+    this.packagingSmallQty = 0,
+    this.packagingOther = '',
+    this.orderSource = '直取',
+    this.orderSourceOther = '',
+    this.trashPickupRequested = false,
+    this.trashPickupDateTime,
+    this.trashPickupLocation = '引渡し場所',
+    this.trashPickupLocationDetail = '',
+    this.teaOption = 'なし',
+    this.teaQuantity = 0,
+    this.preConfirmationMethod = 'SNS',
     this.collectContainer = false,
     required this.paymentMethod,
     this.status = '受注済み',
@@ -59,6 +92,17 @@ class OrderModel {
       'items': items,
       'totalCount': totalCount,
       'packagingType': packagingType,
+      'packagingSmallQty': packagingSmallQty,
+      'packagingOther': packagingOther,
+      'orderSource': orderSource,
+      'orderSourceOther': orderSourceOther,
+      'trashPickupRequested': trashPickupRequested,
+      'trashPickupDateTime': trashPickupDateTime?.toIso8601String(),
+      'trashPickupLocation': trashPickupLocation,
+      'trashPickupLocationDetail': trashPickupLocationDetail,
+      'teaOption': teaOption,
+      'teaQuantity': teaQuantity,
+      'preConfirmationMethod': preConfirmationMethod,
       'collectContainer': collectContainer,
       'paymentMethod': paymentMethod,
       'status': status,
@@ -80,7 +124,7 @@ class OrderModel {
       deliveryType: '',
       items: [],
       totalCount: 0,
-      packagingType: '',
+      packagingType: '紙袋',
       paymentMethod: '',
       remarks: '',
       deliveryDestinationImageUrl: null,
@@ -104,7 +148,20 @@ class OrderModel {
       deliveryType: map['deliveryType'] ?? '',
       items: List<Map<String, dynamic>>.from(map['items'] ?? []),
       totalCount: map['totalCount'] ?? 0,
-      packagingType: map['packagingType'] ?? '',
+      packagingType: map['packagingType'] ?? '紙袋',
+      packagingSmallQty: map['packagingSmallQty'] ?? 0,
+      packagingOther: map['packagingOther'] ?? '',
+      orderSource: map['orderSource'] ?? '直取',
+      orderSourceOther: map['orderSourceOther'] ?? '',
+      trashPickupRequested: map['trashPickupRequested'] ?? false,
+      trashPickupDateTime: map['trashPickupDateTime'] != null 
+          ? DateTime.parse(map['trashPickupDateTime']) 
+          : null,
+      trashPickupLocation: map['trashPickupLocation'] ?? '引渡し場所',
+      trashPickupLocationDetail: map['trashPickupLocationDetail'] ?? '',
+      teaOption: map['teaOption'] ?? 'なし',
+      teaQuantity: map['teaQuantity'] ?? 0,
+      preConfirmationMethod: map['preConfirmationMethod'] ?? 'SNS',
       collectContainer: map['collectContainer'] ?? false,
       paymentMethod: map['paymentMethod'] ?? '',
       status: map['status'] ?? '受注済み',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/menu_model.dart';
 import '../services/menu_service.dart';
+import '../../widgets/k_responsive.dart';
 
 class MenuMasterScreen extends StatefulWidget {
   const MenuMasterScreen({super.key});
@@ -17,6 +18,10 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
   final _imagePicker = ImagePicker();
   List<MenuModel> _menus = [];
   bool _isLoading = true;
+  String _selectedCategory = 'すべて';
+  MenuModel? _selectedMenu;
+
+  final List<String> _categoryPresets = ['すべて', '厳選牛ステーキ弁当', '高級弁当', 'オードブル', '丼もの', 'ギフト', 'ドリンク・サイドメニュー'];
 
   @override
   void initState() {
@@ -26,11 +31,15 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
 
   Future<void> _loadMenus() async {
     try {
+      await _menuService.migrateCategories();
       final data = await _menuService.getAllMenus();
       if (mounted) {
         setState(() {
           _menus = data;
           _isLoading = false;
+          if (_menus.isNotEmpty && _selectedMenu == null) {
+            _selectedMenu = _menus.first;
+          }
         });
       }
     } catch (e) {
@@ -47,81 +56,13 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     if (url.isEmpty) return const AssetImage('assets/img/placeholder.png');
     if (url.startsWith('http')) return NetworkImage(url);
     if (url.startsWith('assets/')) return AssetImage(url);
-    if (url.startsWith('data:image')) {
-      try {
-        return MemoryImage(base64Decode(url.split(',').last));
-      } catch (_) {
-        return const AssetImage('assets/img/placeholder.png');
-      }
-    }
     return const AssetImage('assets/img/placeholder.png');
   }
 
-  void _showMenuDetail(MenuModel menu) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.restaurant, color: Colors.deepOrange),
-            const SizedBox(width: 8),
-            Expanded(child: Text(menu.name)),
-            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (menu.imageUrl.isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image(
-                      image: _getImageProvider(menu.imageUrl),
-                      width: double.infinity,
-                      height: 300,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => const SizedBox(height: 100, child: Center(child: Icon(Icons.broken_image))),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                _detailItem('カテゴリー', menu.category),
-                _detailItem('価格 (税込)', '¥${menu.price}'),
-                _detailItem('説明', menu.description),
-                const Divider(height: 32),
-                if (menu.ingredients.isNotEmpty) ...[
-                  const Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  ...menu.ingredients.entries.map((entry) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.check_circle, size: 16, color: Colors.orange),
-                        const SizedBox(width: 8),
-                        Text(entry.key),
-                        const Spacer(),
-                        Text(entry.value, style: const TextStyle(color: Colors.blueGrey)),
-                      ],
-                    ),
-                  )),
-                ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
-        ],
-      ),
-    );
-  }
-
   void _showEditMenuDialog([MenuModel? menu]) {
+    final List<String> dropdownCategories = _categoryPresets.where((c) => c != 'すべて').toList();
     final nameController = TextEditingController(text: menu?.name ?? '');
-    final categoryController = TextEditingController(text: menu?.category ?? 'お弁当');
+    String category = menu?.category ?? dropdownCategories.first;
     final priceController = TextEditingController(text: menu?.price.toString() ?? '');
     final descriptionController = TextEditingController(text: menu?.description ?? '');
     String currentImageUrl = menu?.imageUrl ?? '';
@@ -135,6 +76,8 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
           title: Text(menu == null ? '新規メニュー登録' : 'メニュー編集'),
           content: SizedBox(
             width: 500,
@@ -149,7 +92,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                         final bytes = await image.readAsBytes();
                         setDialogState(() {
                           pendingImageBytes = bytes;
-                          currentImageUrl = ""; // ローカル表示優先
+                          currentImageUrl = "";
                         });
                       }
                     },
@@ -183,7 +126,16 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextField(controller: nameController, decoration: const InputDecoration(labelText: '商品名', hintText: '例：特製ステーキ弁当')),
-                  TextField(controller: categoryController, decoration: const InputDecoration(labelText: 'カテゴリー', hintText: '例：お弁当、高級弁当')),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: dropdownCategories.contains(category) ? category : null,
+                    decoration: const InputDecoration(labelText: 'カテゴリー'),
+                    items: dropdownCategories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
+                    onChanged: (val) {
+                      if (val != null) category = val;
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   TextField(controller: priceController, decoration: const InputDecoration(labelText: '価格 (税込)', hintText: '例：1800'), keyboardType: TextInputType.number),
                   TextField(controller: ingredientsController, decoration: const InputDecoration(labelText: '材料:分量 (カンマ区切り)', hintText: '例：牛ステーキ肉:150g, 白米:250g')),
                   TextField(controller: descriptionController, decoration: const InputDecoration(labelText: '説明', hintText: '商品の詳細説明を入力してください'), maxLines: 2),
@@ -199,15 +151,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('商品名と価格を入力してください')));
                   return;
                 }
-
-                debugPrint('MenuMasterScreen: Save button pressed.');
-                // インジケータを表示
-                showDialog(
-                  context: context, 
-                  barrierDismissible: false, 
-                  builder: (_) => const Center(child: CircularProgressIndicator())
-                );
-                
+                showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
                 try {
                   final Map<String, String> ingredientsMap = {};
                   if (ingredientsController.text.isNotEmpty) {
@@ -216,48 +160,30 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                       if (parts.length == 2) ingredientsMap[parts[0].trim()] = parts[1].trim();
                     }
                   }
-
                   final newMenu = MenuModel(
                     id: menu?.id ?? '',
                     name: nameController.text,
-                    category: categoryController.text,
+                    category: category,
                     price: int.tryParse(priceController.text) ?? 0,
                     description: descriptionController.text,
                     imageUrl: currentImageUrl,
                     ingredients: ingredientsMap,
                   );
-
-                  debugPrint('MenuMasterScreen: Calling MenuService...');
                   if (menu == null) {
                     await _menuService.createMenu(newMenu, imageBytes: pendingImageBytes);
                   } else {
                     await _menuService.updateMenu(newMenu, imageBytes: pendingImageBytes);
                   }
-                  debugPrint('MenuMasterScreen: MenuService returned successfully.');
-
                   if (mounted) {
-                    Navigator.of(context).pop(); // インジケータを閉じる
-                    Navigator.of(context).pop(); // ダイアログを閉じる
+                    Navigator.pop(context);
+                    Navigator.pop(context);
                     _loadMenus();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('メニューを保存しました')),
-                    );
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
                   }
-                } catch (e, stack) {
-                  debugPrint('MenuMasterScreen Error during save: $e');
-                  debugPrint('Stack trace: $stack');
+                } catch (e) {
                   if (mounted) {
-                    Navigator.of(context).pop(); // インジケータを閉じる
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('保存失敗', style: TextStyle(color: Colors.red)),
-                        content: Text('エラーが発生しました：\n$e\n\nネットワーク接続や権限を確認してください。'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('了解')),
-                        ],
-                      ),
-                    );
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red));
                   }
                 }
               },
@@ -276,19 +202,14 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         title: const Text('メニューの削除'),
         content: Text('${menu.name} を削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('キャンセル'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
           ElevatedButton(
             onPressed: () async {
               await _menuService.deleteMenu(menu.id);
               if (mounted) {
                 Navigator.pop(context);
                 _loadMenus();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('メニューを削除しました')),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
@@ -299,58 +220,12 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     );
   }
 
-  void _showResetConfirmDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('初期データでリセット'),
-        content: const Text('現在のメニューデータをすべて削除し、初期データで上書きします。よろしいですか？\n※自分で登録したメニューも消去されます。'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-              try {
-                await _menuService.seedMenuData();
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadMenus();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('メニューマスタをリセットしました')),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('リセットに失敗しました: $e'), backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
-            child: const Text('リセット実行'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detailItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final filteredMenus = _selectedCategory == 'すべて'
+        ? _menus
+        : _menus.where((m) => m.category == _selectedCategory).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('メニューマスタ', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -358,12 +233,6 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _showResetConfirmDialog,
-            tooltip: '初期データでリセット',
-          ),
-          const SizedBox(width: 8),
           ElevatedButton.icon(
             onPressed: () => _showEditMenuDialog(),
             icon: const Icon(Icons.add),
@@ -374,56 +243,172 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(24),
-              itemCount: _menus.length,
-              itemBuilder: (context, index) {
-                final menu = _menus[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    leading: Container(
-                      width: 60, height: 60,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: menu.imageUrl.isNotEmpty
-                            ? DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover)
-                            : null,
+          : Row(
+              children: [
+                // 左側: リストとタブ
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    children: [
+                      _buildCategoryTabs(),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(24),
+                          itemCount: filteredMenus.length,
+                          itemBuilder: (context, index) {
+                            final menu = filteredMenus[index];
+                            final isSelected = _selectedMenu?.id == menu.id;
+                            return Card(
+                              elevation: isSelected ? 4 : 1,
+                              color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ListTile(
+                                selected: isSelected,
+                                leading: Container(
+                                  width: 50, height: 50,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover),
+                                  ),
+                                ),
+                                title: Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('${menu.category} | ¥${menu.price}'),
+                                onTap: () => setState(() => _selectedMenu = menu),
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                  onSelected: (value) {
+                                    if (value == 'edit') _showEditMenuDialog(menu);
+                                    if (value == 'delete') _showDeleteConfirmDialog(menu);
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit, size: 20, color: Colors.blue),
+                                          SizedBox(width: 12),
+                                          Text('編集', style: TextStyle(fontWeight: FontWeight.w500)),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                          SizedBox(width: 12),
+                                          Text('削除', style: TextStyle(fontWeight: FontWeight.w500)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      child: menu.imageUrl.isEmpty ? const Icon(Icons.restaurant) : null,
-                    ),
-                    title: Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('${menu.category} | ¥${menu.price}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.info_outline, size: 18),
-                          label: const Text('詳細'),
-                          onPressed: () => _showMenuDetail(menu),
-                          style: TextButton.styleFrom(foregroundColor: Colors.deepOrange),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton.icon(
-                          icon: const Icon(Icons.edit, size: 18),
-                          label: const Text('編集'),
-                          onPressed: () => _showEditMenuDialog(menu),
-                          style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton.icon(
-                          icon: const Icon(Icons.delete_outline, size: 18),
-                          label: const Text('削除'),
-                          onPressed: () => _showDeleteConfirmDialog(menu),
-                          style: TextButton.styleFrom(foregroundColor: Colors.red),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                );
-              },
+                ),
+                // 右側: 詳細サイドバー
+                Container(
+                  width: rs(context, 350),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(left: BorderSide(color: Colors.grey.shade200)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                  ),
+                  child: _selectedMenu == null
+                      ? const Center(child: Text('メニューを選択してください'))
+                      : _buildDetailSidebar(_selectedMenu!),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildCategoryTabs() {
+    return Container(
+      width: double.infinity,
+      color: Colors.grey.shade50,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _categoryPresets.map((cat) {
+            final isSelected = _selectedCategory == cat;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
+                selected: isSelected,
+                onSelected: (val) => setState(() => _selectedCategory = cat),
+                selectedColor: Colors.deepPurple,
+                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+                showCheckmark: false, // チェックマークを非表示に
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailSidebar(MenuModel menu) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image(image: _getImageProvider(menu.imageUrl), width: double.infinity, height: 200, fit: BoxFit.cover),
+          ),
+          const SizedBox(height: 24),
+          Text(menu.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('¥${menu.price}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+          const SizedBox(height: 16),
+          _detailItem('カテゴリー', menu.category),
+          const Divider(height: 32),
+          const Text('商品説明', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(menu.description.isEmpty ? '説明はありません' : menu.description, style: const TextStyle(color: Colors.blueGrey)),
+          const SizedBox(height: 24),
+          const Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          ...menu.ingredients.entries.map((e) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle, size: 16, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text(e.key),
+                const Spacer(),
+                Text(e.value, style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
+          )),
+          const SizedBox(height: 40),
+          Row(
+            children: [
+              Expanded(child: OutlinedButton.icon(onPressed: () => _showEditMenuDialog(menu), icon: const Icon(Icons.edit), label: const Text('編集'))),
+              const SizedBox(width: 12),
+              Expanded(child: ElevatedButton.icon(onPressed: () => _showDeleteConfirmDialog(menu), icon: const Icon(Icons.delete_outline), label: const Text('削除'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, elevation: 0))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailItem(String label, String value) {
+    return Row(
+      children: [
+        Text('$label: ', style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

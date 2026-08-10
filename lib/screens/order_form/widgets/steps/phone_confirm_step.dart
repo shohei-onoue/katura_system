@@ -9,6 +9,7 @@ class PhoneConfirmStep extends StatelessWidget {
   final bool isLoading;
   final List<Customer> candidates;
   final Customer? currentCustomer;
+  final String phoneDisplay; // 受電番号
   final VoidCallback onNext;
   final Function(Customer) onSelectCustomer;
 
@@ -18,6 +19,7 @@ class PhoneConfirmStep extends StatelessWidget {
     required this.isLoading,
     required this.candidates,
     required this.currentCustomer,
+    required this.phoneDisplay,
     required this.onNext,
     required this.onSelectCustomer,
   });
@@ -27,6 +29,8 @@ class PhoneConfirmStep extends StatelessWidget {
     return OrderFormCard(
       title: '電話番号の確認',
       icon: Icons.phone_callback,
+      trailing: Text('受電: $phoneDisplay', 
+        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
       child: Column(
         children: [
           TextField(
@@ -65,7 +69,7 @@ class PhoneConfirmStep extends StatelessWidget {
       padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(rs(context, 12)),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(

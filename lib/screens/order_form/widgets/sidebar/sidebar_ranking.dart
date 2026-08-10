@@ -33,19 +33,19 @@ class SidebarRanking extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.stars, size: rs(context, 18), color: Colors.amber.shade700),
+              Icon(Icons.star, size: rs(context, 16), color: Colors.amber.shade700),
               SizedBox(width: rs(context, 8)),
               Text(
                 'よく頼むメニュー (ベスト3)',
                 style: TextStyle(
-                  fontSize: rf(context, 15),
+                  fontSize: rf(context, 14),
                   fontWeight: FontWeight.bold,
                   color: Colors.blueGrey,
                 ),
               ),
             ],
           ),
-          SizedBox(height: rs(context, 16)),
+          SizedBox(height: rs(context, 12)),
           if (top3.isEmpty)
             Expanded(
               child: Center(
@@ -100,13 +100,13 @@ class _RankingItem extends StatelessWidget {
     }
 
     return Padding(
-      padding: EdgeInsets.only(bottom: rs(context, 16)),
+      padding: EdgeInsets.only(bottom: rs(context, 10)),
       child: Row(
         children: [
           // 順位バッジ
           Container(
-            width: rs(context, 24),
-            height: rs(context, 24),
+            width: rs(context, 16),
+            height: rs(context, 16),
             decoration: BoxDecoration(
               color: rankColor,
               shape: BoxShape.circle,
@@ -121,11 +121,11 @@ class _RankingItem extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: rs(context, 12)),
+          SizedBox(width: rs(context, 16)),
           // 商品画像
           Container(
-            width: rs(context, 50),
-            height: rs(context, 50),
+            width: rs(context, 35),
+            height: rs(context, 35),
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(rs(context, 8)),
@@ -137,12 +137,12 @@ class _RankingItem extends StatelessWidget {
                   : Icon(Icons.restaurant, color: Colors.grey.shade400),
             ),
           ),
-          SizedBox(width: rs(context, 16)),
+          SizedBox(width: rs(context, 12)),
           // メニュー名
           Expanded(
             child: Text(
               name,
-              style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.black87),
+              style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.black87),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
