@@ -1,6 +1,4 @@
-- [x] `KDateTimeSelectionDialog` ウィジェットの作成
-- [x] `DeliveryTimeStep` のレイアウト修正
-  - [x] セクション1のタイトル変更とフィールド配置
-  - [x] 旧セクション2の削除
-  - [x] セクション番号の振り直し
-- [x] 動作確認
+- [ ] `KItemDetailsDialog` の改修 (数量引き継ぎ、2カラムレイアウト、ドリンク選択)
+- [ ] `ItemsSelectionStep` の修正 (ダイアログへの全メニュー渡しと数量引き継ぎ)
+- [ ] `OrderFormScreen` の `onAddItem` の調整
+- [ ] 動作確認

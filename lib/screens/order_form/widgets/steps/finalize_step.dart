@@ -83,7 +83,6 @@ class FinalizeStep extends StatelessWidget {
             KMultimodalTextField(
               label: '受注区分（詳細）', 
               controller: orderSourceOtherController,
-              icon: Icons.edit_note,
             ),
           ],
           
@@ -122,7 +121,6 @@ class FinalizeStep extends StatelessWidget {
             KMultimodalTextField(
               label: '梱包方法（詳細）', 
               controller: packagingOtherController,
-              icon: Icons.inventory_2_outlined,
             ),
           ],
 

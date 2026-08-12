@@ -46,6 +46,7 @@ class OrderFormSidebar extends StatefulWidget {
   final bool trashPickupRequested;
   final DateTime? trashPickupDateTime;
   final String trashPickupLocation;
+  final String trashPickupLocationDetail;
 
   final Function(String) onPhoneInput;
   final VoidCallback onPhoneClear;
@@ -55,6 +56,7 @@ class OrderFormSidebar extends StatefulWidget {
   final Function(Map<String, dynamic>) onFacilitySelect;
   final VoidCallback onForceApiSearch;
   final VoidCallback? onNext;
+  final VoidCallback? onReset;
   final Function(LatLng)? onMapTap;
   final Function(LatLng)? onMarkerDragEnd;
   final bool isSearchResultsDialogOpen;
@@ -92,6 +94,7 @@ class OrderFormSidebar extends StatefulWidget {
     required this.trashPickupRequested,
     this.trashPickupDateTime,
     required this.trashPickupLocation,
+    required this.trashPickupLocationDetail,
     required this.onPhoneInput,
     required this.onPhoneClear,
     required this.onPhoneBackspace,
@@ -100,6 +103,7 @@ class OrderFormSidebar extends StatefulWidget {
     required this.onFacilitySelect,
     required this.onForceApiSearch,
     this.onNext,
+    this.onReset,
     this.onMapTap,
     this.isSearchResultsDialogOpen = false,
   });
@@ -227,6 +231,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                       }
                       return m;
                     }).toSet(),
+                    myLocationEnabled: false,
                     myLocationButtonEnabled: false,
                     zoomControlsEnabled: true,
                   ),
@@ -264,7 +269,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(rs(context, 16)),
+              padding: EdgeInsets.all(rs(context, 12)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -279,6 +284,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                         : null,
                       onTap: () {}, // サイドバーからは操作不可
                       themeColor: Colors.deepPurple,
+                      isCompact: true,
                     ),
                   ),
                   SizedBox(height: rs(context, 16)),
@@ -295,18 +301,16 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                             dateTime: widget.trashPickupDateTime,
                             onTap: () {},
                             themeColor: Colors.orange,
+                            isCompact: true,
                           ),
                           SizedBox(height: rs(context, 8)),
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
-                            child: Row(
-                              children: [
-                                Icon(Icons.place_outlined, size: 14, color: Colors.orange.shade700),
-                                SizedBox(width: 8),
-                                Text('回収場所: ${widget.trashPickupLocation}', 
-                                  style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.orange.shade900)),
-                              ],
-                            ),
+                          Text(
+                            '回収場所：${widget.trashPickupLocation == '指定場所' ? (widget.trashPickupLocationDetail.isEmpty ? '未入力' : widget.trashPickupLocationDetail) : widget.trashPickupLocation}', 
+                            style: TextStyle(
+                              fontSize: rf(context, 12), 
+                              fontWeight: FontWeight.bold, 
+                              color: Colors.black
+                            )
                           ),
                         ],
                       ),
@@ -325,6 +329,23 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   _buildInfoRow('顧客名：', widget.customerName, TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
                   _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, TextStyle(fontSize: rf(context, 14))),
                   _buildInfoRow('受取人：', widget.receiverName.isEmpty ? "未確定" : widget.receiverName, TextStyle(fontSize: rf(context, 14))),
+                  
+                  if (widget.onReset != null) ...[
+                    const Divider(height: 48),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onReset,
+                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -357,6 +378,24 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                     totalCount: widget.totalCount
                   ),
                 const Divider(height: 1),
+                if (widget.onReset != null) ...[
+                  Padding(
+                    padding: EdgeInsets.all(rs(context, 16)),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onReset,
+                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 Padding(
                   padding: EdgeInsets.all(rs(context, 24)),
                   child: SidebarAnalysis(
@@ -374,7 +413,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
   Widget _buildDecisionCard({required String title, required IconData icon, required Color color, required Widget child}) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(rs(context, 16)),
+      padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
@@ -422,16 +461,28 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   separatorBuilder: (_, __) => Divider(height: 24),
                   itemBuilder: (context, i) {
                     final item = widget.confirmedItems[i];
+                    final specialOrder = item['specialOrder'] as String? ?? '';
+                    final specialOrderQty = item['specialOrderQuantity'] as int? ?? item['quantity'];
+                    final teaOption = item['teaOption'] as String? ?? 'なし';
+                    final teaQty = item['teaQuantity'] as int? ?? 0;
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(item['name'], style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+                        if (specialOrder.isNotEmpty || teaOption != 'なし') ...[
+                          const SizedBox(height: 4),
+                          if (specialOrder.isNotEmpty) 
+                            Text('・特注 ($specialOrderQty個): $specialOrder', style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
+                          if (teaOption != 'なし') 
+                            Text('・お茶: $teaOption${teaOption == '特典' ? ' ($teaQty本)' : ''}', style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
+                        ],
                         SizedBox(height: 8),
                         Row(
                           children: [
                             Text('¥${item['price']}', style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 12))),
                             Spacer(),
-                            _buildCompactCounter(item),
+                            _buildCompactCounter(i, item),
                           ],
                         ),
                         Align(
@@ -473,6 +524,20 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   label: '注文内容を確定する',
                   onPressed: widget.onNext ?? () {},
                 ),
+                if (widget.onReset != null) ...[
+                  SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: widget.onReset,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      child: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -481,12 +546,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     );
   }
 
-  Widget _buildCompactCounter(Map<String, dynamic> item) {
+  Widget _buildCompactCounter(int index, Map<String, dynamic> item) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _counterBtn(Icons.remove, () {
-          if (item['quantity'] > 0) widget.onQuantityChanged?.call(item['id'], item['quantity'] - 1);
+          if (item['quantity'] > 0) widget.onQuantityChanged?.call(index.toString(), item['quantity'] - 1);
         }),
         Container(
           width: rs(context, 40),
@@ -494,7 +559,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           child: Text('${item['quantity']}', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
         ),
         _counterBtn(Icons.add, () {
-          widget.onQuantityChanged?.call(item['id'], item['quantity'] + 1);
+          widget.onQuantityChanged?.call(index.toString(), item['quantity'] + 1);
         }),
       ],
     );
@@ -580,6 +645,21 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   height: rs(context, 150),
                   color: Colors.grey.shade100,
                   child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                ),
+              ),
+            ),
+          ],
+          if (widget.onReset != null) ...[
+            const Divider(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: widget.onReset,
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
                 ),
               ),
             ),

@@ -17,75 +17,119 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  OrderModel? _editingOrder;
+
+  // 各画面の保持用インスタンス
+  final List<Widget> _screens = [];
+  final Map<int, int> _indexMap = {
+    0: 0, // 受注入力
+    1: 1, // 受注一覧
+    2: 2, // 計画
+    6: 3, // 顧客管理
+    7: 4, // メニューマスタ
+    8: 5, // スタッフ管理
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _initScreens();
+  }
+
+  void _initScreens() {
+    _screens.clear();
+    _screens.add(OrderFormScreen(
+      key: const ValueKey('order_form'),
+      onSaveSuccess: _onSaveSuccess,
+      onCancel: _onCancelOrder,
+    ));
+    _screens.add(OrderListScreen(onEditOrder: _onEditOrder));
+    _screens.add(const PlanningScreen());
+    _screens.add(const CustomerListScreen());
+    _screens.add(const MenuMasterScreen());
+    _screens.add(const StaffManagementScreen());
+  }
 
   void _onEditOrder(OrderModel order) {
     setState(() {
-      _editingOrder = order;
+      _screens[0] = OrderFormScreen(
+        key: ValueKey('edit_${order.id}'),
+        initialOrder: order,
+        onSaveSuccess: _onSaveSuccess,
+        onCancel: _onCancelOrder,
+      );
       _selectedIndex = 0; // 受注入力画面へ
+    });
+  }
+
+  void _onCancelOrder() {
+    setState(() {
+      // キャンセル後は空のフォームに戻す
+      _screens[0] = OrderFormScreen(
+        key: const ValueKey('order_form_reset'),
+        onSaveSuccess: _onSaveSuccess,
+        onCancel: _onCancelOrder,
+      );
     });
   }
 
   void _onSaveSuccess() {
     setState(() {
-      _editingOrder = null;
+      // 保存成功後は空のフォームに戻す
+      _screens[0] = OrderFormScreen(
+        key: const ValueKey('order_form_new'),
+        onSaveSuccess: _onSaveSuccess,
+        onCancel: _onCancelOrder,
+      );
       _selectedIndex = 1; // 一覧画面へ戻る
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    Widget currentScreen;
-    switch (_selectedIndex) {
-      case 0:
-        currentScreen = OrderFormScreen(
-          key: ValueKey(_editingOrder?.id ?? 'new'),
-          initialOrder: _editingOrder,
-          onSaveSuccess: _onSaveSuccess,
-        );
-        break;
-      case 1:
-        currentScreen = OrderListScreen(onEditOrder: _onEditOrder);
-        break;
-      case 2:
-        currentScreen = const PlanningScreen();
-        break;
-      case 6:
-        currentScreen = const CustomerListScreen();
-        break;
-      case 7:
-        currentScreen = const MenuMasterScreen();
-        break;
-      case 8:
-        currentScreen = const StaffManagementScreen();
-        break;
-      default:
-        currentScreen = const Center(child: Text('Coming Soon'));
-    }
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 900;
+
+    final sidebar = KSidebar(
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+        if (isMobile) {
+          Navigator.pop(context); // モバイル時はDrawerを閉じる
+        }
+      },
+    );
+
+    // インデックスの安全な取得
+    final stackIndex = _indexMap[_selectedIndex] ?? 0;
 
     return Scaffold(
-      body: Row(
-        children: [
-          Expanded(
-            flex: 15,
-            child: KSidebar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                  if (index != 0) {
-                    _editingOrder = null; // 他の画面に切り替えたら編集状態を解除
-                  }
-                });
-              },
+      drawer: isMobile ? Drawer(child: sidebar) : null,
+      appBar: isMobile ? AppBar(
+        title: const Text('Katura System', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ) : null,
+      body: SafeArea(
+        child: Row(
+          children: [
+            if (!isMobile) ...[
+              Expanded(
+                flex: 15,
+                child: sidebar,
+              ),
+              const VerticalDivider(thickness: 1, width: 1),
+            ],
+            Expanded(
+              flex: isMobile ? 100 : 85,
+              child: IndexedStack(
+                index: stackIndex,
+                children: _screens,
+              ),
             ),
-          ),
-          const VerticalDivider(thickness: 1, width: 1),
-          Expanded(
-            flex: 85,
-            child: currentScreen,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

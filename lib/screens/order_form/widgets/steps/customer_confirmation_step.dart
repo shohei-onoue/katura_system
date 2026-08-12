@@ -56,10 +56,7 @@ class CustomerConfirmationStep extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(width: rs(context, 16)),
           ],
-          Text('受電: $phoneDisplay', 
-            style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
         ],
       ),
       child: Column(

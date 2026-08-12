@@ -17,10 +17,14 @@ class KPenInputDialog extends StatefulWidget {
 }
 
 class _KPenInputDialogState extends State<KPenInputDialog> {
-  final mlkit.Ink _ink = mlkit.Ink();
+  final List<mlkit.Ink> _pagesInks = [mlkit.Ink()];
+  final List<List<DrawingPoint?>> _pagesPoints = [[]];
+  final List<String> _pagesTexts = [""];
+  int _currentPageIndex = 0;
+
   final KPenCanvasController _canvasController = KPenCanvasController();
   List<mlkit.StrokePoint> _currentStrokePoints = [];
-  String _recognizedText = "";
+  
   bool _isRecognizing = false;
   bool _isModelReady = false;
   String _statusMessage = "";
@@ -81,7 +85,8 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     }
     
     setState(() {
-      _ink.strokes.add(stroke);
+      _pagesInks[_currentPageIndex].strokes.add(stroke);
+      _pagesPoints[_currentPageIndex] = List.from(_canvasController.points);
       _currentStrokePoints = [];
       _isRecognizing = true;
     });
@@ -89,12 +94,21 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   }
 
   Future<void> _recognize() async {
+    if (_pagesInks[_currentPageIndex].strokes.isEmpty) {
+      setState(() {
+        _pagesTexts[_currentPageIndex] = "";
+        _isRecognizing = false;
+      });
+      return;
+    }
     try {
-      final candidates = await _recognizer.recognize(_ink);
+      final candidates = await _recognizer.recognize(_pagesInks[_currentPageIndex]);
       if (mounted) {
         setState(() {
           if (candidates.isNotEmpty) {
-            _recognizedText = candidates.first.text;
+            _pagesTexts[_currentPageIndex] = candidates.first.text;
+          } else {
+            _pagesTexts[_currentPageIndex] = "";
           }
           _isRecognizing = false;
         });
@@ -105,112 +119,233 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     }
   }
 
+  void _undoStroke() {
+    if (_pagesInks[_currentPageIndex].strokes.isNotEmpty) {
+      setState(() {
+        _pagesInks[_currentPageIndex].strokes.removeLast();
+        _canvasController.undo();
+        _pagesPoints[_currentPageIndex] = List.from(_canvasController.points);
+        _isRecognizing = true;
+      });
+      _recognize();
+    }
+  }
+
+  void _clearCanvas() {
+    setState(() {
+      _pagesInks[_currentPageIndex].strokes.clear();
+      _canvasController.clear();
+      _pagesPoints[_currentPageIndex] = [];
+      _pagesTexts[_currentPageIndex] = "";
+    });
+  }
+
+  void _goToNextPage() {
+    setState(() {
+      if (_currentPageIndex == _pagesInks.length - 1) {
+        _pagesInks.add(mlkit.Ink());
+        _pagesPoints.add([]);
+        _pagesTexts.add("");
+      }
+      _currentPageIndex++;
+      _canvasController.setPoints(_pagesPoints[_currentPageIndex]);
+    });
+  }
+
+  void _goToPreviousPage() {
+    if (_currentPageIndex > 0) {
+      setState(() {
+        _currentPageIndex--;
+        _canvasController.setPoints(_pagesPoints[_currentPageIndex]);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fullText = _pagesTexts.join("");
+    final double sideBtnWidth = rav(context, 60);
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: Colors.black,
+      insetPadding: EdgeInsets.all(rav(context, 12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
-        width: rs(context, 800),
-        height: rs(context, 750),
-        padding: EdgeInsets.all(rs(context, 24)),
+        width: wp(context, 0.98),
+        height: hp(context, 0.98),
+        padding: EdgeInsets.symmetric(vertical: rav(context, 16)),
         child: Column(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('手書き入力（AI判定）', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
-                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // ステータス & プレビュー
-            Container(
-              height: rs(context, 100),
-              width: double.infinity,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.deepPurple.shade200, width: 2),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
+            // ヘッダー (中央揃え)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: sideBtnWidth),
+              child: Row(
                 children: [
-                  Text(
-                    _statusMessage.isNotEmpty
-                      ? _statusMessage
-                      : (_isRecognizing 
-                        ? '判定中...' 
-                        : (_recognizedText.isEmpty ? 'ここに文字を書いてください' : _recognizedText)),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: rf(context, 36),
-                      fontWeight: FontWeight.bold,
-                      color: (_recognizedText.isEmpty || _isRecognizing || _statusMessage.isNotEmpty) 
-                          ? Colors.grey : Colors.deepPurple.shade900,
-                    ),
+                  Icon(Icons.edit_note, color: Colors.deepPurple.shade300, size: rav(context, 24)),
+                  const SizedBox(width: 8),
+                  Text('手書き入力（AI判定）', 
+                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.white)),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(Icons.close, size: rav(context, 22), color: Colors.white), 
+                    onPressed: () => Navigator.pop(context)
                   ),
-                  if (_isRecognizing)
-                    const Positioned(
-                      right: 24,
-                      child: CircularProgressIndicator(),
-                    ),
                 ],
               ),
             ),
-            SizedBox(height: 16),
-            // 描画エリア
-            Expanded(
+            
+            // テキストプレビューエリア (中央揃え)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: sideBtnWidth),
               child: Container(
+                height: rav(context, 80),
+                width: double.infinity,
+                margin: EdgeInsets.symmetric(vertical: rav(context, 8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300, width: 1),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: KPenCanvas(
-                    controller: _canvasController,
-                    onPointDown: _handlePointDown,
-                    onPointMove: _handlePointMove,
-                    onPointUp: _handlePointUp,
-                  ),
+                child: Stack(
+                  children: [
+                    SingleChildScrollView(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(fontSize: rf(context, 22), height: 1.2),
+                          children: [
+                            for (int i = 0; i < _pagesTexts.length; i++)
+                              TextSpan(
+                                text: _pagesTexts[i],
+                                style: TextStyle(
+                                  color: i == _currentPageIndex ? Colors.deepPurple : Colors.black87,
+                                  fontWeight: i == _currentPageIndex ? FontWeight.bold : FontWeight.normal,
+                                  backgroundColor: i == _currentPageIndex ? Colors.deepPurple.withValues(alpha: 0.1) : null,
+                                ),
+                              ),
+                            if (fullText.isEmpty && _statusMessage.isEmpty)
+                              TextSpan(
+                                text: 'ここにAIにより判定された文字が表示されます',
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: rf(context, 18)),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_isRecognizing)
+                      const Positioned(right: 0, top: 0, child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                  ],
                 ),
               ),
             ),
-            SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: KButton(
-                    label: 'すべてクリア',
-                    color: Colors.grey.shade600,
-                    onPressed: () {
-                      setState(() {
-                        _canvasController.clear();
-                        _ink.strokes.clear();
-                        _currentStrokePoints = [];
-                        _recognizedText = "";
-                      });
-                    },
+            
+            // 描画エリア (左右にページボタン)
+            Expanded(
+              child: Row(
+                children: [
+                  _buildPageSideBtn(
+                    icon: Icons.arrow_back_ios_new,
+                    onPressed: _currentPageIndex > 0 ? _goToPreviousPage : null,
+                    isLeft: true,
+                    width: sideBtnWidth,
                   ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: KButton(
-                    label: '備考へ反映する',
-                    color: Colors.deepPurple,
-                    onPressed: () {
-                      if (_recognizedText.isNotEmpty) {
-                        widget.onTextRecognized(_recognizedText);
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: Colors.grey.shade400, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: KPenCanvas(
+                          controller: _canvasController,
+                          strokeWidth: 5.0,
+                          onPointDown: _handlePointDown,
+                          onPointMove: _handlePointMove,
+                          onPointUp: _handlePointUp,
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildPageSideBtn(
+                    icon: Icons.arrow_forward_ios,
+                    onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _goToNextPage : null,
+                    isLeft: false,
+                    width: sideBtnWidth,
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: rav(context, 16)),
+            
+            // 下部アクションボタン (25% : 25% : 50%) (中央揃え)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: sideBtnWidth),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: KButton(
+                      label: '戻る',
+                      color: Colors.orange,
+                      onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _undoStroke : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 1,
+                    child: KButton(
+                      label: '削除',
+                      color: Colors.grey,
+                      onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _clearCanvas : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: KButton(
+                      label: '完了',
+                      color: Colors.deepPurple,
+                      onPressed: fullText.isNotEmpty ? () {
+                        widget.onTextRecognized(fullText);
                         Navigator.pop(context);
-                      }
-                    },
+                      } : null,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageSideBtn({
+    required IconData icon, 
+    required VoidCallback? onPressed, 
+    required bool isLeft,
+    required double width,
+  }) {
+    return Container(
+      width: width,
+      height: double.infinity,
+      padding: EdgeInsets.only(
+        left: isLeft ? 8 : 0,
+        right: isLeft ? 0 : 8,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(8),
+          child: Icon(
+            icon, 
+            color: onPressed != null ? Colors.white : Colors.grey.shade800,
+            size: rav(context, 32),
+          ),
         ),
       ),
     );

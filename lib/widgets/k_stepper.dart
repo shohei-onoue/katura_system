@@ -3,12 +3,14 @@ import 'k_responsive.dart';
 
 class KStepper extends StatelessWidget {
   final int currentStep;
+  final int maxReachedStep;
   final List<String> steps;
   final Function(int) onStepTapped;
 
   const KStepper({
     super.key,
     required this.currentStep,
+    this.maxReachedStep = 0,
     required this.steps,
     required this.onStepTapped,
   });
@@ -16,21 +18,22 @@ class KStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: rs(context, 4), horizontal: rs(context, 12)),
-      decoration: BoxDecoration(
+      padding: EdgeInsets.symmetric(vertical: rav(context, 4), horizontal: rav(context, 12)),
+      decoration: const BoxDecoration(
         color: Colors.transparent, // 背景を透明にしてカードの影を際立たせる
       ),
       child: Row(
         children: List.generate(steps.length, (index) {
-          final isCompleted = index < currentStep;
+          final isCompleted = index <= maxReachedStep && index != currentStep;
           final isActive = index == currentStep;
+          final isClickable = index <= maxReachedStep;
           
           return Expanded(
             flex: isActive ? 16 : 10, // 現在地を大幅に強調
             child: GestureDetector(
-              onTap: () => onStepTapped(index),
+              onTap: isClickable ? () => onStepTapped(index) : null,
               child: AnimatedScale(
-                scale: isActive ? 1.08 : 1.0,
+                scale: isActive ? 1.05 : 1.0,
                 duration: const Duration(milliseconds: 200),
                 child: Container(
                   decoration: BoxDecoration(
@@ -38,56 +41,56 @@ class KStepper extends StatelessWidget {
                       if (isActive) 
                         BoxShadow(
                           color: Colors.deepOrange.withValues(alpha: 0.3),
-                          blurRadius: rs(context, 12),
-                          spreadRadius: rs(context, 2),
-                          offset: Offset(0, rs(context, 4)),
+                          blurRadius: rav(context, 12),
+                          spreadRadius: rav(context, 2),
+                          offset: Offset(0, rav(context, 4)),
                         ),
                     ],
                   ),
                   child: Card(
-                    elevation: isActive ? 12 : (isCompleted ? 2 : 0),
-                    margin: EdgeInsets.symmetric(horizontal: rs(context, 4), vertical: rs(context, 4)),
-                    color: isActive ? Colors.white : (isCompleted ? Colors.grey.shade50 : Colors.grey.shade100),
+                    elevation: isActive ? 8 : (isClickable ? 2 : 0),
+                    margin: EdgeInsets.symmetric(horizontal: rav(context, 2), vertical: rav(context, 4)),
+                    color: isActive ? Colors.white : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                      borderRadius: BorderRadius.circular(rav(context, 8)),
                       side: BorderSide(
                         color: isActive ? Colors.deepOrange : Colors.transparent,
-                        width: rs(context, 2.5),
+                        width: rav(context, 2),
                       ),
                     ),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 8)),
+                      padding: EdgeInsets.symmetric(vertical: rav(context, 6), horizontal: rav(context, 4)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: rs(context, 24),
-                            height: rs(context, 24),
+                            width: rav(context, 22),
+                            height: rav(context, 22),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.deepOrange : (isCompleted ? Colors.green : Colors.grey.shade400),
+                              color: isActive ? Colors.deepOrange : (isClickable ? Colors.green : Colors.grey.shade400),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
                               child: isCompleted
-                                  ? Icon(Icons.check, color: Colors.white, size: rs(context, 16))
+                                  ? Icon(Icons.check, color: Colors.white, size: rav(context, 14))
                                   : Text(
                                       '${index + 1}',
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: rf(context, 12),
+                                        fontSize: rf(context, 11),
                                       ),
                                     ),
                             ),
                           ),
-                          SizedBox(width: rs(context, 8)),
+                          SizedBox(width: rav(context, 4)),
                           Flexible(
                             child: Text(
                               steps[index],
                               style: TextStyle(
-                                color: isActive ? Colors.black : Colors.grey.shade600,
+                                color: isActive ? Colors.black : (isClickable ? Colors.black87 : Colors.grey.shade600),
                                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                fontSize: rf(context, 13),
+                                fontSize: rf(context, 12),
                               ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,

@@ -20,8 +20,9 @@ import '../constants/address_constants.dart';
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
   final VoidCallback? onSaveSuccess;
+  final VoidCallback? onCancel;
 
-  const OrderFormScreen({super.key, this.initialOrder, this.onSaveSuccess});
+  const OrderFormScreen({super.key, this.initialOrder, this.onSaveSuccess, this.onCancel});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -48,6 +49,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _packagingOtherController = TextEditingController();
 
   int _currentStep = 0;
+  int _maxStepReached = 0;
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   String _deliveryType = '配送';
@@ -124,6 +126,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     super.initState();
     _keywordQueryController.addListener(_syncSearchQuery);
     _receiverController.addListener(() => setState(() {}));
+    _trashPickupLocationController.addListener(() => setState(() {}));
     _loadData().then((_) { 
       if (widget.initialOrder != null) {
         _populateForm(widget.initialOrder!);
@@ -242,6 +245,44 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
   }
 
+  void _resetForm() {
+    setState(() {
+      _phoneController.clear();
+      _nameController.clear();
+      _receiverController.clear();
+      _facilityController.clear();
+      _addressController.clear();
+      _deliveryLocationController.clear();
+      _remarksController.clear();
+      _trashPickupLocationController.clear();
+      _orderSourceOtherController.clear();
+      _packagingOtherController.clear();
+      _currentStep = 0;
+      _maxStepReached = 0;
+      _currentCustomer = null;
+      _confirmedItems = [];
+      _selectedQuantities.clear();
+      _customerOrderHistory = [];
+      _companyOrderHistory = [];
+      _trashPickupRequested = false;
+      _isDeliveryDateSelected = false;
+      _isDeliveryTimeSelected = false;
+      _isDeliveryTypeSelected = false;
+      _markers = {};
+      _setInitialBranchMarker();
+    });
+    widget.onCancel?.call();
+  }
+
+  void _updateStep(int newStep) {
+    setState(() {
+      _currentStep = newStep;
+      if (newStep > _maxStepReached) {
+        _maxStepReached = newStep;
+      }
+    });
+  }
+
   Future<void> _lookupCustomer(String phone) async {
     final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
     _lastPhoneQuery = cleanDigits;
@@ -255,6 +296,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _selectCustomer(Customer customer) async {
+    // 同一顧客の再選択ならフィールドをクリアせずステップ1へ
+    if (_currentCustomer?.id == customer.id) {
+      _updateStep(1);
+      setState(() {
+        _phoneController.text = _formatPhone(customer.phoneNumber);
+      });
+      return;
+    }
+
     _isLoadingNotifier.value = true;
     final allOrders = await _orderService.getAllOrders();
     final targetPhone = customer.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
@@ -281,7 +331,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _addressController.clear();
       _deliveryLocationController.clear();
       _receiverController.text = customer.name; 
-      _currentStep = 1; 
+      _updateStep(1); 
     });
   }
 
@@ -548,115 +598,247 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 900;
+
     return Scaffold(
       backgroundColor: KR.backgroundLight,
-      body: Row(
-        children: [
-          Expanded(
-            flex: 62,
-            child: Column(
-              children: [
-                KStepper(currentStep: _currentStep, steps: _stepLabels, onStepTapped: (s) { 
-                  if (s < _currentStep) {
-                    setState(() {
-                      _currentStep = s;
-                      if (s == 0) {
-                        _phoneController.text = _lastPhoneQuery;
-                        _lookupCustomer(_lastPhoneQuery);
-                      }
-                    });
-                  }
-                }),
-                Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(24), child: _buildStepContent())),
-              ],
+      endDrawer: isMobile ? Drawer(
+        width: screenWidth * 0.85,
+        child: _buildSidebar(),
+      ) : null,
+      appBar: isMobile ? AppBar(
+        title: Text(_stepLabels[_currentStep], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        actions: [
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
             ),
           ),
-          OrderFormSidebar(
-            currentStep: _currentStep, 
-            phoneController: _phoneController, 
-            isLoading: _isLoadingNotifier.value, 
-            currentCustomer: _currentCustomer,
-            allMenus: _menus,
-            customerOrderHistory: _customerOrderHistory, 
-            companyOrderHistory: _companyOrderHistory,
-            facilitySearchCandidates: _facilityResultsNotifier.value, 
-            selectedHistoryItem: _selectedHistoryItem, 
-            deliveryType: _deliveryType,
-            deliveryDate: _deliveryDate, 
-            selectedTime: _selectedTime, 
-            isDateSelected: _isDeliveryDateSelected,
-            isTimeSelected: _isDeliveryTimeSelected,
-            isTypeSelected: _isDeliveryTypeSelected,
-            confirmedItems: _confirmedItems,
-            onQuantityChanged: (id, v) => setState(() { 
-              final index = _confirmedItems.indexWhere((i) => i['id'] == id);
-              if (index != -1) {
-                final isSpecial = _confirmedItems[index]['isSpecial'] == true;
-                if (v > 0) {
-                  _confirmedItems[index]['quantity'] = v;
-                  if (!isSpecial) _selectedQuantities[id] = v;
-                } else {
-                  _confirmedItems.removeAt(index);
-                  if (!isSpecial) _selectedQuantities[id] = 0;
-                }
-              }
-            }),
-            onNext: () {
-              if (_currentStep < 5) setState(() => _currentStep++);
-            },
-            trashPickupRequested: _trashPickupRequested,
-            trashPickupDateTime: _trashPickupDateTime,
-            trashPickupLocation: _trashPickupLocation,
-            customerName: _nameController.text, 
-            facilityName: _facilityController.text,
-            address: _addressController.text,
-            deliveryLocation: _deliveryLocationController.text,
-            receiverName: _receiverController.text, 
-            totalPrice: _totalPrice, 
-            totalCount: _totalCount, 
-            markers: _markers, 
-            initialCenter: _initialCenter, 
-            onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
-            onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
-            onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
-            onMapCreated: (c) {
-              _mapController = c;
-              _fitMapToMarkers();
-            }, 
-            onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
-            onFacilitySelect: (f) async { 
-              setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
-              LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
-              if (pos == null) { 
-                final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
-                if (latLng != null) { 
-                  pos = LatLng(latLng['lat']!, latLng['lng']!); 
-                  await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
-                  if (mounted) setState(() { _isApproximateLocation = latLng['location_type'] != 'ROOFTOP'; });
-                } 
-              } 
-              if (pos != null) _updateMap(pos, f['name']); 
-            }, 
-            onForceApiSearch: () => _onSearchSubmit(forceApi: true),
-            onMapTap: _onMapPositionAdjusted,
-            onMarkerDragEnd: _onMapPositionAdjusted,
-            deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
-            isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
-          ),
         ],
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ) : null,
+      body: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              flex: isMobile ? 100 : 62,
+              child: Column(
+                children: [
+                  KStepper(
+                    currentStep: _currentStep, 
+                    maxReachedStep: _maxStepReached,
+                    steps: _stepLabels, 
+                    onStepTapped: (s) { 
+                      if (s <= _maxStepReached) {
+                        setState(() {
+                          _currentStep = s;
+                          if (s == 0) {
+                            _phoneController.text = _lastPhoneQuery;
+                            _lookupCustomer(_lastPhoneQuery);
+                          }
+                        });
+                      }
+                    }
+                  ),
+                  Expanded(child: SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())),
+                ],
+              ),
+            ),
+            if (!isMobile)
+              OrderFormSidebar(
+                currentStep: _currentStep, 
+                phoneController: _phoneController, 
+                isLoading: _isLoadingNotifier.value, 
+                currentCustomer: _currentCustomer,
+                allMenus: _menus,
+                customerOrderHistory: _customerOrderHistory, 
+                companyOrderHistory: _companyOrderHistory,
+                facilitySearchCandidates: _facilityResultsNotifier.value, 
+                selectedHistoryItem: _selectedHistoryItem, 
+                deliveryType: _deliveryType,
+                deliveryDate: _deliveryDate, 
+                selectedTime: _selectedTime, 
+                isDateSelected: _isDeliveryDateSelected,
+                isTimeSelected: _isDeliveryTimeSelected,
+                isTypeSelected: _isDeliveryTypeSelected,
+                confirmedItems: _confirmedItems,
+                onQuantityChanged: (indexOrId, v) => setState(() { 
+                  final index = int.tryParse(indexOrId);
+                  if (index != null && index < _confirmedItems.length) {
+                    // サイドバーからのインデックス指定
+                    if (v > 0) {
+                      _confirmedItems[index]['quantity'] = v;
+                    } else {
+                      _confirmedItems.removeAt(index);
+                    }
+                  } else {
+                    // ID指定（既存互換）
+                    final existingIdx = _confirmedItems.indexWhere((i) => i['id'] == indexOrId);
+                    if (existingIdx != -1) {
+                      if (v > 0) {
+                        _confirmedItems[existingIdx]['quantity'] = v;
+                      } else {
+                        _confirmedItems.removeAt(existingIdx);
+                      }
+                    }
+                  }
+                  // 表示用数量マップの再計算
+                  _selectedQuantities.clear();
+                  for (var item in _confirmedItems) {
+                    final String id = item['id'];
+                    _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
+                  }
+                }),
+                onNext: () {
+                  if (_currentStep < 5) setState(() => _currentStep++);
+                },
+                onReset: _resetForm,
+                trashPickupRequested: _trashPickupRequested,
+                trashPickupDateTime: _trashPickupDateTime,
+                trashPickupLocation: _trashPickupLocation,
+                trashPickupLocationDetail: _trashPickupLocationController.text,
+                customerName: _nameController.text, 
+                facilityName: _facilityController.text,
+                address: _addressController.text,
+                deliveryLocation: _deliveryLocationController.text,
+                receiverName: _receiverController.text, 
+                totalPrice: _totalPrice, 
+                totalCount: _totalCount, 
+                markers: _markers, 
+                initialCenter: _initialCenter, 
+                onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
+                onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
+                onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
+                onMapCreated: (c) {
+                  _mapController = c;
+                  _fitMapToMarkers();
+                }, 
+                onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
+                onFacilitySelect: (f) async { 
+                  setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
+                  LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
+                  if (pos == null) { 
+                    final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
+                    if (latLng != null) { 
+                      pos = LatLng(latLng['lat']!, latLng['lng']!); 
+                      await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
+                      if (mounted) setState(() { _isApproximateLocation = latLng['location_type'] != 'ROOFTOP'; });
+                    } 
+                  } 
+                  if (pos != null) _updateMap(pos, f['name']); 
+                }, 
+                onForceApiSearch: () => _onSearchSubmit(forceApi: true),
+                onMapTap: _onMapPositionAdjusted,
+                onMarkerDragEnd: _onMapPositionAdjusted,
+                deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+                isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
+              ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return OrderFormSidebar(
+      currentStep: _currentStep, 
+      phoneController: _phoneController, 
+      isLoading: _isLoadingNotifier.value, 
+      currentCustomer: _currentCustomer,
+      allMenus: _menus,
+      customerOrderHistory: _customerOrderHistory, 
+      companyOrderHistory: _companyOrderHistory,
+      facilitySearchCandidates: _facilityResultsNotifier.value, 
+      selectedHistoryItem: _selectedHistoryItem, 
+      deliveryType: _deliveryType,
+      deliveryDate: _deliveryDate, 
+      selectedTime: _selectedTime, 
+      isDateSelected: _isDeliveryDateSelected,
+      isTimeSelected: _isDeliveryTimeSelected,
+      isTypeSelected: _isDeliveryTypeSelected,
+      confirmedItems: _confirmedItems,
+      onQuantityChanged: (indexOrId, v) => setState(() { 
+        final index = int.tryParse(indexOrId);
+        if (index != null && index < _confirmedItems.length) {
+          if (v > 0) {
+            _confirmedItems[index]['quantity'] = v;
+          } else {
+            _confirmedItems.removeAt(index);
+          }
+        } else {
+          final existingIdx = _confirmedItems.indexWhere((i) => i['id'] == indexOrId);
+          if (existingIdx != -1) {
+            if (v > 0) {
+              _confirmedItems[existingIdx]['quantity'] = v;
+            } else {
+              _confirmedItems.removeAt(existingIdx);
+            }
+          }
+        }
+        _selectedQuantities.clear();
+        for (var item in _confirmedItems) {
+          final String id = item['id'];
+          _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
+        }
+      }),
+      onNext: () {
+        if (_currentStep < 5) setState(() => _currentStep++);
+      },
+      onReset: _resetForm,
+      trashPickupRequested: _trashPickupRequested,
+      trashPickupDateTime: _trashPickupDateTime,
+      trashPickupLocation: _trashPickupLocation,
+      trashPickupLocationDetail: _trashPickupLocationController.text,
+      customerName: _nameController.text, 
+      facilityName: _facilityController.text,
+      address: _addressController.text,
+      deliveryLocation: _deliveryLocationController.text,
+      receiverName: _receiverController.text, 
+      totalPrice: _totalPrice, 
+      totalCount: _totalCount, 
+      markers: _markers, 
+      initialCenter: _initialCenter, 
+      onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
+      onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
+      onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
+      onMapCreated: (c) {
+        _mapController = c;
+        _fitMapToMarkers();
+      }, 
+      onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
+      onFacilitySelect: (f) async { 
+        setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
+        LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
+        if (pos == null) { 
+          final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
+          if (latLng != null) { 
+            pos = LatLng(latLng['lat']!, latLng['lng']!); 
+            await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
+            if (mounted) setState(() { _isApproximateLocation = latLng['location_type'] != 'ROOFTOP'; });
+          } 
+        } 
+        if (pos != null) _updateMap(pos, f['name']); 
+      }, 
+      onForceApiSearch: () => _onSearchSubmit(forceApi: true),
+      onMapTap: _onMapPositionAdjusted,
+      onMarkerDragEnd: _onMapPositionAdjusted,
+      deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+      isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
     );
   }
 
   Widget _buildStepContent() {
     final phoneDisplay = _phoneController.text;
     switch (_currentStep) {
-      case 0: return PhoneConfirmStep(phoneController: _phoneController, isLoading: _isLoadingNotifier.value, candidates: _phoneSearchCandidates, currentCustomer: _currentCustomer, phoneDisplay: phoneDisplay, onNext: () => setState(() => _currentStep = 1), onSelectCustomer: _selectCustomer);
+      case 0: return PhoneConfirmStep(phoneController: _phoneController, isLoading: _isLoadingNotifier.value, candidates: _phoneSearchCandidates, currentCustomer: _currentCustomer, phoneDisplay: phoneDisplay, onNext: () => _updateStep(1), onSelectCustomer: _selectCustomer);
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController, 
           currentCustomer: _currentCustomer, 
           phoneDisplay: phoneDisplay,
-          onNext: () => setState(() => _currentStep = 2), 
+          onNext: () => _updateStep(2), 
           onBack: () { setState(() { _currentStep = 0; _phoneController.text = _lastPhoneQuery; _lookupCustomer(_lastPhoneQuery); }); }
       );
       case 2: return DeliveryDestinationStep(
@@ -690,7 +872,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
-          onNext: () => setState(() => _currentStep = 3), 
+          onNext: () => _updateStep(3), 
           onModeToggle: (v) => setState(() => _isHistoryMode = v), 
           onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v), 
           onAddressSelected: _onAddressSelectedFromList, 
@@ -737,7 +919,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onTimeSelected: (v) => setState(() { _selectedTime = v; _isDeliveryTimeSelected = true; }),
           onTimeSettingsChanged: (min, max, interval) { setState(() { _timePickerMin = min; _timePickerMax = max; _timePickerInterval = interval; }); },
           onTrashTimeSettingsChanged: (min, max, interval) { setState(() { _trashTimePickerMin = min; _trashTimePickerMax = max; _trashTimePickerInterval = interval; }); },
-          onNext: () => setState(() => _currentStep = 4)
+          onNext: () => _updateStep(4)
       );
       case 4: return ItemsSelectionStep(
           menus: _menus, 
@@ -747,13 +929,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
           phoneDisplay: phoneDisplay,
-          teaOption: _teaOption,
-          teaQuantity: _teaQuantity,
-          onTeaOptionChanged: (v) => setState(() => _teaOption = v),
-          onTeaQuantityChanged: (v) => setState(() => _teaQuantity = v),
-          onAddItem: (m) => setState(() { _selectedQuantities[m.id] = (_selectedQuantities[m.id] ?? 0) + 1; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), 
-          onQuantityChanged: (id, v) => setState(() { _selectedQuantities[id] = v; _confirmedItems = _menus.where((x) => (_selectedQuantities[x.id] ?? 0) > 0).map((x) => {'id': x.id, 'name': x.name, 'price': x.price, 'quantity': _selectedQuantities[x.id]}).toList(); }), 
-          onNext: () => setState(() => _currentStep = 5)
+          onAddItem: (itemsList) => setState(() {
+            _confirmedItems.addAll(itemsList);
+            for (var item in itemsList) {
+              final String id = item['id'];
+              _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
+            }
+          }), 
+          onQuantityChanged: (id, v) => setState(() { 
+            // 簡易的な数量変更（サイドバー以外からの呼び出し用：ID指定時は全明細の合計を調整するか、最初の1つを調整するか）
+            // ここでは既存のロジックとの互換性のために一旦残すが、複雑なケースは詳細ダイアログ推奨
+            _selectedQuantities[id] = v;
+            // confirmedItemsも同期させる必要がある（本来はconfirmedItemsが正）
+            final index = _confirmedItems.indexWhere((i) => i['id'] == id);
+            if (index != -1) {
+              if (v > 0) {
+                _confirmedItems[index]['quantity'] = v;
+              } else {
+                _confirmedItems.removeAt(index);
+              }
+            }
+          }), 
+          onNext: () => _updateStep(5)
       );
       case 5: return FinalizeStep(
           branchName: _branchName, 

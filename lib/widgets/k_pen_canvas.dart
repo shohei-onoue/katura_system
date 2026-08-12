@@ -21,6 +21,12 @@ class KPenCanvasController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setPoints(List<DrawingPoint?> newPoints) {
+    _points.clear();
+    _points.addAll(newPoints);
+    notifyListeners();
+  }
+
   void clear() {
     _points.clear();
     notifyListeners();

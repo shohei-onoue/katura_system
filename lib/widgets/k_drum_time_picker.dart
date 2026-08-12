@@ -103,15 +103,15 @@ class _KDrumTimePickerState extends State<KDrumTimePicker> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: rs(context, 80),
+      height: rav(context, 80),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(rs(context, 12)),
+        borderRadius: BorderRadius.circular(rav(context, 12)),
         border: Border.all(color: widget.themeColor.withValues(alpha: 0.2)),
       ),
       child: CupertinoPicker(
         scrollController: _scrollController,
-        itemExtent: rs(context, 40),
+        itemExtent: rav(context, 40),
         onSelectedItemChanged: (index) {
           setState(() {
             _currentIndex = index;

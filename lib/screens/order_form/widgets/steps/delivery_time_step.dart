@@ -395,7 +395,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                             maxLines: 1,
                             height: 44,
                             showLabel: false,
-                            prefixText: '詳細：',
                           )
                         : const SizedBox(height: 44), // No label, so just field height
                   ),
@@ -419,10 +418,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         _buildReceiverInputArea(context),
       ],
     );
-  }
-
-  TextStyle _sectionTitleStyle(BuildContext context) {
-    return TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600);
   }
 
   Widget _buildReceiverModeToggle(BuildContext context) {
@@ -498,7 +493,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
       return KMultimodalTextField(
         label: '',
         controller: widget.receiverController,
-        icon: Icons.person_add_alt_1_outlined,
         maxLines: 1,
       );
     }
@@ -653,86 +647,115 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
       );
     }).toList();
 
-    return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: rs(context, 620),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double screenWidth = MediaQuery.of(context).size.width;
+        final double screenHeight = MediaQuery.of(context).size.height;
+        final bool isHorizontal = screenWidth > screenHeight && screenWidth > 600;
+
+        return Dialog(
+          backgroundColor: Colors.white,
+          insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 20), vertical: rs(context, 10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
+          child: Container(
+            width: isHorizontal ? rs(context, 620) : wp(context, 0.9),
+            constraints: BoxConstraints(maxHeight: hp(context, 0.9)),
+            padding: EdgeInsets.all(rav(context, 20)),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('時間選択のカスタマイズ', 
+                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+                  SizedBox(height: rav(context, 20)),
+                  if (isHorizontal)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildInputFields(),
+                        ),
+                        SizedBox(width: rav(context, 32)),
+                        Container(width: 1, height: rs(context, 300), color: Colors.grey.shade200),
+                        SizedBox(width: rav(context, 32)),
+                        SizedBox(
+                          width: rs(context, 260),
+                          child: _buildDialPadSection(dialKeys),
+                        ),
+                      ],
+                    )
+                  else
+                    Column(
+                      children: [
+                        _buildInputFields(),
+                        SizedBox(height: rav(context, 20)),
+                        _buildDialPadSection(dialKeys),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    );
+  }
+
+  Widget _buildInputFields() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildInputRow('開始時間', _formatTimeDisplay(minStr), activeField == 0, () => _setActiveField(0)),
+        SizedBox(height: rav(context, 8)),
+        _buildInputRow('終了時間', _formatTimeDisplay(maxStr), activeField == 1, () => _setActiveField(1)),
+        SizedBox(height: rav(context, 8)),
+        _buildInputRow('表示間隔', intervalStr.isEmpty ? "0分" : "$intervalStr分", activeField == 2, () => _setActiveField(2)),
+        SizedBox(height: rav(context, 16)),
+        Text('※各項目をタップしてテンキーで入力してください', 
+          style: TextStyle(fontSize: KR.fontTiny(context), color: Colors.grey), textAlign: TextAlign.center),
+      ],
+    );
+  }
+
+  Widget _buildDialPadSection(List<KDialKey> dialKeys) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        KDialPad(keys: dialKeys),
+        SizedBox(height: rav(context, 16)),
+        Row(
           children: [
-            Text('時間選択のカスタマイズ', style: TextStyle(fontSize: KR.fontLarge(context), fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildInputRow('開始時間', _formatTimeDisplay(minStr), activeField == 0, () => _setActiveField(0)),
-                      const SizedBox(height: 8),
-                      _buildInputRow('終了時間', _formatTimeDisplay(maxStr), activeField == 1, () => _setActiveField(1)),
-                      const SizedBox(height: 8),
-                      _buildInputRow('表示間隔', intervalStr.isEmpty ? "0分" : "$intervalStr分", activeField == 2, () => _setActiveField(2)),
-                      const SizedBox(height: 16),
-                      Text('※各項目をタップしてテンキーで入力してください', 
-                        style: TextStyle(fontSize: KR.fontTiny(context), color: Colors.grey), textAlign: TextAlign.center),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 32),
-                Container(width: 1, height: rs(context, 300), color: Colors.grey.shade200),
-                const SizedBox(width: 32),
-                SizedBox(
-                  width: rs(context, 260),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      KDialPad(keys: dialKeys),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: KButton(
-                              label: '戻る', 
-                              onPressed: () => Navigator.pop(context),
-                              isSecondary: true,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: KButton(
-                              label: '反映', 
-                              onPressed: () {
-                                final minTime = _parse4Digit(minStr);
-                                final maxTime = _parse4Digit(maxStr);
-                                final int? intervalVal = int.tryParse(intervalStr);
-                    
-                                if (minTime == null || maxTime == null || intervalVal == null || intervalVal <= 0 || intervalVal > 60) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力内容が正しくありません（間隔は1〜60分以内）')));
-                                  return;
-                                }
-                                widget.onSave(minTime, maxTime, intervalVal);
-                                Navigator.pop(context);
-                              },
-                              color: widget.themeColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            Expanded(
+              child: KButton(
+                label: '戻る', 
+                onPressed: () => Navigator.pop(context),
+                isSecondary: true,
+                color: Colors.grey,
+              ),
+            ),
+            SizedBox(width: rav(context, 12)),
+            Expanded(
+              child: KButton(
+                label: '反映', 
+                onPressed: () {
+                  final minTime = _parse4Digit(minStr);
+                  final maxTime = _parse4Digit(maxStr);
+                  final int? intervalVal = int.tryParse(intervalStr);
+      
+                  if (minTime == null || maxTime == null || intervalVal == null || intervalVal <= 0 || intervalVal > 60) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力内容が正しくありません（間隔は1〜60分以内）')));
+                    return;
+                  }
+                  widget.onSave(minTime, maxTime, intervalVal);
+                  Navigator.pop(context);
+                },
+                color: widget.themeColor,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -740,11 +763,11 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: rav(context, 16), vertical: rav(context, 8)),
         decoration: BoxDecoration(
           color: isActive ? widget.themeColor.withValues(alpha: 0.05) : Colors.white,
           border: Border.all(color: isActive ? widget.themeColor : Colors.grey.shade300, width: 2),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rav(context, 12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -755,7 +778,7 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
               color: isActive ? widget.themeColor : Colors.blueGrey
             )),
             Text(value, style: TextStyle(
-              fontSize: KR.fontXLarge(context), 
+              fontSize: rf(context, 20), 
               fontWeight: FontWeight.bold,
               color: isActive ? Colors.black87 : Colors.blueGrey.shade300
             )),

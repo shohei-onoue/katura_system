@@ -3,7 +3,7 @@ import 'k_responsive.dart';
 
 class KButton extends StatelessWidget {
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color? color;
   final bool fullWidth;
   final bool isSecondary;
@@ -23,7 +23,7 @@ class KButton extends StatelessWidget {
     
     return SizedBox(
       width: fullWidth ? double.infinity : null,
-      height: rs(context, 50),
+      height: rav(context, 48),
       child: isSecondary
           ? OutlinedButton(
               onPressed: onPressed,
@@ -31,7 +31,7 @@ class KButton extends StatelessWidget {
                 side: BorderSide(color: primaryColor, width: 2),
                 foregroundColor: primaryColor,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                  borderRadius: BorderRadius.circular(rav(context, 8)),
                 ),
               ),
               child: Text(
@@ -45,7 +45,7 @@ class KButton extends StatelessWidget {
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                  borderRadius: BorderRadius.circular(rav(context, 8)),
                 ),
               ),
               child: Text(

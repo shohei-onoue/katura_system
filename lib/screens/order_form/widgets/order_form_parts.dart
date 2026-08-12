@@ -22,30 +22,31 @@ class OrderFormCard extends StatelessWidget {
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(rs(context, 16)),
+        borderRadius: BorderRadius.circular(rav(context, 16)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: rs(context, 10),
+            blurRadius: rav(context, 10),
           )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.all(rs(context, 20)),
+            padding: EdgeInsets.all(rav(context, 16)),
             child: Row(
               children: [
-                Icon(icon, color: Colors.deepOrange, size: rs(context, 20)),
-                SizedBox(width: rs(context, 8)),
+                Icon(icon, color: Colors.deepOrange, size: rav(context, 20)),
+                SizedBox(width: rav(context, 8)),
                 Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
                 if (trailing != null) ...[const Spacer(), trailing!],
               ],
             ),
           ),
           const Divider(height: 1),
-          Padding(padding: EdgeInsets.all(rs(context, 20)), child: child),
+          Padding(padding: EdgeInsets.all(rav(context, 16)), child: child),
         ],
       ),
     );
@@ -62,12 +63,12 @@ class CustomerInfoBanner extends StatelessWidget {
     if (customer == null) return const SizedBox.shrink();
     
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
+      padding: EdgeInsets.symmetric(vertical: rav(context, 8)),
       child: Container(
-        padding: EdgeInsets.all(rs(context, 20)),
+        padding: EdgeInsets.all(rav(context, 16)),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(rs(context, 12)),
+          borderRadius: BorderRadius.circular(rav(context, 12)),
           border: Border.all(color: Colors.blueGrey.shade100, width: 1.5),
         ),
         child: Row(
@@ -80,14 +81,14 @@ class CustomerInfoBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel(context, Icons.person, '注文者名'),
-                  SizedBox(height: rs(context, 4)),
+                  SizedBox(height: rav(context, 4)),
                   if (customer!.furigana.isNotEmpty)
                     Text(customer!.furigana, 
-                      style: TextStyle(fontSize: rf(context, 11), color: Colors.grey, height: 1.1)),
+                      style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, height: 1.1)),
                   Text(
                     customer!.name,
                     style: TextStyle(
-                      fontSize: rf(context, 32),
+                      fontSize: rf(context, 28),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
                       height: 1.2,
@@ -100,7 +101,7 @@ class CustomerInfoBanner extends StatelessWidget {
             ),
             
             // 区切り線代わりの余白
-            SizedBox(width: rs(context, 24)),
+            SizedBox(width: rav(context, 24)),
             
             // 右側: 企業・施設名
             Expanded(
@@ -109,11 +110,11 @@ class CustomerInfoBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel(context, Icons.business, '所属企業・施設'),
-                  SizedBox(height: rs(context, 4)),
+                  SizedBox(height: rav(context, 4)),
                   Text(
                     customer!.companyName.isEmpty ? '個人' : customer!.companyName,
                     style: TextStyle(
-                      fontSize: rf(context, 26),
+                      fontSize: rf(context, 22),
                       fontWeight: FontWeight.bold,
                       color: Colors.blueGrey.shade700,
                       height: 1.2,
@@ -134,9 +135,9 @@ class CustomerInfoBanner extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: rs(context, 14), color: Colors.blueGrey),
-        SizedBox(width: rs(context, 6)),
-        Text(text, style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+        Icon(icon, size: rav(context, 14), color: Colors.blueGrey),
+        SizedBox(width: rav(context, 6)),
+        Text(text, style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
       ],
     );
   }

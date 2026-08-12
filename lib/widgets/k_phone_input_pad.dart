@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'k_responsive.dart';
+import 'k_numeric_dial_pad.dart';
 
 class KPhoneInputPad extends StatelessWidget {
   final TextEditingController controller;
@@ -17,81 +17,16 @@ class KPhoneInputPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7', '8', '9'],
-      ['クリア', '0', '⌫'],
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(rs(context, 12)),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(rs(context, 16)),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: rows.map((row) {
-          return Padding(
-            padding: EdgeInsets.only(bottom: rs(context, 12)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: row.map((digit) {
-                final isAction = digit == 'クリア' || digit == '⌫';
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-                    child: SizedBox(
-                      height: rs(context, 80),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isAction ? Colors.grey.shade600 : Colors.blueGrey.shade800,
-                          foregroundColor: Colors.white,
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                          padding: EdgeInsets.zero,
-                        ),
-                        onPressed: () {
-                          if (digit == 'クリア') {
-                            if (onClear != null) {
-                              onClear!.call();
-                            } else {
-                              controller.clear();
-                            }
-                          } else if (digit == '⌫') {
-                            if (onBackspace != null) {
-                              onBackspace!.call();
-                            } else {
-                              final text = controller.text;
-                              if (text.isNotEmpty) {
-                                controller.text = text.substring(0, text.length - 1);
-                              }
-                            }
-                          } else {
-                            onInput(digit);
-                          }
-                        },
-                        child: digit == '⌫'
-                            ? Icon(Icons.backspace, size: rs(context, 32))
-                            : Text(
-                                digit,
-                                style: TextStyle(
-                                  fontSize: digit == 'クリア' ? rf(context, 18) : rf(context, 32),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          );
-        }).toList(),
-      ),
+    return KNumericDialPad(
+      onInput: onInput,
+      onClear: onClear ?? () => controller.clear(),
+      onBackspace: onBackspace ?? () {
+        final text = controller.text;
+        if (text.isNotEmpty) {
+          controller.text = text.substring(0, text.length - 1);
+        }
+      },
+      buttonColor: Colors.blueGrey.shade800,
     );
   }
 }

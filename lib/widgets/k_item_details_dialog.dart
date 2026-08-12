@@ -1,0 +1,245 @@
+import 'package:flutter/material.dart';
+import 'k_responsive.dart';
+import 'k_button.dart';
+import 'k_multimodal_text_field.dart';
+import 'k_shared_quantity_input.dart';
+import '../models/menu_model.dart';
+
+class KItemDetailsDialog extends StatefulWidget {
+  final MenuModel menu;
+  final int initialQuantity;
+
+  const KItemDetailsDialog({
+    super.key,
+    required this.menu,
+    this.initialQuantity = 1,
+  });
+
+  @override
+  State<KItemDetailsDialog> createState() => _KItemDetailsDialogState();
+}
+
+class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
+  late int _quantity;
+  late int _specialOrderQuantity;
+  final _specialOrderController = TextEditingController();
+  String _teaOption = 'なし';
+  int _teaQuantity = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _quantity = widget.initialQuantity > 0 ? widget.initialQuantity : 1;
+    _specialOrderQuantity = _quantity; 
+  }
+
+  @override
+  void dispose() {
+    _specialOrderController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double qInputWidth = rs(context, 160); // 数量入力フィールドの幅を統一
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: rs(context, 750),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ヘッダー
+            Row(
+              children: [
+                Icon(Icons.edit_note, color: Colors.deepPurple, size: rs(context, 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '${widget.menu.name} の詳細設定',
+                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+            
+            // 1. 注文数量
+            _buildSectionLabel('1. 注文数量'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('注文するお弁当の総数を入力してください', 
+                    style: TextStyle(color: Colors.grey, fontSize: 13))
+                ),
+                KSharedQuantityInput(
+                  value: _quantity,
+                  onChanged: (v) {
+                    setState(() {
+                      _quantity = v;
+                      if (_specialOrderQuantity > _quantity) {
+                        _specialOrderQuantity = _quantity;
+                      }
+                    });
+                  },
+                  title: '注文数量',
+                  width: qInputWidth,
+                  height: 50,
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // 2. 特注内容
+            _buildSectionLabel('2. 特注内容'),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: KMultimodalTextField(
+                    label: '',
+                    controller: _specialOrderController,
+                    maxLines: 1,
+                    showLabel: false,
+                    hintText: '特注内容を入力（例：わさび抜き）',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('適用数量', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 4),
+                    KSharedQuantityInput(
+                      value: _specialOrderQuantity,
+                      onChanged: (v) {
+                        if (v <= _quantity) {
+                          setState(() => _specialOrderQuantity = v);
+                        }
+                      },
+                      title: '特注の適用数量',
+                      width: qInputWidth,
+                      height: 50,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // 3. お茶の設定
+            _buildSectionLabel('3. お茶の設定'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildTeaOptionsUI(),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_teaOption == '特典' ? '特典本数' : ' ', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    const SizedBox(height: 4),
+                    Opacity(
+                      opacity: _teaOption == '特典' ? 1.0 : 0.0,
+                      child: IgnorePointer(
+                        ignoring: _teaOption != '特典',
+                        child: KSharedQuantityInput(
+                          value: _teaQuantity,
+                          onChanged: (v) => setState(() => _teaQuantity = v),
+                          title: '特典お茶の本数',
+                          width: qInputWidth,
+                          height: 50,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 48),
+            // アクションボタン
+            Row(
+              children: [
+                Expanded(
+                  child: KButton(
+                    label: 'キャンセル',
+                    color: Colors.grey,
+                    isSecondary: true,
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: KButton(
+                    label: 'カートへ入れる',
+                    color: Colors.deepPurple,
+                    onPressed: () {
+                      Navigator.pop(context, [{
+                        'id': widget.menu.id,
+                        'name': widget.menu.name,
+                        'price': widget.menu.price,
+                        'quantity': _quantity,
+                        'specialOrder': _specialOrderController.text,
+                        'specialOrderQuantity': _specialOrderQuantity,
+                        'topping': '', 
+                        'teaOption': _teaOption,
+                        'teaQuantity': _teaQuantity,
+                      }]);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: rf(context, 15),
+        fontWeight: FontWeight.bold,
+        color: Colors.blueGrey.shade900,
+      ),
+    );
+  }
+
+  Widget _buildTeaOptionsUI() {
+    final options = ['なし', '込み', '別', '特典'];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final isSelected = _teaOption == opt;
+        return ChoiceChip(
+          label: Text(opt, style: const TextStyle(fontWeight: FontWeight.bold)),
+          selected: isSelected,
+          onSelected: (val) {
+            if (val) setState(() => _teaOption = opt);
+          },
+          selectedColor: Colors.deepPurple,
+          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: 13),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          visualDensity: VisualDensity.standard,
+          showCheckmark: false,
+        );
+      }).toList(),
+    );
+  }
+}

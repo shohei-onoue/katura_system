@@ -286,7 +286,6 @@ class DeliveryDestinationStep extends StatelessWidget {
         KMultimodalTextField(
           label: '備考 (地図上の目印、搬入口情報など)',
           controller: remarksController,
-          icon: Icons.notes,
         ),
       ],
     );

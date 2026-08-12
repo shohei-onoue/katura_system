@@ -23,15 +23,15 @@ class KDateTimeDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isSelected = dateTime != null;
-    final double baseFontSize = isCompact ? 24 : 32;
-    final double subFontSize = isCompact ? 14 : 18;
+    final double baseFontSize = isCompact ? 18 : 32;
+    final double subFontSize = isCompact ? 12 : 18;
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(rs(context, 12)),
       child: Container(
-        constraints: BoxConstraints(minHeight: rs(context, isCompact ? 60 : 80)),
-        padding: EdgeInsets.all(rs(context, isCompact ? 10 : 16)),
+        constraints: BoxConstraints(minHeight: rs(context, isCompact ? 50 : 80)),
+        padding: EdgeInsets.all(rs(context, isCompact ? 8 : 16)),
         decoration: BoxDecoration(
           color: isActive 
               ? themeColor.withValues(alpha: 0.08) 
@@ -53,7 +53,7 @@ class KDateTimeDisplay extends StatelessWidget {
                 children: [
                   Icon(
                     isSelected ? Icons.calendar_today : Icons.calendar_today_outlined, 
-                    size: rs(context, isCompact ? 12 : 14), 
+                    size: rs(context, isCompact ? 10 : 14), 
                     color: isSelected ? themeColor : Colors.grey
                   ),
                   SizedBox(width: rs(context, 8)),
@@ -69,29 +69,36 @@ class KDateTimeDisplay extends StatelessWidget {
               ),
               SizedBox(height: rs(context, 4)),
             ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 if (isSelected) ...[
-                  Text(
-                    DateFormat('MM/dd').format(dateTime!),
-                    style: TextStyle(
-                      fontSize: rf(context, baseFontSize), 
-                      fontWeight: FontWeight.bold, 
-                      color: themeColor.withValues(alpha: 0.9)
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat('MM/dd').format(dateTime!),
+                        style: TextStyle(
+                          fontSize: rf(context, baseFontSize), 
+                          fontWeight: FontWeight.bold, 
+                          color: themeColor.withValues(alpha: 0.9)
+                        ),
+                      ),
+                      SizedBox(width: rs(context, 4)),
+                      Text(
+                        '(${DateFormat('E', 'ja_JP').format(dateTime!)})',
+                        style: TextStyle(
+                          fontSize: rf(context, subFontSize), 
+                          fontWeight: FontWeight.bold, 
+                          color: themeColor.withValues(alpha: 0.7)
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: rs(context, 4)),
-                  Text(
-                    '(${DateFormat('E', 'ja_JP').format(dateTime!)})',
-                    style: TextStyle(
-                      fontSize: rf(context, subFontSize), 
-                      fontWeight: FontWeight.bold, 
-                      color: themeColor.withValues(alpha: 0.7)
-                    ),
-                  ),
-                  const Spacer(),
+                  // コンパクトモードで非常に幅が狭い場合は改行を許容
+                  if (!isCompact) const Spacer(),
+                  if (isCompact) SizedBox(width: rs(context, 8)), 
                   Text(
                     DateFormat('HH:mm').format(dateTime!),
                     style: TextStyle(
@@ -101,15 +108,20 @@ class KDateTimeDisplay extends StatelessWidget {
                     ),
                   ),
                 ] else ...[
-                  Text(
-                    '未設定',
-                    style: TextStyle(
-                      fontSize: rf(context, isCompact ? 18 : 24), 
-                      fontWeight: FontWeight.bold, 
-                      color: Colors.grey.shade400
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '未設定',
+                        style: TextStyle(
+                          fontSize: rf(context, isCompact ? 18 : 24), 
+                          fontWeight: FontWeight.bold, 
+                          color: Colors.grey.shade400
+                        ),
+                      ),
+                      Icon(Icons.touch_app, color: Colors.grey.shade300, size: rs(context, isCompact ? 18 : 24)),
+                    ],
                   ),
-                  Icon(Icons.touch_app, color: Colors.grey.shade300, size: rs(context, isCompact ? 18 : 24)),
                 ],
               ],
             ),

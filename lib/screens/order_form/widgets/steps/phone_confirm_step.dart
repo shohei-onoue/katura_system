@@ -29,8 +29,6 @@ class PhoneConfirmStep extends StatelessWidget {
     return OrderFormCard(
       title: '電話番号の確認',
       icon: Icons.phone_callback,
-      trailing: Text('受電: $phoneDisplay', 
-        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
       child: Column(
         children: [
           TextField(

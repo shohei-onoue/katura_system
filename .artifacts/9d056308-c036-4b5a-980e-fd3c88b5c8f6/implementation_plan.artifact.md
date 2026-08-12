@@ -1,32 +1,49 @@
-# 配達日時ステップのUI刷新計画（ダイアログ式日時設定）
+# 商品詳細ダイアログの簡素化と数量入力ウィジェットの共通化計画
 
-配達日時ステップの操作性を向上させるため、日付と時間の選択をダイアログ形式に統合し、メイン画面のレイアウトを整理します。
+商品詳細ダイアログから不要な項目を削除してレイアウトを整理するとともに、数量入力機能を共通ウィジェットとして再定義し、プロジェクト全体で一貫した操作性を提供します。
 
 ## ユーザーレビューが必要な事項
 
-- **セクションの統合**: 「配達・引取り区分」の選択ボタンの横に日付と時間の表示フィールドを配置するため、従来の「日時の決定」セクションは統合・削除されます。
-- **ダイアログの構成**: ダイアログの上部にカレンダー（TableCalendar）、下部に時間（ドラム式ピッカー）を表示し、一画面で両方を設定できる構成にします。
-- **ゴミ回収セクションの扱い**: 今回の指示は「配達引取り選択ボタンの右側」についてですが、UIの統一性のため、ゴミ回収の日時設定も同様の表示フィールド＋ダイアログ形式に変更することを提案します。（一旦、指示通りメインの配達セクションから適用します）
+- **特注数量の連動**: 「特注内容を適用する数量」の初期値は、メインの注文数量と同じにします（例：お弁当10個注文なら、特注数量も初期値10）。
+- **共通ダイヤルパッドの名称**: 電話番号入力で使用しているものをベースにした共通ウィジェットを `KNumericDialPad` として定義します。
 
 ## 提案される変更
 
-### [Component Name] Widgets & Screens
+### 1. 共通ウィジェットの作成と整理
 
-#### [NEW] [k_date_time_selection_dialog.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_date_time_selection_dialog.dart)
-`TableCalendar` と `CupertinoPicker`（ドラム式）を組み合わせた日時選択専用ダイアログを作成します。
+#### [NEW] [k_numeric_dial_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_numeric_dial_pad.dart)
+- `KPhoneInputPad` をベースに、汎用的な数値入力用ダイヤルパッドを作成します。
+- ボタンの大きさや配色を、電話番号入力と数量入力の両方で違和感がないように調整します。
 
-#### [MODIFY] [delivery_time_step.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/steps/delivery_time_step.dart)
-- セクション1のタイトルを「１．配達・引取り区分」に変更します。
-- `KChoiceGroup` の右側に日付・時間の表示フィールドを配置します。
-- フィールドタップ時に `KDateTimeSelectionDialog` を表示するようにします。
-- 旧「２．日時の決定」セクションを削除し、後続のセクション番号を振り直します。
+#### [NEW] [k_shared_quantity_input.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_shared_quantity_input.dart)
+- 「マイナスボタン」「数量表示（タップでダイヤル表示）」「プラスボタン」をセットにした共通の数量入力ウィジェットを作成します。
+- `ItemsSelectionStep` のメニューカードや、詳細ダイアログ内で使用します。
+
+### 2. 商品詳細ダイアログの刷新
+
+#### [MODIFY] [k_item_details_dialog.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_item_details_dialog.dart)
+- **項目削除**: ドリンク・サイドメニューの選択リスト、トッピング入力フィールドを廃止します。
+- **レイアウト変更**:
+    - **上部**: メインの数量入力（`KSharedQuantityInput` を使用）。
+    - **中部**: 特注内容入力フィールド。
+    - **中部（右）**: 特注内容を適用する数量の入力フィールド。
+    - **下部**: お茶の設定（ChoiceChipをより小さく、特典本数入力を統合）。
+- **特注数量の実装**: `_specialOrderQuantity` 状態を追加し、メイン数量を超えないようにバリデーションを行います。
+
+### 3. 既存箇所の共通化対応
+
+#### [MODIFY] [items_selection_step.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/steps/items_selection_step.dart)
+- メニューカードの数量操作部分を新設した `KSharedQuantityInput` に置き換えます。
+
+#### [MODIFY] [sidebar_phone_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/sidebar/sidebar_phone_pad.dart)
+- 内部で使用している `KPhoneInputPad` を `KNumericDialPad` に置き換えます（または `KPhoneInputPad` 自体を汎用化します）。
 
 ## 検証計画
 
 ### 自動テスト
-- ビルドが正常に通ることを確認します。
+- `flutter analyze` で依存関係の整合性を確認します。
 
 ### 手動確認
-- 「配達・引取り区分」セクションで、日付・時間フィールドをタップするとダイアログが開くこと。
-- ダイアログで日付（カレンダー）と時間（ドラム）を選択し、「反映」ボタンで元の画面に正しく反映されること。
-- 配達・引取りの切り替えが正しく動作すること。
+- 詳細ダイアログでドリンク選択が消え、特注フィールドの横に「適用数量」が表示されていることを確認。
+- 数量表示をタップした際、サイドバーと同じデザインの入力ダイヤルが表示されることを確認。
+- 特注数量がメイン数量と適切に連動（または制限）されていることを確認。
