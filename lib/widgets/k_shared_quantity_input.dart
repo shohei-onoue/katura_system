@@ -144,7 +144,7 @@ class _QuantityDialDialogState extends State<_QuantityDialDialog> {
             ),
             const SizedBox(height: 24),
             KNumericDialPad(
-              buttonColor: widget.themeColor,
+              buttonColor: Colors.blueGrey.shade800,
               onInput: (digit) {
                 if (_currentText.length < 4) {
                   setState(() => _currentText += digit);

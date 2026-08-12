@@ -41,7 +41,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final double qInputWidth = rs(context, 160); // 数量入力フィールドの幅を統一
+    final double qInputWidth = rs(context, 80); // 受注内容ステップと統一
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -73,13 +73,24 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
             const Divider(height: 32),
             
             // 1. 注文数量
-            _buildSectionLabel('1. 注文数量'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildSectionLabel('1. 注文数量'),
+                Text('数量', style: _subLabelStyle(context)),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const Expanded(
-                  child: Text('注文するお弁当の総数を入力してください', 
-                    style: TextStyle(color: Colors.grey, fontSize: 13))
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: Text('注文するお弁当の総数を入力してください', 
+                      style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  )
                 ),
                 KSharedQuantityInput(
                   value: _quantity,
@@ -93,17 +104,24 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
                   },
                   title: '注文数量',
                   width: qInputWidth,
-                  height: 50,
+                  height: 44,
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
             // 2. 特注内容
-            _buildSectionLabel('2. 特注内容'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildSectionLabel('2. 特注内容'),
+                Text('適用数量', style: _subLabelStyle(context)),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
                   child: KMultimodalTextField(
@@ -111,60 +129,59 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
                     controller: _specialOrderController,
                     maxLines: 1,
                     showLabel: false,
+                    height: 44, // 数量入力と高さを合わせる
                     hintText: '特注内容を入力（例：わさび抜き）',
                   ),
                 ),
                 const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('適用数量', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                    const SizedBox(height: 4),
-                    KSharedQuantityInput(
-                      value: _specialOrderQuantity,
-                      onChanged: (v) {
-                        if (v <= _quantity) {
-                          setState(() => _specialOrderQuantity = v);
-                        }
-                      },
-                      title: '特注の適用数量',
-                      width: qInputWidth,
-                      height: 50,
-                    ),
-                  ],
+                KSharedQuantityInput(
+                  value: _specialOrderQuantity,
+                  onChanged: (v) {
+                    if (v <= _quantity) {
+                      setState(() => _specialOrderQuantity = v);
+                    }
+                  },
+                  title: '特注の適用数量',
+                  width: qInputWidth,
+                  height: 44,
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
             // 3. お茶の設定
-            _buildSectionLabel('3. お茶の設定'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _buildSectionLabel('3. お茶の設定'),
+                if (_teaOption == '特典')
+                  Text('特典本数', style: _subLabelStyle(context)),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Expanded(
-                  child: _buildTeaOptionsUI(),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: _buildTeaOptionsUI(),
+                  ),
                 ),
                 const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_teaOption == '特典' ? '特典本数' : ' ', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                    const SizedBox(height: 4),
-                    Opacity(
-                      opacity: _teaOption == '特典' ? 1.0 : 0.0,
-                      child: IgnorePointer(
-                        ignoring: _teaOption != '特典',
-                        child: KSharedQuantityInput(
-                          value: _teaQuantity,
-                          onChanged: (v) => setState(() => _teaQuantity = v),
-                          title: '特典お茶の本数',
-                          width: qInputWidth,
-                          height: 50,
-                        ),
-                      ),
+                Opacity(
+                  opacity: _teaOption == '特典' ? 1.0 : 0.0,
+                  child: IgnorePointer(
+                    ignoring: _teaOption != '特典',
+                    child: KSharedQuantityInput(
+                      value: _teaQuantity,
+                      onChanged: (v) => setState(() => _teaQuantity = v),
+                      title: '特典お茶の本数',
+                      width: qInputWidth,
+                      height: 44,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -206,6 +223,14 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  TextStyle _subLabelStyle(BuildContext context) {
+    return TextStyle(
+      fontSize: rf(context, 12), 
+      fontWeight: FontWeight.bold, 
+      color: Colors.blueGrey
     );
   }
 

@@ -166,9 +166,11 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
               ),
               SizedBox(width: rs(context, 8)),
               IconButton(
+                padding: widget.height != null ? EdgeInsets.zero : const EdgeInsets.all(8),
+                constraints: widget.height != null ? const BoxConstraints() : const BoxConstraints(minWidth: 48, minHeight: 48),
                 icon: Icon(Icons.delete_outline, 
                   color: widget.controller.text.isNotEmpty ? Colors.red.shade400 : Colors.grey.shade300, 
-                  size: 24),
+                  size: widget.height != null ? 22 : 24),
                 onPressed: widget.controller.text.isNotEmpty ? () {
                   widget.controller.clear();
                   setState(() {});
