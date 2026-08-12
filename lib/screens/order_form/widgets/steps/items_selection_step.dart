@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../models/menu_model.dart';
-import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_responsive.dart';
-import '../../../../widgets/k_shared_quantity_input.dart';
 import '../../../../widgets/k_item_details_dialog.dart';
+import '../../../../widgets/k_menu_card.dart';
 import '../order_form_parts.dart';
 
 class ItemsSelectionStep extends StatefulWidget {
@@ -138,7 +137,23 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                 itemBuilder: (context, i) {
                   final menu = displayMenus[i];
                   final qty = widget.selectedQuantities[menu.id] ?? 0;
-                  return _buildMenuCard(menu, qty);
+                  return KMenuCard(
+                    menu: menu,
+                    quantity: qty,
+                    onQuantityChanged: (v) => widget.onQuantityChanged(menu.id, v),
+                    onDetailsPressed: () async {
+                      final result = await showDialog<List<Map<String, dynamic>>>(
+                        context: context,
+                        builder: (context) => KItemDetailsDialog(
+                          menu: menu, 
+                          initialQuantity: qty > 0 ? qty : 1,
+                        ),
+                      );
+                      if (result != null) {
+                        widget.onAddItem(result);
+                      }
+                    },
+                  );
                 },
               ),
             ],
@@ -146,73 +161,5 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
         ),
       ],
     );
-  }
-
-  Widget _buildMenuCard(MenuModel menu, int qty) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: qty > 0 ? Colors.deepPurple : Colors.grey.shade200, width: qty > 0 ? 2 : 1),
-        boxShadow: [
-          if (qty > 0) BoxShadow(color: Colors.deepPurple.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 4,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-              child: _buildImage(menu.imageUrl),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(menu.name,
-                  style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold),
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text('¥${menu.price}',
-                  style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
-                const SizedBox(height: 12),
-                KSharedQuantityInput(
-                  value: qty, 
-                  onChanged: (v) => widget.onQuantityChanged(menu.id, v),
-                  title: menu.name,
-                ),
-                const SizedBox(height: 12),
-                KButton(
-                  label: '詳細設定', 
-                  onPressed: () async {
-                    final result = await showDialog<List<Map<String, dynamic>>>(
-                      context: context,
-                      builder: (context) => KItemDetailsDialog(
-                        menu: menu, 
-                        initialQuantity: qty > 0 ? qty : 1,
-                      ),
-                    );
-                    if (result != null) {
-                      widget.onAddItem(result);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImage(String url) {
-    if (url.isEmpty) return Container(color: Colors.grey.shade100, child: const Icon(Icons.restaurant, color: Colors.grey));
-    if (url.startsWith('http')) return Image.network(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image));
-    if (url.startsWith('assets/')) return Image.asset(url, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image));
-    return Container(color: Colors.grey.shade100);
   }
 }

@@ -4,6 +4,7 @@ import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_tile_selector.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
+import '../../../../widgets/k_shared_quantity_input.dart';
 import '../order_form_parts.dart';
 
 class FinalizeStep extends StatelessWidget {
@@ -65,83 +66,71 @@ class FinalizeStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. 受注区分
-          Text('受注区分', style: _labelStyle(context)),
-          SizedBox(height: rs(context, 8)),
-          Row(
-            children: [
-              _choiceChip(context, '直取', orderSource == '直取', (v) => onOrderSourceChanged('直取')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, '結膳', orderSource == '結膳', (v) => onOrderSourceChanged('結膳')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, 'デリカ', orderSource == 'デリカ', (v) => onOrderSourceChanged('デリカ')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, 'その他', orderSource == 'その他', (v) => onOrderSourceChanged('その他')),
-            ],
-          ),
-          if (orderSource == 'その他') ...[
-            SizedBox(height: rs(context, 12)),
-            KMultimodalTextField(
-              label: '受注区分（詳細）', 
-              controller: orderSourceOtherController,
-            ),
-          ],
-          
-          SizedBox(height: rs(context, 32)),
-          const Divider(),
-          SizedBox(height: rs(context, 32)),
-
-          // 2. 梱包
-          Text('梱包方法', style: _labelStyle(context)),
-          SizedBox(height: rs(context, 8)),
-          Row(
-            children: [
-              _choiceChip(context, '紙袋', packagingType == '紙袋', (v) => onPackagingTypeChanged('紙袋')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, '段ボール', packagingType == '段ボール', (v) => onPackagingTypeChanged('段ボール')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, '小分け', packagingType == '小分け', (v) => onPackagingTypeChanged('小分け')),
-              SizedBox(width: rs(context, 8)),
-              _choiceChip(context, 'その他', packagingType == 'その他', (v) => onPackagingTypeChanged('その他')),
-            ],
-          ),
-          if (packagingType == '小分け') ...[
-            SizedBox(height: rs(context, 12)),
-            Row(
+          _buildFormRow(
+            context: context,
+            label: '受注区分',
+            buttons: Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Text('小分け数量：', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
-                IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () { if(packagingSmallQty > 0) onPackagingSmallQtyChanged(packagingSmallQty - 1); }),
-                Text('$packagingSmallQty', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => onPackagingSmallQtyChanged(packagingSmallQty + 1)),
-                const Text(' 個ずつ'),
+                _choiceChip(context, '直取', orderSource == '直取', (v) => onOrderSourceChanged('直取')),
+                _choiceChip(context, '結膳', orderSource == '結膳', (v) => onOrderSourceChanged('結膳')),
+                _choiceChip(context, 'デリカ', orderSource == 'デリカ', (v) => onOrderSourceChanged('デリカ')),
+                _choiceChip(context, 'その他', orderSource == 'その他', (v) => onOrderSourceChanged('その他')),
               ],
             ),
-          ],
-          if (packagingType == 'その他') ...[
-            SizedBox(height: rs(context, 12)),
-            KMultimodalTextField(
-              label: '梱包方法（詳細）', 
-              controller: packagingOtherController,
-            ),
-          ],
-
-          SizedBox(height: rs(context, 32)),
+            details: orderSource == 'その他'
+                ? KMultimodalTextField(
+                    label: '',
+                    hintText: '受注区分（詳細）を入力',
+                    showLabel: false,
+                    controller: orderSourceOtherController,
+                    height: rs(context, 44),
+                  )
+                : null,
+          ),
+          
+          const SizedBox(height: 32),
           const Divider(),
-          SizedBox(height: rs(context, 32)),
+          const SizedBox(height: 32),
 
-          // 3. 事前確認
-          Text('事前確認（前日連絡）', style: _labelStyle(context)),
-          SizedBox(height: rs(context, 8)),
-          Row(
-            children: [
-              _choiceChip(context, 'SNS', preConfirmationMethod == 'SNS', (v) => onPreConfirmationMethodChanged('SNS')),
-              SizedBox(width: rs(context, 12)),
-              _choiceChip(context, '電話', preConfirmationMethod == '電話', (v) => onPreConfirmationMethodChanged('電話')),
-            ],
+          // 2. 梱包
+          _buildFormRow(
+            context: context,
+            label: '梱包方法',
+            buttons: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _choiceChip(context, '紙袋', packagingType == '紙袋', (v) => onPackagingTypeChanged('紙袋')),
+                _choiceChip(context, '段ボール', packagingType == '段ボール', (v) => onPackagingTypeChanged('段ボール')),
+                _choiceChip(context, '小分け', packagingType == '小分け', (v) => onPackagingTypeChanged('小分け')),
+                _choiceChip(context, 'その他', packagingType == 'その他', (v) => onPackagingTypeChanged('その他')),
+              ],
+            ),
+            details: _buildPackagingDetailArea(context),
           ),
 
-          SizedBox(height: rs(context, 32)),
+          const SizedBox(height: 32),
           const Divider(),
-          SizedBox(height: rs(context, 32)),
+          const SizedBox(height: 32),
+
+          // 3. 事前確認
+          _buildFormRow(
+            context: context,
+            label: '事前確認',
+            buttons: Row(
+              children: [
+                _choiceChip(context, 'SNS', preConfirmationMethod == 'SNS', (v) => onPreConfirmationMethodChanged('SNS')),
+                const SizedBox(width: 12),
+                _choiceChip(context, '電話', preConfirmationMethod == '電話', (v) => onPreConfirmationMethodChanged('電話')),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 32),
+          const Divider(),
+          const SizedBox(height: 32),
 
           // 4. 店舗・支払
           KTileSelector(label: '担当店舗', selectedValue: branchName, items: [KTileItem(label: '岡崎本店', value: '岡崎本店'), KTileItem(label: '名古屋店', value: '名古屋店'), KTileItem(label: '岐阜店', value: '岐阜店')], onSelected: onBranchChanged),
@@ -150,7 +139,17 @@ class FinalizeStep extends StatelessWidget {
             children: [
               Expanded(child: KTileSelector(label: '支払方法', selectedValue: paymentMethod, items: [KTileItem(label: '現金', value: '現金'), KTileItem(label: 'カード', value: 'カード'), KTileItem(label: '請求書', value: '請求')], onSelected: onPaymentChanged)),
               SizedBox(width: rs(context, 24)),
-              Container(width: rs(context, 200), padding: EdgeInsets.all(rs(context, 16)), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(rs(context, 8))), child: Column(children: [Text('容器回収', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))), Switch(value: collectContainer, onChanged: onCollectChanged)])),
+              Container(
+                width: rs(context, 200), 
+                padding: EdgeInsets.all(rs(context, 16)), 
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(rs(context, 8))), 
+                child: Column(
+                  children: [
+                    Text('容器回収', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))), 
+                    Switch(value: collectContainer, onChanged: onCollectChanged)
+                  ]
+                )
+              ),
             ],
           ),
           SizedBox(height: rs(context, 24)),
@@ -160,6 +159,79 @@ class FinalizeStep extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildFormRow({
+    required BuildContext context,
+    required String label,
+    required Widget buttons,
+    Widget? details,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 1. ラベルエリア (15%)
+        Expanded(
+          flex: 15,
+          child: Text(label, style: _labelStyle(context)),
+        ),
+        // 2. ボタンエリア (50%)
+        Expanded(
+          flex: 50,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: 0.9, // ボタン同士の間隔を考慮して少し広めに
+              child: buttons,
+            ),
+          ),
+        ),
+        // 3. 詳細エリア (35%)
+        Expanded(
+          flex: 35,
+          child: details != null
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: 0.95, // 右端までほぼ使い切る
+                    child: details,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPackagingDetailArea(BuildContext context) {
+    if (packagingType == '小分け') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('数量：', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          const SizedBox(width: 4),
+          KSharedQuantityInput(
+            value: packagingSmallQty,
+            onChanged: onPackagingSmallQtyChanged,
+            title: '小分け数量',
+            width: rs(context, 60),
+            height: 40,
+          ),
+          const SizedBox(width: 4),
+          Text('個ずつ', style: TextStyle(fontSize: rf(context, 13))),
+        ],
+      );
+    }
+    if (packagingType == 'その他') {
+      return KMultimodalTextField(
+        label: '',
+        hintText: '梱包方法（詳細）を入力',
+        showLabel: false,
+        controller: packagingOtherController,
+        height: rs(context, 44),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   TextStyle _labelStyle(BuildContext context) {

@@ -7,6 +7,8 @@ class KButton extends StatelessWidget {
   final Color? color;
   final bool fullWidth;
   final bool isSecondary;
+  final double? height;
+  final double? fontSize;
 
   const KButton({
     super.key,
@@ -15,6 +17,8 @@ class KButton extends StatelessWidget {
     this.color,
     this.fullWidth = true,
     this.isSecondary = false,
+    this.height,
+    this.fontSize,
   });
 
   @override
@@ -23,7 +27,7 @@ class KButton extends StatelessWidget {
     
     return SizedBox(
       width: fullWidth ? double.infinity : null,
-      height: rav(context, 48),
+      height: height ?? rav(context, 48),
       child: isSecondary
           ? OutlinedButton(
               onPressed: onPressed,
@@ -36,7 +40,7 @@ class KButton extends StatelessWidget {
               ),
               child: Text(
                 label,
-                style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: fontSize ?? rf(context, 16), fontWeight: FontWeight.bold),
               ),
             )
           : ElevatedButton(
@@ -50,7 +54,7 @@ class KButton extends StatelessWidget {
               ),
               child: Text(
                 label,
-                style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: fontSize ?? rf(context, 16), fontWeight: FontWeight.bold),
               ),
             ),
     );

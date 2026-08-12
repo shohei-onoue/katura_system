@@ -1,49 +1,44 @@
-# 商品詳細ダイアログの簡素化と数量入力ウィジェットの共通化計画
+# 受注・梱包セクションの垂直整列レイアウト（3カラム構成）計画
 
-商品詳細ダイアログから不要な項目を削除してレイアウトを整理するとともに、数量入力機能を共通ウィジェットとして再定義し、プロジェクト全体で一貫した操作性を提供します。
+メイン画面の2分割表示を廃止し、ラベル・ボタン群・詳細エリアの3カラムを行単位で垂直に整列させることで、プロ仕様の整然とした入力フォームを実現します。
 
 ## ユーザーレビューが必要な事項
 
-- **特注数量の連動**: 「特注内容を適用する数量」の初期値は、メインの注文数量と同じにします（例：お弁当10個注文なら、特注数量も初期値10）。
-- **共通ダイヤルパッドの名称**: 電話番号入力で使用しているものをベースにした共通ウィジェットを `KNumericDialPad` として定義します。
+- **カラムの配置と幅の固定**: すべての行において「ボタン群」が終了する位置を一致させ、詳細フィールドの開始位置を垂直に揃えます。
+- **比率設定**: 横幅を `[ラベル(15%) : ボタン群(50%) : 詳細エリア(35%)]` の比率で固定します。これにより、受注区分のフィールドの左端と、梱包方法のボタンの右端が（余白を挟んで）垂直に並びます。
 
 ## 提案される変更
 
-### 1. 共通ウィジェットの作成と整理
+### 1. 統一レイアウトエンジンの導入
 
-#### [NEW] [k_numeric_dial_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_numeric_dial_pad.dart)
-- `KPhoneInputPad` をベースに、汎用的な数値入力用ダイヤルパッドを作成します。
-- ボタンの大きさや配色を、電話番号入力と数量入力の両方で違和感がないように調整します。
+#### [MODIFY] [finalize_step.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/steps/finalize_step.dart)
+- **分割表示の解除**: 従来の `Expanded` による左右分割を削除し、各項目を独立した `Row` として構成します。
+- **3カラムRowの定義**:
+    - 全ての行（受注区分、梱包方法、事前確認）を以下の構造に統一します。
+    - `Row(children: [ Expanded(flex: 15, child: ラベル), Expanded(flex: 50, child: ボタン群), Expanded(flex: 35, child: 詳細/数量エリア) ])`
+- **右端の余白確保**: `Row` 全体を `Padding(padding: EdgeInsets.only(right: 16))` 等で包み、画面右端からの余白を一定に保ちます。
 
-#### [NEW] [k_shared_quantity_input.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_shared_quantity_input.dart)
-- 「マイナスボタン」「数量表示（タップでダイヤル表示）」「プラスボタン」をセットにした共通の数量入力ウィジェットを作成します。
-- `ItemsSelectionStep` のメニューカードや、詳細ダイアログ内で使用します。
+### 2. コンテンツの配置ルール
 
-### 2. 商品詳細ダイアログの刷新
+- **受注区分行**:
+    - 50%エリア：4つのボタンを `Wrap` で配置。
+    - 35%エリア：左端を揃えて `KMultimodalTextField` を表示（「その他」選択時のみ）。
+- **梱包方法行**:
+    - 50%エリア：4つのボタンを `Wrap` で配置。
+    - 35%エリア：左端を揃えて数量入力（小分け時）またはテキスト入力（その他時）を表示。
+- **事前確認行**:
+    - 50%エリア：2つのボタンを配置。
+    - 35%エリア：空の状態を維持。
 
-#### [MODIFY] [k_item_details_dialog.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/widgets/k_item_details_dialog.dart)
-- **項目削除**: ドリンク・サイドメニューの選択リスト、トッピング入力フィールドを廃止します。
-- **レイアウト変更**:
-    - **上部**: メインの数量入力（`KSharedQuantityInput` を使用）。
-    - **中部**: 特注内容入力フィールド。
-    - **中部（右）**: 特注内容を適用する数量の入力フィールド。
-    - **下部**: お茶の設定（ChoiceChipをより小さく、特典本数入力を統合）。
-- **特注数量の実装**: `_specialOrderQuantity` 状態を追加し、メイン数量を超えないようにバリデーションを行います。
-
-### 3. 既存箇所の共通化対応
-
-#### [MODIFY] [items_selection_step.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/steps/items_selection_step.dart)
-- メニューカードの数量操作部分を新設した `KSharedQuantityInput` に置き換えます。
-
-#### [MODIFY] [sidebar_phone_pad.dart](file:///Users/oldrookie_dx/AndroidStudioProjects/katura_system/lib/screens/order_form/widgets/sidebar/sidebar_phone_pad.dart)
-- 内部で使用している `KPhoneInputPad` を `KNumericDialPad` に置き換えます（または `KPhoneInputPad` 自体を汎用化します）。
+### 3. フィールドデザインの統一
+- 詳細フィールドと数量入力ウィジェットの高さを `44px` に統一し、行内の垂直中央または下端で揃えます。
 
 ## 検証計画
 
 ### 自動テスト
-- `flutter analyze` で依存関係の整合性を確認します。
+- `flutter analyze` を実行し、比率変更に伴うレイアウト崩れやオーバーフローがないか確認します。
 
 ### 手動確認
-- 詳細ダイアログでドリンク選択が消え、特注フィールドの横に「適用数量」が表示されていることを確認。
-- 数量表示をタップした際、サイドバーと同じデザインの入力ダイヤルが表示されることを確認。
-- 特注数量がメイン数量と適切に連動（または制限）されていることを確認。
+- **垂直方向の整列**: 「受注区分：その他」の入力ボックスの左端が、「梱包方法：その他」のボタンの右端と揃っているか確認。
+- **右端の整列**: 各行の入力項目が画面右端で綺麗に揃っているか確認。
+- **レスポンシブ性**: 画面を横にした際も、この3カラムの比率が保たれ、整列が崩れないことを確認。
