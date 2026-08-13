@@ -125,35 +125,68 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           color: Colors.white, 
           border: Border(left: BorderSide(color: Colors.grey.shade200))
         ),
-        child: Stack(
+        child: Column(
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final totalHeight = constraints.maxHeight.floorToDouble();
-                final width = constraints.maxWidth.floorToDouble();
+            if (widget.currentStep >= 2) _buildPhoneHeader(),
+            Expanded(
+              child: Stack(
+                children: [
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final totalHeight = constraints.maxHeight.floorToDouble();
+                      final width = constraints.maxWidth.floorToDouble();
 
-                // マップが表示されるステップ(2)では正方形(幅と同じ高さ)にする
-                final double topAreaHeight;
-                if (widget.currentStep == 2) {
-                  topAreaHeight = width;
-                } else if (widget.currentStep == 3) {
-                  topAreaHeight = 0; // ステップ3ではマップを非表示
-                } else {
-                  topAreaHeight = (totalHeight / 2).floorToDouble();
-                }
+                      // マップが表示されるステップ(2)では正方形(幅と同じ高さ)にする
+                      final double topAreaHeight;
+                      if (widget.currentStep == 2) {
+                        topAreaHeight = width;
+                      } else if (widget.currentStep == 3) {
+                        topAreaHeight = 0; // ステップ3ではマップを非表示
+                      } else {
+                        topAreaHeight = (totalHeight / 2).floorToDouble();
+                      }
 
-                final bottomAreaHeight = totalHeight - topAreaHeight - 1.0;
+                      final bottomAreaHeight = totalHeight - topAreaHeight - 1.0;
 
-                return _buildContent(topAreaHeight, bottomAreaHeight);
-              },
-            ),
-            if (widget.isLoading)
-              Container(
-                color: Colors.white.withValues(alpha: 0.6),
-                child: const Center(child: CircularProgressIndicator()),
+                      return _buildContent(topAreaHeight, bottomAreaHeight);
+                    },
+                  ),
+                  if (widget.isLoading)
+                    Container(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneHeader() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: rs(context, 12), horizontal: rs(context, 16)),
+      decoration: BoxDecoration(
+        color: Colors.deepOrange.shade50,
+        border: Border(bottom: BorderSide(color: Colors.deepOrange.shade100)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.phone_callback, size: rs(context, 18), color: Colors.deepOrange),
+          const SizedBox(width: 12),
+          Text(
+            '受電：${widget.phoneController.text}',
+            style: TextStyle(
+              fontSize: rf(context, 18),
+              fontWeight: FontWeight.bold,
+              color: Colors.deepOrange.shade900,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -843,7 +843,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       );
       case 2: return DeliveryDestinationStep(
           currentCustomer: _currentCustomer, 
-          phoneDisplay: phoneDisplay, 
           isHistoryMode: _isHistoryMode, 
           selectedHistoryCategory: _selectedHistoryCategory, 
           facilityControllerText: _facilityController.text, 
@@ -903,7 +902,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           receiverController: _receiverController,
           currentCustomer: _currentCustomer,
           facilityName: _facilityController.text,
-          phoneDisplay: phoneDisplay,
+          orderSource: _orderSource,
+          orderSourceOtherController: _orderSourceOtherController,
+          onOrderSourceChanged: (v) => setState(() => _orderSource = v),
           trashPickupRequested: _trashPickupRequested,
           trashPickupDateTime: _trashPickupDateTime,
           trashPickupLocation: _trashPickupLocation,
@@ -928,7 +929,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           riceAmount: _calculateRiceAmount(), 
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
-          phoneDisplay: phoneDisplay,
           onAddItem: (itemsList) => setState(() {
             _confirmedItems.addAll(itemsList);
             for (var item in itemsList) {
@@ -958,14 +958,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           collectContainer: _collectContainer, 
           selectedReceiverId: _selectedReceiverId, 
           staffList: _staffList, 
-          orderSource: _orderSource,
-          orderSourceOtherController: _orderSourceOtherController,
           packagingType: _packagingType,
           packagingSmallQty: _packagingSmallQty,
           packagingOtherController: _packagingOtherController,
-          phoneDisplay: phoneDisplay,
           preConfirmationMethod: _preConfirmationMethod,
-          onOrderSourceChanged: (v) => setState(() => _orderSource = v),
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
           onBranchChanged: (v) { 

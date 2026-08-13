@@ -12,7 +12,6 @@ class ItemsSelectionStep extends StatefulWidget {
   final double riceAmount;
   final String packaging;
   final int totalPrice;
-  final String phoneDisplay; // 受電番号
   final Function(List<Map<String, dynamic>>) onAddItem;
   final Function(String, int) onQuantityChanged;
   final VoidCallback onNext;
@@ -25,7 +24,6 @@ class ItemsSelectionStep extends StatefulWidget {
     required this.riceAmount,
     required this.packaging,
     required this.totalPrice,
-    required this.phoneDisplay,
     required this.onAddItem,
     required this.onQuantityChanged,
     required this.onNext,
@@ -92,8 +90,6 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                   style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                 const SizedBox(width: 24),
               ],
-              Text('受電: ${widget.phoneDisplay}', 
-                style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
             ],
           ),
           child: Column(

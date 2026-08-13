@@ -11,7 +11,6 @@ import '../order_form_parts.dart';
 
 class DeliveryDestinationStep extends StatelessWidget {
   final Customer? currentCustomer;
-  final String phoneDisplay;
   final bool isHistoryMode;
   final String selectedHistoryCategory;
   final String facilityControllerText;
@@ -62,7 +61,6 @@ class DeliveryDestinationStep extends StatelessWidget {
   const DeliveryDestinationStep({
     super.key,
     required this.currentCustomer,
-    required this.phoneDisplay,
     required this.isHistoryMode,
     required this.selectedHistoryCategory,
     required this.facilityControllerText,
@@ -117,8 +115,6 @@ class DeliveryDestinationStep extends StatelessWidget {
         OrderFormCard(
           title: '配達先の確定',
           icon: Icons.location_on,
-          trailing: Text('受電: $phoneDisplay', 
-            style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
           child: Column(
             children: [
               Row(

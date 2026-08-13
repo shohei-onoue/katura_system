@@ -22,7 +22,10 @@ class DeliveryTimeStep extends StatefulWidget {
   final TextEditingController receiverController;
   final Customer? currentCustomer;
   final String facilityName;
-  final String phoneDisplay;
+
+  final String orderSource;
+  final TextEditingController orderSourceOtherController;
+  final Function(String) onOrderSourceChanged;
 
   final bool trashPickupRequested;
   final DateTime? trashPickupDateTime;
@@ -58,7 +61,9 @@ class DeliveryTimeStep extends StatefulWidget {
     required this.receiverController,
     required this.currentCustomer,
     required this.facilityName,
-    required this.phoneDisplay,
+    required this.orderSource,
+    required this.orderSourceOtherController,
+    required this.onOrderSourceChanged,
     required this.trashPickupRequested,
     required this.trashPickupDateTime,
     required this.trashPickupLocation,
@@ -111,8 +116,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     return OrderFormCard(
       title: '配達日時・受取人の詳細設定',
       icon: Icons.timer,
-      trailing: Text('受電: ${widget.phoneDisplay}', 
-        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,8 +155,13 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             ),
             SizedBox(height: rs(context, 10)),
 
+            // 1.5 受注区分 (追加)
+            _buildSectionHeader('② 受注区分の選択'),
+            _buildOrderSourceRow(context),
+            SizedBox(height: rs(context, 10)),
+
             // 2. ゴミ回収の日時
-            _buildSectionHeader('② ゴミ回収の日時'),
+            _buildSectionHeader('③ ゴミ回収の日時'),
             SizedBox(
               height: 44,
               child: Row(
@@ -219,7 +227,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             SizedBox(height: rs(context, 10)),
 
             // 3. 受取人の選択
-            _buildSectionHeader('③ 受取人の選択'),
+            _buildSectionHeader('④ 受取人の選択'),
             _buildReceiverArea(context),
 
             SizedBox(height: rs(context, 20)),
@@ -530,7 +538,62 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
       ),
     );
   }
+
+  Widget _buildOrderSourceRow(BuildContext context) {
+    final bool isPickup = widget.deliveryType == '引取';
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // ボタン群
+        _choiceChip(context, '直取', widget.orderSource == '直取', (v) => widget.onOrderSourceChanged('直取')),
+        const SizedBox(width: 8),
+        _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => widget.onOrderSourceChanged('結膳'), enabled: !isPickup),
+        const SizedBox(width: 8),
+        _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => widget.onOrderSourceChanged('デリカ'), enabled: !isPickup),
+        const SizedBox(width: 8),
+        _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => widget.onOrderSourceChanged('その他'), enabled: !isPickup),
+        
+        // 「その他」詳細フィールド
+        if (widget.orderSource == 'その他') ...[
+          const SizedBox(width: 16),
+          Expanded(
+            child: Opacity(
+              opacity: isPickup ? 0.5 : 1.0,
+              child: IgnorePointer(
+                ignoring: isPickup,
+                child: KMultimodalTextField(
+                  label: '',
+                  hintText: '受注区分（詳細）を入力',
+                  showLabel: false,
+                  controller: widget.orderSourceOtherController,
+                  height: rs(context, 44),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _choiceChip(BuildContext context, String label, bool isSelected, Function(bool) onSelected, {bool enabled = true}) {
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.5,
+      child: ChoiceChip(
+        label: Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
+        selected: isSelected,
+        onSelected: enabled ? onSelected : null,
+        selectedColor: Colors.deepPurple,
+        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        visualDensity: VisualDensity.compact,
+        showCheckmark: false,
+      ),
+    );
+  }
 }
+
 
 class _TimeSettingsCustomDialog extends StatefulWidget {
   final TimeOfDay initialMin;
