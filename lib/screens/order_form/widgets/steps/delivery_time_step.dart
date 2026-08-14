@@ -545,34 +545,43 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // ボタン群
-        _choiceChip(context, '直取', widget.orderSource == '直取', (v) => widget.onOrderSourceChanged('直取')),
-        const SizedBox(width: 8),
-        _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => widget.onOrderSourceChanged('結膳'), enabled: !isPickup),
-        const SizedBox(width: 8),
-        _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => widget.onOrderSourceChanged('デリカ'), enabled: !isPickup),
-        const SizedBox(width: 8),
-        _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => widget.onOrderSourceChanged('その他'), enabled: !isPickup),
-        
-        // 「その他」詳細フィールド
-        if (widget.orderSource == 'その他') ...[
-          const SizedBox(width: 16),
-          Expanded(
-            child: Opacity(
-              opacity: isPickup ? 0.5 : 1.0,
-              child: IgnorePointer(
-                ignoring: isPickup,
-                child: KMultimodalTextField(
-                  label: '',
-                  hintText: '受注区分（詳細）を入力',
-                  showLabel: false,
-                  controller: widget.orderSourceOtherController,
-                  height: rs(context, 44),
-                ),
-              ),
+        // ボタンエリア (50%) // 修正：支払いステップと統一感を出すため比率を調整
+        Expanded(
+          flex: 50,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                _choiceChip(context, '直取', widget.orderSource == '直取', (v) => widget.onOrderSourceChanged('直取')),
+                _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => widget.onOrderSourceChanged('結膳'), enabled: !isPickup),
+                _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => widget.onOrderSourceChanged('デリカ'), enabled: !isPickup),
+                _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => widget.onOrderSourceChanged('その他'), enabled: !isPickup),
+              ],
             ),
           ),
-        ],
+        ),
+        const SizedBox(width: 16),
+        // 詳細エリア (50%) // 修正：入力フィールドの幅を最大限広げるため 50:50 に設定
+        Expanded(
+          flex: 50,
+          child: (widget.orderSource == 'その他')
+              ? Opacity(
+                  opacity: isPickup ? 0.5 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: isPickup,
+                    child: KMultimodalTextField(
+                      label: '',
+                      hintText: '受注区分（詳細）を入力',
+                      showLabel: false,
+                      controller: widget.orderSourceOtherController,
+                      height: rs(context, 44),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }

@@ -66,8 +66,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   String _paymentMethod = '現金';
   String _branchName = '岡崎本店';
-  String? _selectedReceiverId;
-  bool _collectContainer = false;
   Customer? _currentCustomer;
 
   // 追加項目：受注区分・梱包・ゴミ・お茶・事前確認
@@ -80,6 +78,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _teaOption = 'なし';
   int _teaQuantity = 0;
   String _preConfirmationMethod = 'SNS';
+  String _preConfirmationPhoneType = 'この電話番号';
+  String _preConfirmationPhoneNumber = '';
+  DateTime? _preConfirmationDateTime;
+  String _preConfirmationSmsTime = '09:00';
+
+  final _preConfirmationPhoneController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
   List<OrderModel> _customerOrderHistory = [];
@@ -214,7 +218,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   void _populateForm(OrderModel order) {
     setState(() {
-      _phoneController.text = order.phoneNumber; _nameController.text = order.customerName; _receiverController.text = order.receiverName; _facilityController.text = order.facilityName; _addressController.text = order.address; _deliveryLocationController.text = order.deliveryLocation; _deliveryDate = order.deliveryDate; _receptionDate = order.receptionDate; _deliveryType = order.deliveryType; _paymentMethod = order.paymentMethod; _branchName = order.branchName; _collectContainer = order.collectContainer;
+      _phoneController.text = order.phoneNumber; 
+      _nameController.text = order.customerName; 
+      _receiverController.text = order.receiverName; 
+      _facilityController.text = order.facilityName; 
+      _addressController.text = order.address; 
+      _deliveryLocationController.text = order.deliveryLocation; 
+      _deliveryDate = order.deliveryDate; 
+      _receptionDate = order.receptionDate; 
+      _deliveryType = order.deliveryType; 
+      _paymentMethod = order.paymentMethod; 
+      _branchName = order.branchName;
       
       _orderSource = order.orderSource;
       _orderSourceOtherController.text = order.orderSourceOther;
@@ -228,6 +242,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _teaOption = order.teaOption;
       _teaQuantity = order.teaQuantity;
       _preConfirmationMethod = order.preConfirmationMethod;
+      _preConfirmationPhoneType = order.preConfirmationPhoneType;
+      _preConfirmationPhoneNumber = order.preConfirmationPhoneNumber;
+      _preConfirmationPhoneController.text = order.preConfirmationPhoneNumber;
+      _preConfirmationDateTime = order.preConfirmationDateTime;
 
       final timeParts = order.deliveryTime.split(':'); if (timeParts.length == 2) _selectedTime = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
       _selectedQuantities.clear(); for (var item in order.items) { _selectedQuantities[item['id']] = item['quantity']; }
@@ -257,6 +275,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _trashPickupLocationController.clear();
       _orderSourceOtherController.clear();
       _packagingOtherController.clear();
+      _preConfirmationPhoneController.clear();
       _currentStep = 0;
       _maxStepReached = 0;
       _currentCustomer = null;
@@ -268,6 +287,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryDateSelected = false;
       _isDeliveryTimeSelected = false;
       _isDeliveryTypeSelected = false;
+      _preConfirmationMethod = 'SNS';
+      _preConfirmationPhoneType = 'この電話番号';
+      _preConfirmationPhoneNumber = '';
+      _preConfirmationDateTime = null;
+      _preConfirmationSmsTime = '09:00';
       _markers = {};
       _setInitialBranchMarker();
     });
@@ -553,8 +577,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       teaOption: _teaOption,
       teaQuantity: _teaQuantity,
       preConfirmationMethod: _preConfirmationMethod,
-      collectContainer: _collectContainer, 
+      preConfirmationPhoneType: _preConfirmationPhoneType,
+      preConfirmationPhoneNumber: _preConfirmationPhoneController.text,
+      preConfirmationDateTime: _preConfirmationDateTime,
+      preConfirmationSmsTime: _preConfirmationSmsTime,
       paymentMethod: _paymentMethod, 
+      status: '受注済み',
       branchName: _branchName, 
       remarks: _remarksController.text,
       deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
@@ -627,22 +655,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               flex: isMobile ? 100 : 62,
               child: Column(
                 children: [
-                  KStepper(
-                    currentStep: _currentStep, 
-                    maxReachedStep: _maxStepReached,
-                    steps: _stepLabels, 
-                    onStepTapped: (s) { 
-                      if (s <= _maxStepReached) {
-                        setState(() {
-                          _currentStep = s;
-                          if (s == 0) {
-                            _phoneController.text = _lastPhoneQuery;
-                            _lookupCustomer(_lastPhoneQuery);
-                          }
-                        });
+                KStepper(
+                  currentStep: _currentStep, 
+                  maxReachedStep: _maxStepReached,
+                  isFinalStepAvailable: _confirmedItems.isNotEmpty,
+                  steps: _stepLabels, 
+                  onStepTapped: (s) { 
+                    // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
+                    bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 5;
+                    if (s <= _maxStepReached || isJumpableToFinal) {
+                      _updateStep(s);
+                      if (s == 0) {
+                        _phoneController.text = _lastPhoneQuery;
+                        _lookupCustomer(_lastPhoneQuery);
                       }
                     }
-                  ),
+                  }
+                ),
                   Expanded(child: SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())),
                 ],
               ),
@@ -668,24 +697,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 onQuantityChanged: (indexOrId, v) => setState(() { 
                   final index = int.tryParse(indexOrId);
                   if (index != null && index < _confirmedItems.length) {
-                    // サイドバーからのインデックス指定
                     if (v > 0) {
                       _confirmedItems[index]['quantity'] = v;
+                      _confirmedItems = List.from(_confirmedItems);
                     } else {
-                      _confirmedItems.removeAt(index);
+                      _confirmedItems = List.from(_confirmedItems)..removeAt(index);
                     }
                   } else {
-                    // ID指定（既存互換）
                     final existingIdx = _confirmedItems.indexWhere((i) => i['id'] == indexOrId);
                     if (existingIdx != -1) {
                       if (v > 0) {
                         _confirmedItems[existingIdx]['quantity'] = v;
+                        _confirmedItems = List.from(_confirmedItems);
                       } else {
-                        _confirmedItems.removeAt(existingIdx);
+                        _confirmedItems = List.from(_confirmedItems)..removeAt(existingIdx);
                       }
                     }
                   }
-                  // 表示用数量マップの再計算
                   _selectedQuantities.clear();
                   for (var item in _confirmedItems) {
                     final String id = item['id'];
@@ -693,7 +721,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   }
                 }),
                 onNext: () {
-                  if (_currentStep < 5) setState(() => _currentStep++);
+                  if (_currentStep < 5) _updateStep(_currentStep + 1);
                 },
                 onReset: _resetForm,
                 trashPickupRequested: _trashPickupRequested,
@@ -765,16 +793,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         if (index != null && index < _confirmedItems.length) {
           if (v > 0) {
             _confirmedItems[index]['quantity'] = v;
+            _confirmedItems = List.from(_confirmedItems);
           } else {
-            _confirmedItems.removeAt(index);
+            _confirmedItems = List.from(_confirmedItems)..removeAt(index);
           }
         } else {
           final existingIdx = _confirmedItems.indexWhere((i) => i['id'] == indexOrId);
           if (existingIdx != -1) {
             if (v > 0) {
               _confirmedItems[existingIdx]['quantity'] = v;
+              _confirmedItems = List.from(_confirmedItems);
             } else {
-              _confirmedItems.removeAt(existingIdx);
+              _confirmedItems = List.from(_confirmedItems)..removeAt(existingIdx);
             }
           }
         }
@@ -785,7 +815,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         }
       }),
       onNext: () {
-        if (_currentStep < 5) setState(() => _currentStep++);
+        if (_currentStep < 5) _updateStep(_currentStep + 1);
       },
       onReset: _resetForm,
       trashPickupRequested: _trashPickupRequested,
@@ -930,23 +960,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
           onAddItem: (itemsList) => setState(() {
-            _confirmedItems.addAll(itemsList);
+            _confirmedItems = List.from(_confirmedItems)..addAll(itemsList);
             for (var item in itemsList) {
               final String id = item['id'];
               _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
             }
           }), 
           onQuantityChanged: (id, v) => setState(() { 
-            // 簡易的な数量変更（サイドバー以外からの呼び出し用：ID指定時は全明細の合計を調整するか、最初の1つを調整するか）
-            // ここでは既存のロジックとの互換性のために一旦残すが、複雑なケースは詳細ダイアログ推奨
             _selectedQuantities[id] = v;
-            // confirmedItemsも同期させる必要がある（本来はconfirmedItemsが正）
             final index = _confirmedItems.indexWhere((i) => i['id'] == id);
             if (index != -1) {
               if (v > 0) {
                 _confirmedItems[index]['quantity'] = v;
+                _confirmedItems = List.from(_confirmedItems); // 参照を更新
               } else {
-                _confirmedItems.removeAt(index);
+                _confirmedItems = List.from(_confirmedItems)..removeAt(index);
               }
             }
           }), 
@@ -955,13 +983,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       case 5: return FinalizeStep(
           branchName: _branchName, 
           paymentMethod: _paymentMethod, 
-          collectContainer: _collectContainer, 
-          selectedReceiverId: _selectedReceiverId, 
-          staffList: _staffList, 
           packagingType: _packagingType,
           packagingSmallQty: _packagingSmallQty,
           packagingOtherController: _packagingOtherController,
           preConfirmationMethod: _preConfirmationMethod,
+          preConfirmationPhoneType: _preConfirmationPhoneType,
+          preConfirmationPhoneNumber: _preConfirmationPhoneNumber,
+          preConfirmationPhoneController: _preConfirmationPhoneController,
+          preConfirmationDateTime: _preConfirmationDateTime,
+          preConfirmationSmsTime: _preConfirmationSmsTime,
+          phoneDisplay: phoneDisplay,
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
           onBranchChanged: (v) { 
@@ -971,9 +1002,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             else _setInitialBranchMarker();
           }, 
           onPaymentChanged: (v) => setState(() => _paymentMethod = v), 
-          onCollectChanged: (v) => setState(() => _collectContainer = v), 
-          onReceiverChanged: (v) => setState(() => _selectedReceiverId = v), 
           onPreConfirmationMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
+          onPreConfirmationPhoneTypeChanged: (v) => setState(() => _preConfirmationPhoneType = v),
+          onPreConfirmationPhoneNumberChanged: (v) => setState(() {
+            _preConfirmationPhoneNumber = v;
+            _preConfirmationPhoneController.text = v;
+          }),
+          onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
+          onPreConfirmationSmsTimeChanged: (v) => setState(() => _preConfirmationSmsTime = v),
           onSave: _handleSave
       );
       default: return Container();
@@ -996,6 +1032,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _trashPickupLocationController.dispose();
     _orderSourceOtherController.dispose();
     _packagingOtherController.dispose();
+    _preConfirmationPhoneController.dispose();
     super.dispose();
   }
 }

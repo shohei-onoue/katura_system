@@ -1,11 +1,8 @@
-- [ ] `delivery_time_step.dart`: 「受注区分」選択セクションを統合
-    - [ ] 配達・引取り区分の直下に配置
-    - [ ] 「引取」選択時に結膳・デリカ・その他をグレーアウト
-    - [ ] 「その他」詳細入力フィールドをインラインで配置
-- [ ] `finalize_step.dart`: 重複した「受注区分」セクションを削除
-- [ ] `order_form_screen.dart`: プロパティの受け渡しを調整
-- [ ] `k_item_details_dialog.dart`: レイアウトの垂直整列と特注数量の追加
-    - [ ] 数量・特注・お茶の各行を縦に整列
-    - [ ] 数量入力ウィジェットのサイズと右端配置を統一
-    - [ ] 特注内容の横に適用数量入力フィールドを追加
-- [ ] 動作確認（グレーアウト、ダイアログのアライメント）
+- [ ] `lib/widgets/k_time_selection_dialog.dart` を新規作成
+- [ ] `lib/models/order_model.dart`: 容器回収・受付担当者の削除、事前確認詳細の追加
+- [ ] `lib/screens/order_form_screen.dart`: 状態管理の更新
+- [ ] `lib/screens/order_form/widgets/steps/finalize_step.dart`: UI刷新
+    - [ ] SMS設定歯車アイコンの配置（カード内）
+    - [ ] 電話連絡詳細（アコーディオン形式、指定番号入力、日時設定）
+    - [ ] 不要項目の完全削除
+- [ ] 動作確認

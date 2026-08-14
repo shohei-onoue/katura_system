@@ -4,6 +4,7 @@ import 'k_responsive.dart';
 class KStepper extends StatelessWidget {
   final int currentStep;
   final int maxReachedStep;
+  final bool isFinalStepAvailable; // 追加: 商品が入っている場合などに最終ステップを活性化
   final List<String> steps;
   final Function(int) onStepTapped;
 
@@ -11,6 +12,7 @@ class KStepper extends StatelessWidget {
     super.key,
     required this.currentStep,
     this.maxReachedStep = 0,
+    this.isFinalStepAvailable = false,
     required this.steps,
     required this.onStepTapped,
   });
@@ -24,9 +26,11 @@ class KStepper extends StatelessWidget {
       ),
       child: Row(
         children: List.generate(steps.length, (index) {
-          final isCompleted = index <= maxReachedStep && index != currentStep;
+          final isLast = index == steps.length - 1;
+          final isClickable = index <= maxReachedStep || (isLast && isFinalStepAvailable);
+          final isCompleted = index <= maxReachedStep && index != currentStep; // 修正: 実際に到達・通過済みのものだけチェックマーク
           final isActive = index == currentStep;
-          final isClickable = index <= maxReachedStep;
+          final isAvailableButUnvisited = isClickable && !isCompleted && !isActive; // 追加: ジャンプ可能な未来のステップ
           
           return Expanded(
             flex: isActive ? 16 : 10, // 現在地を大幅に強調
@@ -54,7 +58,7 @@ class KStepper extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(rav(context, 8)),
                       side: BorderSide(
-                        color: isActive ? Colors.deepOrange : Colors.transparent,
+                        color: isActive ? Colors.deepOrange : (isAvailableButUnvisited ? Colors.deepPurple.withValues(alpha: 0.3) : Colors.transparent),
                         width: rav(context, 2),
                       ),
                     ),
@@ -67,7 +71,11 @@ class KStepper extends StatelessWidget {
                             width: rav(context, 22),
                             height: rav(context, 22),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.deepOrange : (isClickable ? Colors.green : Colors.grey.shade400),
+                              color: isActive 
+                                  ? Colors.deepOrange 
+                                  : (isCompleted 
+                                      ? Colors.green 
+                                      : (isAvailableButUnvisited ? Colors.deepPurple : Colors.grey.shade400)),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
@@ -89,7 +97,7 @@ class KStepper extends StatelessWidget {
                               steps[index],
                               style: TextStyle(
                                 color: isActive ? Colors.black : (isClickable ? Colors.black87 : Colors.grey.shade600),
-                                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isActive || isAvailableButUnvisited ? FontWeight.bold : FontWeight.normal,
                                 fontSize: rf(context, 12),
                               ),
                               overflow: TextOverflow.ellipsis,
