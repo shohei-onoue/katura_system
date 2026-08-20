@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -53,9 +52,15 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
   }
 
   ImageProvider _getImageProvider(String url) {
-    if (url.isEmpty) return const AssetImage('assets/img/placeholder.png');
-    if (url.startsWith('http')) return NetworkImage(url);
-    if (url.startsWith('assets/')) return AssetImage(url);
+    if (url.isEmpty) {
+      return const AssetImage('assets/img/placeholder.png');
+    }
+    if (url.startsWith('http')) {
+      return NetworkImage(url);
+    }
+    if (url.startsWith('assets/')) {
+      return AssetImage(url);
+    }
     return const AssetImage('assets/img/placeholder.png');
   }
 
@@ -132,7 +137,9 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     decoration: const InputDecoration(labelText: 'カテゴリー'),
                     items: dropdownCategories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
                     onChanged: (val) {
-                      if (val != null) category = val;
+                      if (val != null) {
+                        category = val;
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
@@ -243,88 +250,130 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Row(
-              children: [
-                // 左側: リストとタブ
-                Expanded(
-                  flex: 6,
-                  child: Column(
-                    children: [
-                      _buildCategoryTabs(),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(24),
-                          itemCount: filteredMenus.length,
-                          itemBuilder: (context, index) {
-                            final menu = filteredMenus[index];
-                            final isSelected = _selectedMenu?.id == menu.id;
-                            return Card(
-                              elevation: isSelected ? 4 : 1,
-                              color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              child: ListTile(
-                                selected: isSelected,
-                                leading: Container(
-                                  width: 50, height: 50,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    image: DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover),
+          : _menus.isEmpty 
+              ? _buildEmptyState()
+              : Row(
+                  children: [
+                    // 左側: リストとタブ
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        children: [
+                          _buildCategoryTabs(),
+                          Expanded(
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(24),
+                              itemCount: filteredMenus.length,
+                              itemBuilder: (context, index) {
+                                final menu = filteredMenus[index];
+                                final isSelected = _selectedMenu?.id == menu.id;
+                                return Card(
+                                  elevation: isSelected ? 4 : 1,
+                                  color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: ListTile(
+                                    selected: isSelected,
+                                    leading: Container(
+                                      width: 50, height: 50,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        image: DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover),
+                                      ),
+                                    ),
+                                    title: Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    subtitle: Text('${menu.category} | ¥${menu.price}'),
+                                    onTap: () => setState(() => _selectedMenu = menu),
+                                    trailing: PopupMenuButton<String>(
+                                      icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                      onSelected: (value) {
+                                        if (value == 'edit') _showEditMenuDialog(menu);
+                                        if (value == 'delete') _showDeleteConfirmDialog(menu);
+                                      },
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.edit, size: 20, color: Colors.blue),
+                                              SizedBox(width: 12),
+                                              Text('編集', style: TextStyle(fontWeight: FontWeight.w500)),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                              SizedBox(width: 12),
+                                              Text('削除', style: TextStyle(fontWeight: FontWeight.w500)),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                title: Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('${menu.category} | ¥${menu.price}'),
-                                onTap: () => setState(() => _selectedMenu = menu),
-                                trailing: PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert, color: Colors.grey),
-                                  onSelected: (value) {
-                                    if (value == 'edit') _showEditMenuDialog(menu);
-                                    if (value == 'delete') _showDeleteConfirmDialog(menu);
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.edit, size: 20, color: Colors.blue),
-                                          SizedBox(width: 12),
-                                          Text('編集', style: TextStyle(fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                          SizedBox(width: 12),
-                                          Text('削除', style: TextStyle(fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    // 右側: 詳細サイドバー
+                    Container(
+                      width: rs(context, 350),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(left: BorderSide(color: Colors.grey.shade200)),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                      ),
+                      child: _selectedMenu == null
+                          ? const Center(child: Text('メニューを選択してください'))
+                          : _buildDetailSidebar(_selectedMenu!),
+                    ),
+                  ],
                 ),
-                // 右側: 詳細サイドバー
-                Container(
-                  width: rs(context, 350),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(left: BorderSide(color: Colors.grey.shade200)),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-                  ),
-                  child: _selectedMenu == null
-                      ? const Center(child: Text('メニューを選択してください'))
-                      : _buildDetailSidebar(_selectedMenu!),
-                ),
-              ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.restaurant_menu, size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 24),
+          const Text('メニューが登録されていません', 
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          const SizedBox(height: 12),
+          const Text('データベースを切り替えたか、初期状態です。\n以下のボタンから初期メニューを登録できます。', 
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () async {
+              setState(() => _isLoading = true);
+              try {
+                await _menuService.seedMenuData();
+                await _loadMenus();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('初期データを登録しました')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('登録に失敗しました: $e')));
+                }
+              }
+            },
+            icon: const Icon(Icons.download),
+            label: const Text('初期データを登録する'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             ),
+          ),
+        ],
+      ),
     );
   }
 

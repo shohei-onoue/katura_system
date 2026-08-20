@@ -643,16 +643,22 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
   }
 
   TimeOfDay? _parse4Digit(String s) {
-    if (s.isEmpty) return null;
+    if (s.isEmpty) {
+      return null;
+    }
     final String padded = s.padLeft(4, '0');
     final h = int.tryParse(padded.substring(0, 2));
     final m = int.tryParse(padded.substring(2, 4));
-    if (h == null || m == null || h >= 24 || m >= 60) return null;
+    if (h == null || m == null || h >= 24 || m >= 60) {
+      return null;
+    }
     return TimeOfDay(hour: h, minute: m);
   }
 
   String _formatTimeDisplay(String s) {
-    if (s.isEmpty) return "00:00";
+    if (s.isEmpty) {
+      return "00:00";
+    }
     final String padded = s.padLeft(4, '0');
     return "${padded.substring(0, 2)}:${padded.substring(2)}";
   }
@@ -674,7 +680,9 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
       String current = activeField == 0 ? minStr : (activeField == 1 ? maxStr : intervalStr);
       
       if (key == '⌫') {
-        if (current.isNotEmpty) current = current.substring(0, current.length - 1);
+        if (current.isNotEmpty) {
+          current = current.substring(0, current.length - 1);
+        }
         _shouldOverwrite = false;
       } else {
         if (_shouldOverwrite) {
@@ -685,16 +693,22 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
           if (current.length < limit) {
             String next = current + key;
             if (activeField == 2) {
-              if ((int.tryParse(next) ?? 0) > 60) next = "60";
+              if ((int.tryParse(next) ?? 0) > 60) {
+                next = "60";
+              }
             }
             current = next;
           }
         }
       }
 
-      if (activeField == 0) minStr = current;
-      else if (activeField == 1) maxStr = current;
-      else intervalStr = current;
+      if (activeField == 0) {
+        minStr = current;
+      } else if (activeField == 1) {
+        maxStr = current;
+      } else {
+        intervalStr = current;
+      }
     });
   }
 

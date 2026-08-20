@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
+import '../../../widgets/k_responsive.dart';
 import 'order_process_bar.dart';
 
 class OrderListCard extends StatelessWidget {
@@ -30,59 +31,72 @@ class OrderListCard extends StatelessWidget {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: EdgeInsets.only(bottom: rs(context, 20)),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: branchColor.withOpacity(0.3), width: 1),
+        borderRadius: BorderRadius.circular(rav(context, 16)),
+        side: BorderSide(color: branchColor.withValues(alpha: 0.3), width: 1),
       ),
       elevation: 3,
       child: Column(
         children: [
           OrderProcessBar(order: order),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(rav(context, 20)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(order.customerName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                            const SizedBox(width: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: branchColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: branchColor.withOpacity(0.5)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  order.customerName, 
+                                  style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              child: Text(
-                                order.branchName,
-                                style: TextStyle(color: branchColor, fontSize: 12, fontWeight: FontWeight.bold),
+                              SizedBox(width: rs(context, 12)),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
+                                decoration: BoxDecoration(
+                                  color: branchColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: branchColor.withValues(alpha: 0.5)),
+                                ),
+                                child: Text(
+                                  order.branchName,
+                                  style: TextStyle(color: branchColor, fontSize: rf(context, 12), fontWeight: FontWeight.bold),
+                                ),
                               ),
+                            ],
+                          ),
+                          if (order.facilityName.isNotEmpty)
+                            Text(
+                              order.facilityName, 
+                              style: TextStyle(color: Colors.grey[600], fontSize: rf(context, 15)),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        if (order.facilityName.isNotEmpty)
-                          Text(order.facilityName, style: TextStyle(color: Colors.grey[600], fontSize: 15)),
-                      ],
+                        ],
+                      ),
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildMainTimeDisplay(order),
-                        const SizedBox(width: 16),
+                        _buildMainTimeDisplay(context, order),
+                        SizedBox(width: rs(context, 16)),
                         IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                          icon: Icon(Icons.edit, color: Colors.blueGrey, size: rs(context, 24)),
                           tooltip: 'この受注を編集',
                           onPressed: () => onEdit(order),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent),
+                          icon: Icon(Icons.cancel_outlined, color: Colors.redAccent, size: rs(context, 24)),
                           tooltip: 'この受注をキャンセル',
                           onPressed: () => onCancel(order),
                         ),
@@ -90,48 +104,52 @@ class OrderListCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: rs(context, 16)),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
+                    Icon(Icons.location_on, size: rs(context, 16), color: Colors.grey),
+                    SizedBox(width: rs(context, 4)),
                     Expanded(
                       child: Text(
                         "${order.address}${order.deliveryLocation.isNotEmpty ? ' (${order.deliveryLocation})' : ''}", 
-                        style: const TextStyle(fontSize: 14, color: Colors.grey)
+                        style: TextStyle(fontSize: rf(context, 14), color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (order.receiverName.isNotEmpty) ...[
-                      const SizedBox(width: 16),
-                      const Icon(Icons.person_outline, size: 16, color: Colors.blueGrey),
-                      const SizedBox(width: 4),
-                      Text(order.receiverName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                      SizedBox(width: rs(context, 16)),
+                      Icon(Icons.person_outline, size: rs(context, 16), color: Colors.blueGrey),
+                      SizedBox(width: rs(context, 4)),
+                      Text(
+                        order.receiverName, 
+                        style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.blueGrey)
+                      ),
                     ],
                   ],
                 ),
-                const Divider(height: 32),
+                Divider(height: rs(context, 32)),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: rs(context, 8),
+                  runSpacing: rs(context, 8),
                   children: order.items.map((item) => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 6)),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange.withOpacity(0.1)),
+                      color: Colors.orange.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
                     ),
                     child: Text("${item['name']} x${item['quantity']}", 
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500)),
                   )).toList(),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: rs(context, 16)),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text("支払: ${order.paymentMethod} / 梱包: ${order.packagingType}", 
-                      style: const TextStyle(color: Colors.blueGrey, fontSize: 13)),
+                      style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 13))),
                     Text("合計 ${order.totalCount} 個", 
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                      style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                   ],
                 ),
               ],
@@ -142,18 +160,19 @@ class OrderListCard extends StatelessWidget {
     );
   }
 
-  Widget _buildMainTimeDisplay(OrderModel order) {
+  Widget _buildMainTimeDisplay(BuildContext context, OrderModel order) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
       decoration: BoxDecoration(
-        color: Colors.deepOrange.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.deepOrange.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('配送予定', style: TextStyle(fontSize: 10, color: Colors.deepOrange)),
+          Text('配送予定', style: TextStyle(fontSize: rf(context, 10), color: Colors.deepOrange)),
           Text(order.deliveryTime, 
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+            style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
         ],
       ),
     );

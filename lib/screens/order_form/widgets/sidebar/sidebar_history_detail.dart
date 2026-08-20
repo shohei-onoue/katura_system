@@ -24,7 +24,7 @@ class SidebarHistoryDetail extends StatelessWidget {
           _InfoRow('住所', order.address.split(' (').first),
           _InfoRow('位置情報', coords),
           _InfoRow('受取人', order.receiverName.isEmpty ? '-' : order.receiverName),
-          const Divider(height: 32),
+          Divider(height: rs(context, 32)),
           _SectionTitle('前回注文の商品', Icons.restaurant),
           SizedBox(height: rs(context, 12)),
           ...order.items.map((i) => Padding(
@@ -37,7 +37,7 @@ class SidebarHistoryDetail extends StatelessWidget {
               ]
             )
           )),
-          const Divider(height: 32),
+          Divider(height: rs(context, 32)),
           _SectionTitle('決済情報', Icons.payment),
           _InfoRow('前回決済', order.paymentMethod),
           Row(
@@ -67,7 +67,13 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title, this.icon);
   @override
   Widget build(BuildContext context) {
-    return Row(children: [Icon(icon, size: rs(context, 18), color: Colors.blueGrey), SizedBox(width: rs(context, 8)), Text(title, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.blueGrey))]);
+    return Row(
+      children: [
+        Icon(icon, size: rs(context, 18), color: Colors.blueGrey), 
+        SizedBox(width: rs(context, 8)), 
+        Text(title, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.blueGrey))
+      ]
+    );
   }
 }
 
@@ -77,6 +83,15 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow(this.label, this.value, {this.isBold = false});
   @override
   Widget build(BuildContext context) {
-    return Padding(padding: EdgeInsets.symmetric(vertical: rs(context, 4)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: TextStyle(fontSize: rf(context, 11), color: Colors.grey)), Text(value, style: TextStyle(fontSize: rf(context, 14), fontWeight: isBold ? FontWeight.bold : FontWeight.normal))]));
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: rs(context, 4)), 
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start, 
+        children: [
+          Text(label, style: TextStyle(fontSize: rf(context, 11), color: Colors.grey)), 
+          Text(value, style: TextStyle(fontSize: rf(context, 14), fontWeight: isBold ? FontWeight.bold : FontWeight.normal))
+        ]
+      )
+    );
   }
 }

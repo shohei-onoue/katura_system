@@ -76,6 +76,12 @@ class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title, this.icon);
   @override
   Widget build(BuildContext context) {
-    return Row(children: [Icon(icon, size: rs(context, 18), color: Colors.blueGrey), SizedBox(width: rs(context, 8)), Text(title, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.blueGrey))]);
+    return Row(
+      children: [
+        Icon(icon, size: rs(context, 18), color: Colors.blueGrey), 
+        SizedBox(width: rs(context, 8)), 
+        Text(title, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.blueGrey))
+      ]
+    );
   }
 }

@@ -491,7 +491,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               : ListView.separated(
                   padding: EdgeInsets.all(rs(context, 16)),
                   itemCount: widget.confirmedItems.length,
-                  separatorBuilder: (_, __) => Divider(height: 24),
+                  separatorBuilder: (context, index) => Divider(height: 24),
                   itemBuilder: (context, i) {
                     final item = widget.confirmedItems[i];
                     final specialOrder = item['specialOrder'] as String? ?? '';

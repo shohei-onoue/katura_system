@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/customer_model.dart';
 import '../models/menu_model.dart';
-import '../models/staff_model.dart';
 import '../models/order_model.dart';
 import '../services/customer_service.dart';
 import '../services/menu_service.dart';
@@ -12,6 +11,8 @@ import '../widgets/k_stepper.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
@@ -81,8 +82,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _preConfirmationPhoneType = 'この電話番号';
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
-  String _preConfirmationSmsTime = '09:00';
-
+  String _preConfirmationSnsTime = '09:00';
+  DateTime? _scheduledSnsDateTime; // 追加
   final _preConfirmationPhoneController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
@@ -92,7 +93,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<MenuModel> _menus = [];
   final Map<String, int> _selectedQuantities = {};
   List<Map<String, dynamic>> _confirmedItems = [];
-  List<Staff> _staffList = [];
   final _isLoadingNotifier = ValueNotifier<bool>(false);
   final _facilityResultsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool _isSearchResultsDialogOpen = false;
@@ -137,7 +137,39 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       } else {
         _setInitialBranchMarker();
       }
+      _loadGlobalSmsSettings(); // グローバル設定の読み込み
     });
+  }
+
+  Future<void> _loadGlobalSmsSettings() async {
+    try {
+      final doc = await FirebaseFirestore.instanceFor(
+        app: Firebase.app(), 
+        databaseId: 'katura-system-database'
+      ).collection('settings').doc('sms_config').get();
+      
+      if (doc.exists) {
+        setState(() {
+          _preConfirmationSnsTime = doc.data()?['sendingTime'] ?? '09:00';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading SMS settings: $e');
+    }
+  }
+
+  Future<void> _saveGlobalSmsSettings(String time) async {
+    try {
+      await FirebaseFirestore.instanceFor(
+        app: Firebase.app(), 
+        databaseId: 'katura-system-database'
+      ).collection('settings').doc('sms_config').set({'sendingTime': time});
+      setState(() {
+        _preConfirmationSnsTime = time;
+      });
+    } catch (e) {
+      debugPrint('Error saving SMS settings: $e');
+    }
   }
 
   void _setInitialBranchMarker() {
@@ -156,11 +188,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   Future<void> _loadData() async {
     final menus = await _menuService.getAllMenus();
-    final staff = await _staffService.getAllStaff();
+    await _staffService.getAllStaff();
     final prefs = await _customerService.getAddressService().getPrefecturesByInitial(_searchPrefInitial);
     final cities = await _customerService.getAddressService().getCitiesByInitial(_searchPrefecture, _searchCityInitial);
     final towns = await _customerService.getAddressService().getTownsByInitial(_searchPrefecture, _searchCity, _searchTownInitial);
-    if (mounted) setState(() { _menus = menus; _staffList = staff; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns]; if (!_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (!_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）'; });
+    if (mounted) setState(() { _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns]; if (!_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (!_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）'; });
     _syncSearchQuery();
   }
 
@@ -246,6 +278,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _preConfirmationPhoneNumber = order.preConfirmationPhoneNumber;
       _preConfirmationPhoneController.text = order.preConfirmationPhoneNumber;
       _preConfirmationDateTime = order.preConfirmationDateTime;
+      _preConfirmationSnsTime = order.preConfirmationSnsTime;
 
       final timeParts = order.deliveryTime.split(':'); if (timeParts.length == 2) _selectedTime = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
       _selectedQuantities.clear(); for (var item in order.items) { _selectedQuantities[item['id']] = item['quantity']; }
@@ -291,7 +324,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _preConfirmationPhoneType = 'この電話番号';
       _preConfirmationPhoneNumber = '';
       _preConfirmationDateTime = null;
-      _preConfirmationSmsTime = '09:00';
+      _preConfirmationSnsTime = '09:00';
+      _scheduledSnsDateTime = null;
       _markers = {};
       _setInitialBranchMarker();
     });
@@ -313,10 +347,24 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (cleanDigits.length >= 4) {
       _isLoadingNotifier.value = true;
       final candidates = await _customerService.searchByPhoneSuffix(cleanDigits);
-      if (candidates.length == 1 && cleanDigits.length >= 10) { _selectCustomer(candidates.first); } else { setState(() { _isLoadingNotifier.value = false; _phoneSearchCandidates = candidates; _currentCustomer = null; }); }
+      if (mounted) {
+        if (candidates.length == 1 && cleanDigits.length >= 10) {
+          _selectCustomer(candidates.first);
+        } else {
+          setState(() {
+            _isLoadingNotifier.value = false;
+            _phoneSearchCandidates = candidates;
+            _currentCustomer = null;
+          });
+        }
+      }
       return;
     }
-    setState(() { _currentCustomer = null; _phoneSearchCandidates = []; _isLoadingNotifier.value = false; });
+    setState(() {
+      _currentCustomer = null;
+      _phoneSearchCandidates = [];
+      _isLoadingNotifier.value = false;
+    });
   }
 
   void _selectCustomer(Customer customer) async {
@@ -331,6 +379,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
     _isLoadingNotifier.value = true;
     final allOrders = await _orderService.getAllOrders();
+    if (!mounted) return;
+    
     final targetPhone = customer.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
     final normCustomerName = customer.name.replaceAll(RegExp(r'\s+'), '');
     final myHistory = allOrders.where((o) {
@@ -517,11 +567,25 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         final inAreaMatchGenre = processed.where((i) => !i['isNearby'] && i['matchesGenre']).toList();
         final nearbyMatchGenre = processed.where((i) => i['isNearby'] && i['matchesGenre']).toList();
         final inAreaAll = processed.where((i) => !i['isNearby']).toList();
-        if (inAreaMatchGenre.isNotEmpty && !ignoreFilter) results = inAreaMatchGenre;
-        else if (nearbyMatchGenre.isNotEmpty && !ignoreFilter) results = nearbyMatchGenre;
-        else if (inAreaAll.isNotEmpty && !ignoreFilter) results = inAreaAll;
-        else results = processed;
-        for (var i in results) { await _customerService.getAddressService().upsertKigyouEntity(name: i['name'], address: i['address'], lat: i['lat'], lng: i['lng'], prefecture: _searchPrefecture, city: _searchCity); }
+        if (inAreaMatchGenre.isNotEmpty && !ignoreFilter) {
+          results = inAreaMatchGenre;
+        } else if (nearbyMatchGenre.isNotEmpty && !ignoreFilter) {
+          results = nearbyMatchGenre;
+        } else if (inAreaAll.isNotEmpty && !ignoreFilter) {
+          results = inAreaAll;
+        } else {
+          results = processed;
+        }
+        for (var i in results) {
+          await _customerService.getAddressService().upsertKigyouEntity(
+            name: i['name'], 
+            address: i['address'], 
+            lat: i['lat'], 
+            lng: i['lng'], 
+            prefecture: _searchPrefecture, 
+            city: _searchCity,
+          );
+        }
       }
     } else if (_searchTabIndex == 2) {
       final raw = await _customerService.getAddressService().searchByAddressOrZip(_addressQueryController.text);
@@ -532,7 +596,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   String _normalize(String i) => i.replaceAll(RegExp(r'[ 　〒()（）.]'), '').replaceAll('１', '1').replaceAll('２', '2').replaceAll('３', '3').replaceAll('４', '4').replaceAll('５', '5').replaceAll('６', '6').replaceAll('７', '7').replaceAll('８', '8').replaceAll('９', '9').replaceAll('０', '0');
-  double _calculateRiceAmount() => _confirmedItems.fold(0.0, (sum, i) => sum + (i['quantity'] as int)) * 0.15 * ((_deliveryDate.month >= 6 && _deliveryDate.month <= 9) ? 1.15 : ((_deliveryDate.month >= 12 || _deliveryDate.month <= 2) ? 1.25 : 1.0));
+  double _calculateRiceAmount() => _confirmedItems.fold(0.0, (acc, i) => acc + (i['quantity'] as int)) * 0.15 * ((_deliveryDate.month >= 6 && _deliveryDate.month <= 9) ? 1.15 : ((_deliveryDate.month >= 12 || _deliveryDate.month <= 2) ? 1.25 : 1.0));
   int get _totalCount => _confirmedItems.fold(0, (s, i) => s + (i['quantity'] as int));
   int get _totalPrice => _confirmedItems.fold(0, (s, i) => s + (i['price'] as int) * (i['quantity'] as int));
 
@@ -580,12 +644,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       preConfirmationPhoneType: _preConfirmationPhoneType,
       preConfirmationPhoneNumber: _preConfirmationPhoneController.text,
       preConfirmationDateTime: _preConfirmationDateTime,
-      preConfirmationSmsTime: _preConfirmationSmsTime,
+      preConfirmationSnsTime: _preConfirmationSnsTime,
+      scheduledSnsDateTime: _scheduledSnsDateTime ?? _calculateScheduledSnsDateTime(),
+      snsSent: false,
       paymentMethod: _paymentMethod, 
       status: '受注済み',
       branchName: _branchName, 
       remarks: _remarksController.text,
       deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+      latitude: _markers.any((m) => m.markerId.value == 'dest') 
+          ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.latitude : null,
+      longitude: _markers.any((m) => m.markerId.value == 'dest') 
+          ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.longitude : null,
     );
     
     if (_currentCustomer != null) {
@@ -620,8 +690,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
 
     await _orderService.saveOrder(order); 
-    setState(() => _isLoadingNotifier.value = false);
-    if (mounted) widget.onSaveSuccess?.call();
+    if (mounted) {
+      setState(() => _isLoadingNotifier.value = false);
+      widget.onSaveSuccess?.call();
+    }
   }
 
   @override
@@ -960,8 +1032,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
           onAddItem: (itemsList) => setState(() {
+            for (var newItem in itemsList) {
+              final String id = newItem['id'];
+              // 特注がないシンプルな追加の場合は、既存の同IDアイテム（特注なし）を削除してから追加（置換）
+              if ((newItem['specialOrder'] as String? ?? '').isEmpty && (newItem['teaOption'] as String? ?? 'なし') == 'なし') {
+                _confirmedItems.removeWhere((i) => i['id'] == id && (i['specialOrder'] as String? ?? '').isEmpty && (i['teaOption'] as String? ?? 'なし') == 'なし');
+              }
+            }
             _confirmedItems = List.from(_confirmedItems)..addAll(itemsList);
-            for (var item in itemsList) {
+            
+            // 数量マップを全再計算して整合性を保つ
+            _selectedQuantities.clear();
+            for (var item in _confirmedItems) {
               final String id = item['id'];
               _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
             }
@@ -978,6 +1060,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               }
             }
           }), 
+          onReloadMenus: _loadData,
           onNext: () => _updateStep(5)
       );
       case 5: return FinalizeStep(
@@ -991,15 +1074,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           preConfirmationPhoneNumber: _preConfirmationPhoneNumber,
           preConfirmationPhoneController: _preConfirmationPhoneController,
           preConfirmationDateTime: _preConfirmationDateTime,
-          preConfirmationSmsTime: _preConfirmationSmsTime,
+          preConfirmationSnsTime: _preConfirmationSnsTime,
+          scheduledSnsDateTime: _scheduledSnsDateTime,
           phoneDisplay: phoneDisplay,
+          customerName: _nameController.text,
+          receiverName: _receiverController.text,
+          deliveryType: _deliveryType,
+          deliveryDate: _deliveryDate,
+          deliveryTime: "${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}",
+          address: _addressController.text,
+          items: _confirmedItems,
+          totalPrice: _totalPrice,
+          trashPickupDateTime: _trashPickupDateTime,
+          trashPickupLocationDetail: _trashPickupLocationController.text,
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
           onBranchChanged: (v) { 
             setState(() => _branchName = v); 
             final m = _markers.where((x) => x.markerId.value == 'dest'); 
-            if (m.isNotEmpty) _updateMap(m.first.position, _facilityController.text);
-            else _setInitialBranchMarker();
+            if (m.isNotEmpty) {
+              _updateMap(m.first.position, _facilityController.text);
+            } else {
+              _setInitialBranchMarker();
+            }
           }, 
           onPaymentChanged: (v) => setState(() => _paymentMethod = v), 
           onPreConfirmationMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
@@ -1009,10 +1106,32 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _preConfirmationPhoneController.text = v;
           }),
           onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
-          onPreConfirmationSmsTimeChanged: (v) => setState(() => _preConfirmationSmsTime = v),
+          onPreConfirmationSnsTimeChanged: (v) => _saveGlobalSmsSettings(v),
+          onScheduledSnsDateTimeChanged: (v) => setState(() => _scheduledSnsDateTime = v),
           onSave: _handleSave
       );
       default: return Container();
+    }
+  }
+
+  DateTime? _calculateScheduledSnsDateTime() {
+    if (_preConfirmationMethod != 'SNS' && _preConfirmationMethod != 'SMS') {
+      return null;
+    }
+    
+    try {
+      // 配達日の前日を算出
+      final prevDay = _deliveryDate.subtract(const Duration(days: 1));
+      
+      // 時間と分をパース
+      final timeParts = _preConfirmationSnsTime.split(':');
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      
+      return DateTime(prevDay.year, prevDay.month, prevDay.day, hour, minute);
+    } catch (e) {
+      debugPrint('Error calculating scheduled SNS time: $e');
+      return null;
     }
   }
 

@@ -7,6 +7,7 @@ import 'menu_master_screen.dart';
 import 'staff_management_screen.dart';
 import 'order_list_screen.dart';
 import 'planning_screen.dart';
+import 'analysis_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,7 +24,10 @@ class _MainScreenState extends State<MainScreen> {
   final Map<int, int> _indexMap = {
     0: 0, // 受注入力
     1: 1, // 受注一覧
-    2: 2, // 計画
+    2: 2, // 調理・仕入れ計画
+    3: 6, // 配送ルート最適化（準備中）
+    4: 6, // 事前確認メール（準備中）
+    5: 7, // データ分析
     6: 3, // 顧客管理
     7: 4, // メニューマスタ
     8: 5, // スタッフ管理
@@ -47,6 +51,27 @@ class _MainScreenState extends State<MainScreen> {
     _screens.add(const CustomerListScreen());
     _screens.add(const MenuMasterScreen());
     _screens.add(const StaffManagementScreen());
+    _screens.add(_buildUnderConstructionScreen()); // インデックス6: 準備中画面
+    _screens.add(const AnalysisScreen());          // インデックス7: データ分析
+  }
+
+  Widget _buildUnderConstructionScreen() {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.construction, size: 80, color: Colors.orange.shade300),
+            const SizedBox(height: 24),
+            const Text('こちらの機能は現在準備中です', 
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+            const SizedBox(height: 8),
+            const Text('今後のアップデートをお待ちください', 
+              style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onEditOrder(OrderModel order) {
@@ -74,13 +99,13 @@ class _MainScreenState extends State<MainScreen> {
 
   void _onSaveSuccess() {
     setState(() {
-      // 保存成功後は空のフォームに戻す
+      // フォームを完全にリセットするために新しいインスタンスを作成
       _screens[0] = OrderFormScreen(
-        key: const ValueKey('order_form_new'),
+        key: UniqueKey(), // UniqueKeyを使うことで確実に初期化を強制
         onSaveSuccess: _onSaveSuccess,
         onCancel: _onCancelOrder,
       );
-      _selectedIndex = 1; // 一覧画面へ戻る
+      _selectedIndex = 1; // 受注一覧（インデックス1）へ切り替え
     });
   }
 

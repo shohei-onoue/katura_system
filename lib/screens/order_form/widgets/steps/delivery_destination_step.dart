@@ -239,24 +239,52 @@ class DeliveryDestinationStep extends StatelessWidget {
   }
 
   String _extractGenre(String name) {
-    if (name.contains('歯科')) return '歯科医院';
-    if (name.contains('病院')) return '総合病院';
-    if (name.contains('医院') || name.contains('クリニック')) return 'クリニック';
-    if (name.contains('介護') || name.contains('ホーム') || name.contains('デイサービス')) return '介護施設';
-    if (name.contains('役所') || name.contains('センター')) return '公共施設';
-    if (name.contains('消防')) return '消防署';
-    if (name.contains('警察')) return '警察署';
-    if (name.contains('神社')) return '神社';
-    if (name.contains('寺')) return '寺院';
-    if (name.contains('工場') || name.contains('製作所')) return '工場・工業';
-    if (name.contains('自宅') || name.contains('個人')) return '個人宅';
+    if (name.contains('歯科')) {
+      return '歯科医院';
+    }
+    if (name.contains('病院')) {
+      return '総合病院';
+    }
+    if (name.contains('医院') || name.contains('クリニック')) {
+      return 'クリニック';
+    }
+    if (name.contains('介護') || name.contains('ホーム') || name.contains('デイサービス')) {
+      return '介護施設';
+    }
+    if (name.contains('役所') || name.contains('センター')) {
+      return '公共施設';
+    }
+    if (name.contains('消防')) {
+      return '消防署';
+    }
+    if (name.contains('警察')) {
+      return '警察署';
+    }
+    if (name.contains('神社')) {
+      return '神社';
+    }
+    if (name.contains('寺')) {
+      return '寺院';
+    }
+    if (name.contains('工場') || name.contains('製作所')) {
+      return '工場・工業';
+    }
+    if (name.contains('自宅') || name.contains('個人')) {
+      return '個人宅';
+    }
     return '一般施設';
   }
 
   String _extractCategory(String fullAddr) {
-    if (fullAddr.startsWith('[') && fullAddr.contains(']')) return fullAddr.substring(1, fullAddr.indexOf(']'));
-    if (fullAddr.contains('病院') || fullAddr.contains('医院') || fullAddr.contains('介護')) return '医療・介護';
-    if (fullAddr.contains('役所') || fullAddr.contains('消防')) return '公共施設';
+    if (fullAddr.startsWith('[') && fullAddr.contains(']')) {
+      return fullAddr.substring(1, fullAddr.indexOf(']'));
+    }
+    if (fullAddr.contains('病院') || fullAddr.contains('医院') || fullAddr.contains('介護')) {
+      return '医療・介護';
+    }
+    if (fullAddr.contains('役所') || fullAddr.contains('消防')) {
+      return '公共施設';
+    }
     return '一般';
   }
 
@@ -289,8 +317,12 @@ class DeliveryDestinationStep extends StatelessWidget {
 
   String _buildJoinedAddress() {
     String res = searchPrefecture;
-    if (searchCity.isNotEmpty) res += " $searchCity";
-    if (searchTown.isNotEmpty) res += " $searchTown";
+    if (searchCity.isNotEmpty) {
+      res += " $searchCity";
+    }
+    if (searchTown.isNotEmpty) {
+      res += " $searchTown";
+    }
     return res;
   }
 
@@ -754,9 +786,13 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                 selectedInitial = 'すべて';
                 isNumericMode = false;
               });
-              if (phase == 0) _loadInitialData();
-              else if (phase == 1) _loadCities();
-              else if (phase == 2) _loadTowns();
+              if (phase == 0) {
+                _loadInitialData();
+              } else if (phase == 1) {
+                _loadCities();
+              } else if (phase == 2) {
+                _loadTowns();
+              }
             } : null,
             child: Card(
               elevation: isActive ? 4 : 0,
@@ -913,8 +949,11 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
         onPressed: () {
           setState(() {
             isNumericMode = !isNumericMode;
-            if (isNumericMode) tempZip = "";
-            else selectedInitial = 'すべて';
+            if (isNumericMode) {
+              tempZip = "";
+            } else {
+              selectedInitial = 'すべて';
+            }
           });
         },
         icon: Icon(isNumericMode ? Icons.abc : Icons.pin_drop),
@@ -1019,9 +1058,13 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
 
   Future<void> _refreshItems() async {
     List<String> newList;
-    if (phase == 0) newList = await _addressService.getPrefecturesByInitial(selectedInitial);
-    else if (phase == 1) newList = await _addressService.getCitiesByInitial(tempPref, selectedInitial);
-    else newList = await _addressService.getTownsByInitial(tempPref, tempCity, selectedInitial);
+    if (phase == 0) {
+      newList = await _addressService.getPrefecturesByInitial(selectedInitial);
+    } else if (phase == 1) {
+      newList = await _addressService.getCitiesByInitial(tempPref, selectedInitial);
+    } else {
+      newList = await _addressService.getTownsByInitial(tempPref, tempCity, selectedInitial);
+    }
     
     setState(() {
       items = (phase == 2 && selectedInitial == 'すべて') ? ['（すべて）', ...newList] : newList;
@@ -1050,9 +1093,18 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
 
   void _handleBack() {
     setState(() {
-      if (phase == 1) { phase = 0; tempPref = ""; _loadInitialData(); }
-      else if (phase == 2) { phase = 1; tempCity = ""; _loadCities(); }
-      else if (phase == 3) { phase = 2; _loadTowns(); }
+      if (phase == 1) {
+        phase = 0;
+        tempPref = "";
+        _loadInitialData();
+      } else if (phase == 2) {
+        phase = 1;
+        tempCity = "";
+        _loadCities();
+      } else if (phase == 3) {
+        phase = 2;
+        _loadTowns();
+      }
       selectedInitial = 'すべて';
     });
   }
@@ -1282,9 +1334,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 phase = step['phase'];
                 selectedInitial = 'すべて';
               });
-              if (phase == 0) items = List.from(widget.initialPrefList);
-              else if (phase == 1) _loadCities();
-              else if (phase == 2) _loadTowns();
+              if (phase == 0) {
+                items = List.from(widget.initialPrefList);
+              } else if (phase == 1) {
+                _loadCities();
+              } else if (phase == 2) {
+                _loadTowns();
+              }
             } : null,
             child: Card(
               elevation: isActive ? 4 : 0,
@@ -1376,7 +1432,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                                            (phase == 1 && item == tempCity) || 
                                            (phase == 2 && item == tempTown);
                         return ListTile(
-                          tileColor: isSelected ? Colors.orange.withOpacity(0.1) : null,
+                          tileColor: isSelected ? Colors.orange.withValues(alpha: 0.1) : null,
                           title: Text(item, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: isSelected ? Colors.orange.shade900 : Colors.black87)),
                           trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: isSelected ? Colors.orange : Colors.deepPurple),
                           onTap: () => _handleItemSelect(item),
@@ -1753,9 +1809,18 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
 
   Future<void> _handleBack() async {
     setState(() {
-      if (phase == 1) { phase = 0; tempPref = ""; items = List.from(widget.initialPrefList); }
-      else if (phase == 2) { phase = 1; tempCity = ""; _loadCities(); }
-      else if (phase == 3) { phase = 2; _loadTowns(); }
+      if (phase == 1) {
+        phase = 0;
+        tempPref = "";
+        items = List.from(widget.initialPrefList);
+      } else if (phase == 2) {
+        phase = 1;
+        tempCity = "";
+        _loadCities();
+      } else if (phase == 3) {
+        phase = 2;
+        _loadTowns();
+      }
       selectedInitial = 'すべて';
     });
   }
@@ -1765,7 +1830,6 @@ class _AddressDialField extends StatelessWidget {
   final String label;
   final String value;
   final VoidCallback? onTap;
-  final bool isEnabled;
   final bool isWarning;
   final String? warningLabel;
 
@@ -1773,7 +1837,6 @@ class _AddressDialField extends StatelessWidget {
     required this.label, 
     required this.value, 
     required this.onTap,
-    this.isEnabled = true,
     this.isWarning = false,
     this.warningLabel,
   });
@@ -1783,17 +1846,17 @@ class _AddressDialField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: rf(context, 12), color: isEnabled ? Colors.blueGrey : Colors.grey.shade400, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
         SizedBox(height: rs(context, 4)),
         InkWell(
-          onTap: isEnabled ? onTap : null,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Container(
             height: rs(context, 50), 
             padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), 
             decoration: BoxDecoration(
-              color: isWarning ? Colors.pink.shade50 : (isEnabled ? Colors.white : Colors.grey.shade50),
-              border: Border.all(color: isWarning ? Colors.pink.shade200 : (isEnabled ? Colors.grey.shade300 : Colors.grey.shade200), width: isWarning ? 2 : 1),
+              color: isWarning ? Colors.pink.shade50 : Colors.white,
+              border: Border.all(color: isWarning ? Colors.pink.shade200 : Colors.grey.shade300, width: isWarning ? 2 : 1),
               borderRadius: BorderRadius.circular(rs(context, 8)),
             ),
             child: Row(
@@ -1804,7 +1867,7 @@ class _AddressDialField extends StatelessWidget {
                     value.isEmpty ? '未選択' : value,
                     style: TextStyle(
                       fontSize: rf(context, 14),
-                      color: !isEnabled ? Colors.grey.shade400 : (value.isEmpty ? Colors.grey : Colors.black87),
+                      color: value.isEmpty ? Colors.grey : Colors.black87,
                       fontWeight: value.isNotEmpty ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1812,10 +1875,10 @@ class _AddressDialField extends StatelessWidget {
                 ),
                 if (isWarning && warningLabel != null)
                   Padding(
-                    padding: EdgeInsets.only(left: 8),
+                    padding: const EdgeInsets.only(left: 8),
                     child: Text(warningLabel!, style: TextStyle(color: Colors.pink.shade800, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                   ),
-                Icon(Icons.unfold_more, size: rs(context, 18), color: isWarning ? Colors.pink.shade400 : (isEnabled ? Colors.grey : Colors.grey.shade300)),
+                Icon(Icons.unfold_more, size: rs(context, 18), color: isWarning ? Colors.pink.shade400 : Colors.grey),
               ],
             ),
           ),

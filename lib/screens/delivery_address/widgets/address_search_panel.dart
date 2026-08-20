@@ -113,7 +113,7 @@ class AddressSearchPanel extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.05),
+            color: Colors.blue.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.blue.shade200),
           ),
@@ -159,7 +159,7 @@ class AddressSearchPanel extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.orange, width: 2),
             borderRadius: BorderRadius.circular(12),
-            color: Colors.orange.withOpacity(0.05),
+            color: Colors.orange.withValues(alpha: 0.05),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,26 +287,6 @@ class AddressSearchPanel extends StatelessWidget {
             const Spacer(),
             const Icon(Icons.chevron_right),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSelectionItem(String title, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: SizedBox(
-        width: double.infinity,
-        height: 70,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onPressed: onTap,
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
       ),
     );

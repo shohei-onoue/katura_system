@@ -46,7 +46,7 @@ class KSidebar extends StatelessWidget {
                   child: Image.asset(
                     'assets/img/logo.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
+                    errorBuilder: (context, error, stackTrace) => Icon(
                       Icons.restaurant_menu,
                       size: rs(context, 40),
                       color: Colors.deepOrange,

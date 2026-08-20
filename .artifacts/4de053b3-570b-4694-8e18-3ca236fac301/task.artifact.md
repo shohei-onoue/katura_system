@@ -1,0 +1,9 @@
+- [x] 事前連絡セクションのレイアウト大幅変更（3枚カード形式）
+- [x] カード内のタイトル等の水平整列
+- [x] 「指定番号へ連絡」カード内の横並び配置
+- [x] SNS（SMS）テスト送信機能の実装（シミュレーション）
+- [x] SNS（SMS）実送信機能の実装
+    - [x] `pubspec.yaml` に `url_launcher` を追加
+    - [x] `AndroidManifest.xml` に `sms` スキームの `queries` を追加
+    - [x] `FinalizeStep` の送信ロジックを `url_launcher` に更新
+- [x] 動作確認

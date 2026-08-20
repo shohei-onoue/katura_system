@@ -133,7 +133,7 @@ class _RankingItem extends StatelessWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(rs(context, 8)),
               child: imageUrl.isNotEmpty
-                  ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.restaurant, color: Colors.grey.shade400))
+                  ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Icon(Icons.restaurant, color: Colors.grey.shade400))
                   : Icon(Icons.restaurant, color: Colors.grey.shade400),
             ),
           ),

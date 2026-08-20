@@ -15,7 +15,9 @@ class AddressService {
   static const Map<String, Map<String, List<String>>> categoryHierarchy = AddressConstants.categoryHierarchy;
 
   Future<void> initDatabase() async {
-    if (_initCompleter != null) return _initCompleter!.future;
+    if (_initCompleter != null) {
+      return _initCompleter!.future;
+    }
     _initCompleter = Completer<void>();
     try {
       _db = await DatabaseFactory.openProjectDatabase("assets/navi_database.db", "navi_database.db");
@@ -33,7 +35,9 @@ class AddressService {
   void _addColumnIfNotExists(String tableName, String columnName, String type) {
     final pragma = _db!.select("PRAGMA table_info($tableName)");
     final exists = pragma.any((row) => row['name'] == columnName);
-    if (!exists) _db!.execute("ALTER TABLE $tableName ADD COLUMN $columnName $type");
+    if (!exists) {
+      _db!.execute("ALTER TABLE $tableName ADD COLUMN $columnName $type");
+    }
   }
 
   Future<List<Map<String, dynamic>>> searchFacilityByName(String name) async {
@@ -61,7 +65,9 @@ class AddressService {
   }
 
   Future<List<String>> getCitiesByInitial(String state, String initial) async {
-    if (initial == 'すべて') return getCities(state);
+    if (initial == 'すべて') {
+      return getCities(state);
+    }
     await initDatabase();
     final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'city_kana LIKE ?').join(' OR ');
@@ -74,7 +80,9 @@ class AddressService {
   }
 
   Future<List<String>> getTownsByInitial(String state, String city, String initial) async {
-    if (initial == 'すべて') return getTowns(state, city);
+    if (initial == 'すべて') {
+      return getTowns(state, city);
+    }
     await initDatabase();
     final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'town_kana LIKE ?').join(' OR ');
@@ -86,8 +94,60 @@ class AddressService {
     final kigyouResults = _db!.select("SELECT company_name as name, COALESCE(prefecture, '') as pref, COALESCE(city, '') as city, COALESCE(town, '') as town, COALESCE(address, '') as addr FROM kigyou WHERE city = '岡崎市' ORDER BY RANDOM() LIMIT ?", [(limit / 2).ceil()]);
     final medicalResults = _db!.select("SELECT name, COALESCE(prefecture, '') as pref, COALESCE(city, '') as city, COALESCE(town, '') as town, COALESCE(address, '') as addr FROM medical WHERE city = '岡崎市' ORDER BY RANDOM() LIMIT ?", [(limit / 2).floor()]);
     final List<Map<String, String>> combined = [];
-    for (var r in kigyouResults) combined.add({'name': r['name'] as String, 'pref': r['pref'] as String, 'city': r['city'] as String, 'town': r['town'] as String, 'addr': r['addr'] as String, 'type': '企業'});
-    for (var r in medicalResults) combined.add({'name': r['name'] as String, 'pref': r['pref'] as String, 'city': r['city'] as String, 'town': r['town'] as String, 'addr': r['addr'] as String, 'type': '医療'});
+    for (var r in kigyouResults) {
+      combined.add({'name': r['name'] as String, 'pref': r['pref'] as String, 'city': r['city'] as String, 'town': r['town'] as String, 'addr': r['addr'] as String, 'type': '企業'});
+    }
+    for (var r in medicalResults) {
+      combined.add({'name': r['name'] as String, 'pref': r['pref'] as String, 'city': r['city'] as String, 'town': r['town'] as String, 'addr': r['addr'] as String, 'type': '医療'});
+    }
+    return combined..shuffle();
+  }
+
+  /// データベースにデータがない場合でも、指定された都市のリストから強制的にエンティティを生成する
+  Future<List<Map<String, String>>> getRandomAichiEntities({int limit = 100}) async {
+    await initDatabase();
+    final targetCities = ['岡崎市', '名古屋市', '豊田市', '安城市', '一宮市', '春日井市', '刈谷市', '豊橋市', '西尾市', '知立市', '幸田町', '瀬戸市', '半田市', '東海市', '大府市'];
+    final List<Map<String, String>> combined = [];
+    
+    final int perCityLimit = (limit / targetCities.length).ceil();
+
+    for (var city in targetCities) {
+      // まずはDBから取得を試みる
+      final dbResults = _db!.select(
+        "SELECT company_name as name, COALESCE(prefecture, '愛知県') as pref, COALESCE(city, ?) as city, COALESCE(town, '') as town, COALESCE(address, '1-1-1') as addr "
+        "FROM kigyou WHERE city = ? LIMIT ?", 
+        [city, city, perCityLimit]
+      );
+
+      if (dbResults.isNotEmpty) {
+        for (var r in dbResults) {
+          combined.add({
+            'name': r['name'] as String, 
+            'pref': r['pref'] as String, 
+            'city': r['city'] as String, 
+            'town': r['town'] as String, 
+            'addr': r['addr'] as String, 
+            'type': '企業'
+          });
+        }
+      } else {
+        // DBにデータがない場合は、ダミーの施設を捏造する（テスト/デモ用）
+        final dummies = [
+          '$city中央病院', '$city市役所', '$cityグランドホテル', '$city工業', '株式会社$cityフーズ'
+        ];
+        for (int i = 0; i < (perCityLimit > 5 ? 5 : perCityLimit); i++) {
+          combined.add({
+            'name': dummies[i % dummies.length],
+            'pref': '愛知県',
+            'city': city,
+            'town': '中央町',
+            'addr': '${i + 1}-10',
+            'type': 'ダミー'
+          });
+        }
+      }
+    }
+    
     return combined..shuffle();
   }
 
@@ -121,7 +181,9 @@ class AddressService {
   }) async {
     await initDatabase();
     final keywords = categoryHierarchy[category]?[genre] ?? [];
-    if (keywords.isEmpty) return [];
+    if (keywords.isEmpty) {
+      return [];
+    }
     
     final String kigyouLike = keywords.map((_) => 'company_name LIKE ?').join(' OR ');
     final String medicalLike = keywords.map((_) => 'name LIKE ?').join(' OR ');
@@ -165,7 +227,9 @@ class AddressService {
         "FROM post_all WHERE zip_code = ? OR zip_code = ? LIMIT 100", 
         [cleanZip, query]
       );
-      if (postResults.isNotEmpty) return postResults.map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
+      if (postResults.isNotEmpty) {
+        return postResults.map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
+      }
 
       return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '郵便番号一致' as type FROM kigyou WHERE zip_code = ? OR zip_code = ? LIMIT 100", [cleanZip, query]).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
     }

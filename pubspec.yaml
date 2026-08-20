@@ -27,6 +27,7 @@ dependencies:
   webview_flutter: ^4.14.1
   firebase_storage: ^13.4.3
   http: ^1.2.1
+  url_launcher: ^6.3.0
   image_picker: ^1.1.2
   intl: ^0.20.3
 
@@ -39,5 +40,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/img/
+    - assets/json/
     - assets/navi_database.db
 

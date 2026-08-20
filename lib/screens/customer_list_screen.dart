@@ -72,7 +72,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   Future<void> _loadMenus() async {
     try {
       final data = await _menuService.getAllMenus();
-      if (mounted) setState(() => _allMenus = data);
+      if (mounted) {
+        setState(() => _allMenus = data);
+      }
     } catch (_) {}
   }
 
@@ -209,12 +211,20 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
               try {
                 await _customerService.regenerateDummyCustomers();
-                if (mounted) Navigator.pop(context);
+                if (mounted) {
+                  Navigator.pop(context);
+                }
                 _loadCustomers();
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ダミーデータを生成しました（100件）')));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ダミーデータを生成しました（300件）')));
+                }
               } catch (e) {
-                if (mounted) Navigator.pop(context);
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $e')));
+                if (mounted) {
+                  Navigator.pop(context);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $e')));
+                }
               }
             },
           ),
@@ -264,7 +274,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border(left: BorderSide(color: Colors.grey.shade200)),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                   ),
                   child: _selectedCustomer == null
                       ? const Center(child: Text('顧客を選択してください'))
@@ -344,7 +354,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             : ListView.separated(
                 shrinkWrap: true,
                 itemCount: colleagues.length,
-                separatorBuilder: (_, __) => const Divider(),
+                separatorBuilder: (context, index) => const Divider(),
                 itemBuilder: (context, i) {
                   final c = colleagues[i];
                   return ListTile(

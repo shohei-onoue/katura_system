@@ -15,6 +15,7 @@ class ItemsSelectionStep extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onAddItem;
   final Function(String, int) onQuantityChanged;
   final VoidCallback onNext;
+  final VoidCallback? onReloadMenus; // 再読み込み用
 
   const ItemsSelectionStep({
     super.key,
@@ -27,6 +28,7 @@ class ItemsSelectionStep extends StatefulWidget {
     required this.onAddItem,
     required this.onQuantityChanged,
     required this.onNext,
+    this.onReloadMenus,
   });
 
   @override
@@ -42,24 +44,37 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
     _initCategory();
   }
 
+  @override
+  void didUpdateWidget(ItemsSelectionStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // メニューリストが後から届いた場合の再初期化
+    if (selectedCategory.isEmpty && widget.menus.isNotEmpty) {
+      _initCategory();
+    }
+  }
+
   void _initCategory() {
+    if (widget.menus.isEmpty) return;
+    
     final List<String> presetCategories = ['厳選牛ステーキ弁当', '高級弁当', 'オードブル', '丼もの', 'ギフト', 'ドリンク・サイドメニュー'];
     final actualCategories = widget.menus.map((m) => m.category).toSet();
     
     for (var preset in presetCategories) {
       if (actualCategories.contains(preset)) {
-        selectedCategory = preset;
+        setState(() => selectedCategory = preset);
         return;
       }
     }
     
-    if (actualCategories.isNotEmpty) {
-      selectedCategory = actualCategories.first;
-    }
+    setState(() => selectedCategory = widget.menus.first.category);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.menus.isEmpty) {
+      return _buildEmptyState();
+    }
+
     final List<String> presetCategories = ['厳選牛ステーキ弁当', '高級弁当', 'オードブル', '丼もの', 'ギフト', 'ドリンク・サイドメニュー'];
     final actualCategories = widget.menus.map((m) => m.category).toSet().toList();
     final List<String> categories = [];
@@ -71,7 +86,8 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
       if (!presetCategories.contains(actual)) categories.add(actual);
     }
 
-    if (selectedCategory.isEmpty && categories.isNotEmpty) {
+    // 現在のカテゴリがリストにない（または空）場合のフォールバック
+    if (!categories.contains(selectedCategory) && categories.isNotEmpty) {
       selectedCategory = categories.first;
     }
     
@@ -95,6 +111,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // カテゴリタブ
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -111,7 +128,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                         selectedColor: Colors.deepPurple,
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
-                          fontSize: KR.fontSmall(context),
+                          fontSize: rf(context, 13),
                         ),
                         showCheckmark: false,
                       ),
@@ -119,43 +136,83 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 24),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.65,
+              SizedBox(height: rs(context, 24)),
+              
+              // メニューリスト
+              if (displayMenus.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(48.0),
+                    child: Text('このカテゴリに商品はありません', style: TextStyle(color: Colors.grey)),
+                  ),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: rs(context, 16),
+                    mainAxisSpacing: rs(context, 16),
+                    childAspectRatio: 0.65,
+                  ),
+                  itemCount: displayMenus.length,
+                  itemBuilder: (context, i) {
+                    final menu = displayMenus[i];
+                    final qty = widget.selectedQuantities[menu.id] ?? 0;
+                    return KMenuCard(
+                      menu: menu,
+                      quantity: qty,
+                      onQuantityChanged: (v) => widget.onQuantityChanged(menu.id, v),
+                      onDetailsPressed: () async {
+                        final result = await showDialog<List<Map<String, dynamic>>>(
+                          context: context,
+                          builder: (context) => KItemDetailsDialog(
+                            menu: menu, 
+                            initialQuantity: qty > 0 ? qty : 1,
+                          ),
+                        );
+                        if (result != null) {
+                          widget.onAddItem(result);
+                        }
+                      },
+                    );
+                  },
                 ),
-                itemCount: displayMenus.length,
-                itemBuilder: (context, i) {
-                  final menu = displayMenus[i];
-                  final qty = widget.selectedQuantities[menu.id] ?? 0;
-                  return KMenuCard(
-                    menu: menu,
-                    quantity: qty,
-                    onQuantityChanged: (v) => widget.onQuantityChanged(menu.id, v),
-                    onDetailsPressed: () async {
-                      final result = await showDialog<List<Map<String, dynamic>>>(
-                        context: context,
-                        builder: (context) => KItemDetailsDialog(
-                          menu: menu, 
-                          initialQuantity: qty > 0 ? qty : 1,
-                        ),
-                      );
-                      if (result != null) {
-                        widget.onAddItem(result);
-                      }
-                    },
-                  );
-                },
-              ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(48),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 24),
+          const Text('メニューデータが見つかりません', 
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          const SizedBox(height: 12),
+          const Text('メニューマスタで商品を登録するか、下のボタンを押してください。', 
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: widget.onReloadMenus,
+            icon: const Icon(Icons.refresh),
+            label: const Text('メニューを読み直す'),
+            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+          ),
+        ],
+      ),
     );
   }
 }

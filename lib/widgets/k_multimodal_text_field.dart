@@ -116,9 +116,10 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                               });
                               if (mode == KInputMode.keyboard) {
                                 // キーボードモードに切り替えた時にフォーカスを当てる
+                                final focusScope = FocusScope.of(context);
                                 Future.delayed(Duration.zero, () {
                                   if (mounted) {
-                                    FocusScope.of(context).requestFocus(FocusNode());
+                                    focusScope.requestFocus(FocusNode());
                                   }
                                 });
                               }

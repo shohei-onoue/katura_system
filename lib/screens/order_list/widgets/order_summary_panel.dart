@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
+import '../../../widgets/k_responsive.dart';
 
 class OrderSummaryPanel extends StatelessWidget {
   final DateTime selectedDay;
@@ -25,16 +26,16 @@ class OrderSummaryPanel extends StatelessWidget {
       children: [
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(rav(context, 16)),
           decoration: BoxDecoration(
             color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(rav(context, 12)),
             border: Border.all(color: Colors.grey[200]!),
           ),
           child: Text('$dayStr の店舗別概要', 
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: rs(context, 8)),
         ...branches.map((branch) {
           final branchName = branch['name'] as String;
           final color = branch['color'] as Color;
@@ -42,12 +43,12 @@ class OrderSummaryPanel extends StatelessWidget {
           final totalCount = branchOrders.fold(0, (sum, o) => sum + o.totalCount);
 
           return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.only(bottom: rs(context, 8)),
+            padding: EdgeInsets.all(rav(context, 12)),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withOpacity(0.2)),
+              color: color.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(rav(context, 12)),
+              border: Border.all(color: color.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -56,13 +57,13 @@ class OrderSummaryPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(branchName, 
-                      style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: rf(context, 14))),
                     Text('${branchOrders.length} 件', 
-                      style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                      style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey)),
                   ],
                 ),
                 Text('$totalCount 個', 
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+                  style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: color)),
               ],
             ),
           );

@@ -17,7 +17,9 @@ class SidebarDestinationInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (facilityName.isEmpty && address.isEmpty) return const SizedBox.shrink();
+    if (facilityName.isEmpty && address.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       padding: EdgeInsets.all(rs(context, 16)),

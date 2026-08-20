@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
+import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
 import 'order_list/widgets/order_summary_panel.dart';
 
@@ -31,12 +32,15 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Future<void> _loadOrders() async {
-    setState(() => _isLoading = true);
-    final list = await _orderService.getAllOrders();
     setState(() {
-      _allOrders = list.where((order) => 
-        order.status != '配送済み' && order.status != 'キャンセル済み'
-      ).toList();
+      _isLoading = true;
+    });
+    final list = await _orderService.getAllOrders();
+    if (!mounted) return;
+    setState(() {
+      _allOrders = list.where((order) {
+        return order.status != '配送済み' && order.status != 'キャンセル済み';
+      }).toList();
       _filterOrdersByDay(_selectedDay!);
       _isLoading = false;
     });
@@ -45,18 +49,27 @@ class _OrderListScreenState extends State<OrderListScreen> {
   Future<void> _cancelOrder(OrderModel order) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('受注のキャンセル'),
-        content: Text('${order.customerName} 様の受注をキャンセルしますか？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('いいえ')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('はい、キャンセルします'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('受注のキャンセル'),
+          content: Text('${order.customerName} 様の受注をキャンセルしますか？'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, false);
+              },
+              child: const Text('いいえ'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, true);
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('はい、キャンセルします'),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirmed == true) {
@@ -67,7 +80,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   void _filterOrdersByDay(DateTime day) {
     setState(() {
-      _filteredOrders = _allOrders.where((order) => isSameDay(order.deliveryDate, day)).toList();
+      _filteredOrders = _allOrders.where((order) {
+        return isSameDay(order.deliveryDate, day);
+      }).toList();
     });
   }
 
@@ -76,47 +91,76 @@ class _OrderListScreenState extends State<OrderListScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('受注一覧・工程管理', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('受注一覧・工程管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadOrders),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              _loadOrders();
+            },
+          ),
         ],
       ),
       body: Row(
         children: [
           Container(
-            width: 350,
+            width: rs(context, 350),
             color: Colors.white,
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(rav(context, 16)),
             child: Column(
               children: [
                 TableCalendar(
                   firstDay: DateTime.utc(2020, 1, 1),
                   lastDay: DateTime.utc(2030, 12, 31),
                   focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  selectedDayPredicate: (day) {
+                    return isSameDay(_selectedDay, day);
+                  },
                   onDaySelected: (selectedDay, focusedDay) {
-                    setState(() { _selectedDay = selectedDay; _focusedDay = focusedDay; });
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
                     _filterOrdersByDay(selectedDay);
                   },
                   calendarStyle: CalendarStyle(
-                    todayDecoration: BoxDecoration(color: Colors.orange.withOpacity(0.3), shape: BoxShape.circle),
+                    todayDecoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.3), shape: BoxShape.circle),
                     selectedDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    defaultTextStyle: TextStyle(fontSize: rf(context, 14)),
+                    weekendTextStyle: TextStyle(fontSize: rf(context, 14), color: Colors.red),
                   ),
-                  headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                  headerStyle: HeaderStyle(
+                    formatButtonVisible: false, 
+                    titleCentered: true,
+                    titleTextStyle: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
+                  ),
                   calendarBuilders: CalendarBuilders(
                     markerBuilder: (context, day, events) {
-                      if (_allOrders.any((order) => isSameDay(order.deliveryDate, day))) {
-                        return Container(margin: const EdgeInsets.all(4.0), decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.orange.withOpacity(0.5), width: 2)));
+                      if (_allOrders.any((order) {
+                        return isSameDay(order.deliveryDate, day);
+                      })) {
+                        return Container(
+                          margin: EdgeInsets.all(rav(context, 4.0)),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 2),
+                          ),
+                        );
                       }
                       return null;
                     },
                   ),
                 ),
-                const Divider(height: 32),
-                if (_selectedDay != null) OrderSummaryPanel(selectedDay: _selectedDay!, orders: _filteredOrders),
+                Divider(height: rs(context, 32)),
+                if (_selectedDay != null)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: OrderSummaryPanel(selectedDay: _selectedDay!, orders: _filteredOrders),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -131,15 +175,23 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Widget _buildOrderList() {
-    if (_filteredOrders.isEmpty) return const Center(child: Text('この日の受注はありません'));
+    if (_filteredOrders.isEmpty) {
+      return Center(child: Text('この日の受注はありません', style: TextStyle(fontSize: rf(context, 16))));
+    }
     return ListView.builder(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(rav(context, 24)),
       itemCount: _filteredOrders.length,
-      itemBuilder: (context, index) => OrderListCard(
-        order: _filteredOrders[index],
-        onEdit: (order) => widget.onEditOrder?.call(order),
-        onCancel: _cancelOrder,
-      ),
+      itemBuilder: (context, index) {
+        return OrderListCard(
+          order: _filteredOrders[index],
+          onEdit: (order) {
+            widget.onEditOrder?.call(order);
+          },
+          onCancel: (order) {
+            _cancelOrder(order);
+          },
+        );
+      },
     );
   }
 }

@@ -1,1 +1,56 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"katura-system-dfc8b","appId":"1:639111103872:android:f67e8da9026810f2f6ed65","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"katura-system-dfc8b","appId":"1:639111103872:ios:f0aa28d591b44a72f6ed65","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"katura-system-dfc8b","appId":"1:639111103872:ios:f0aa28d591b44a72f6ed65","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"katura-system-dfc8b","configurations":{"android":"1:639111103872:android:f67e8da9026810f2f6ed65","ios":"1:639111103872:ios:f0aa28d591b44a72f6ed65","macos":"1:639111103872:ios:f0aa28d591b44a72f6ed65","web":"1:639111103872:web:d6138be46fc39a6af6ed65","windows":"1:639111103872:web:d6138be46fc39a6af6ed65"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "katura-system-dfc8b",
+          "appId": "1:639111103872:android:f67e8da9026810f2f6ed65",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "katura-system-dfc8b",
+          "appId": "1:639111103872:ios:f0aa28d591b44a72f6ed65",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "katura-system-dfc8b",
+          "appId": "1:639111103872:ios:f0aa28d591b44a72f6ed65",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "katura-system-dfc8b",
+          "configurations": {
+            "android": "1:639111103872:android:f67e8da9026810f2f6ed65",
+            "ios": "1:639111103872:ios:f0aa28d591b44a72f6ed65",
+            "macos": "1:639111103872:ios:f0aa28d591b44a72f6ed65",
+            "web": "1:639111103872:web:d6138be46fc39a6af6ed65",
+            "windows": "1:639111103872:web:d6138be46fc39a6af6ed65"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": []
+    }
+  ]
+}

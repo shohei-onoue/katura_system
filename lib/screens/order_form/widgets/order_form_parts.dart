@@ -60,7 +60,9 @@ class CustomerInfoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (customer == null) return const SizedBox.shrink();
+    if (customer == null) {
+      return const SizedBox.shrink();
+    }
     
     return Padding(
       padding: EdgeInsets.symmetric(vertical: rav(context, 8)),
@@ -143,7 +145,9 @@ class CustomerInfoBanner extends StatelessWidget {
   }
 
   static int? calculateDaysSince(List<String> history) {
-    if (history.isEmpty) return null;
+    if (history.isEmpty) {
+      return null;
+    }
     try {
       final dateStr = history.first.split(':').first.trim();
       final lastDate = DateTime.parse(dateStr);

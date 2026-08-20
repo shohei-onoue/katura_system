@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:intl/intl.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
-import 'k_drum_time_picker.dart';
+import 'k_numeric_dial_pad.dart';
 
 class KDateTimeSelectionDialog extends StatefulWidget {
   final DateTime initialDateTime;
@@ -30,7 +28,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
 
 class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   late DateTime _tempDate;
-  late DateTime _tempTime;
+  late String _timeBuffer; // 4桁の数字保持用 (例: "1430")
 
   @override
   void initState() {
@@ -40,18 +38,50 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
       widget.initialDateTime.month,
       widget.initialDateTime.day,
     );
-    _tempTime = widget.initialDateTime;
+    // 初期時間を4桁の文字列に変換
+    _timeBuffer = widget.initialDateTime.hour.toString().padLeft(2, '0') +
+                  widget.initialDateTime.minute.toString().padLeft(2, '0');
+  }
+
+  void _onInput(String digit) {
+    setState(() {
+      _timeBuffer = (_timeBuffer + digit);
+      if (_timeBuffer.length > 4) {
+        _timeBuffer = _timeBuffer.substring(_timeBuffer.length - 4);
+      }
+    });
+  }
+
+  void _onBackspace() {
+    setState(() {
+      if (_timeBuffer.isNotEmpty) {
+        _timeBuffer = '0${_timeBuffer.substring(0, _timeBuffer.length - 1)}';
+      }
+    });
+  }
+
+  void _onClear() {
+    setState(() {
+      _timeBuffer = "0000";
+    });
+  }
+
+  String get _displayTime {
+    return "${_timeBuffer.substring(0, 2)}:${_timeBuffer.substring(2, 4)}";
+  }
+
+  bool _isValidTime() {
+    final hour = int.parse(_timeBuffer.substring(0, 2));
+    final minute = int.parse(_timeBuffer.substring(2, 4));
+    return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
   }
 
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
+    final bool isValid = _isValidTime();
     
-    // ダイアログの幅を画面サイズに応じて調整 (モバイル/タブレット/PC)
-    final double dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : (screenWidth < 1200 ? 500 : 600);
-    // ダイアログの最大高さを画面の85%に制限
-    final double maxDialogHeight = screenHeight * 0.85;
+    final double dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 550;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -59,25 +89,24 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
         width: dialogWidth,
-        constraints: BoxConstraints(maxHeight: maxDialogHeight),
-        padding: EdgeInsets.all(rav(context, 20)),
+        padding: EdgeInsets.all(rav(context, 24)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.title, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
-            SizedBox(height: rav(context, 16)),
+            Text(widget.title, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
             
-            // 内容エリアをスクロール可能に
             Flexible(
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // カレンダー
+                    // カレンダーエリア
                     Container(
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade200),
-                        borderRadius: BorderRadius.circular(rav(context, 12)),
+                        borderRadius: BorderRadius.circular(rs(context, 12)),
                       ),
                       child: TableCalendar(
                         firstDay: DateTime.now().subtract(const Duration(days: 30)),
@@ -85,54 +114,78 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         focusedDay: _tempDate,
                         currentDay: DateTime.now(),
                         locale: 'ja_JP',
-                        headerStyle: HeaderStyle(
+                        headerStyle: const HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
-                          titleTextStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14)),
-                          headerPadding: EdgeInsets.symmetric(vertical: rav(context, 4)),
                         ),
                         calendarStyle: CalendarStyle(
-                          todayDecoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.2), shape: BoxShape.circle),
                           selectedDecoration: BoxDecoration(color: widget.themeColor, shape: BoxShape.circle),
-                          todayTextStyle: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-                          outsideDaysVisible: false,
-                          cellMargin: EdgeInsets.all(rav(context, 2)),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) {
-                          setState(() {
-                            _tempDate = selectedDay;
-                          });
+                          setState(() => _tempDate = selectedDay);
                         },
-                        daysOfWeekStyle: DaysOfWeekStyle(
-                          weekdayStyle: TextStyle(fontSize: rf(context, 10)),
-                          weekendStyle: TextStyle(fontSize: rf(context, 10), color: Colors.red),
-                        ),
-                        rowHeight: rav(context, 40),
+                        rowHeight: rs(context, 45),
                       ),
                     ),
                     
-                    SizedBox(height: rav(context, 16)),
+                    const SizedBox(height: 24),
                     
-                    // 時間ドラム (高さを動的に調整)
-                    KDrumTimePicker(
-                      minTime: widget.minTime,
-                      maxTime: widget.maxTime,
-                      interval: widget.interval,
-                      selectedDateTime: _tempTime,
-                      onTimeSelected: (dt) {
-                        setState(() {
-                          _tempTime = dt;
-                        });
-                      },
-                      themeColor: widget.themeColor,
+                    // 時間表示・入力エリア
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 時間表示
+                        Expanded(
+                          flex: 4,
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                decoration: BoxDecoration(
+                                  color: isValid ? Colors.grey.shade50 : Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(rs(context, 12)),
+                                  border: Border.all(
+                                    color: isValid ? widget.themeColor.withValues(alpha: 0.3) : Colors.red.shade200, 
+                                    width: 2
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  _displayTime,
+                                  style: TextStyle(
+                                    fontSize: rf(context, 40), 
+                                    fontWeight: FontWeight.bold, 
+                                    color: isValid ? Colors.black87 : Colors.red,
+                                  ),
+                                ),
+                              ),
+                              if (!isValid)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text('無効な時間', style: TextStyle(color: Colors.red, fontSize: rf(context, 12))),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // テンキー
+                        Expanded(
+                          flex: 6,
+                          child: KNumericDialPad(
+                            onInput: _onInput,
+                            onBackspace: _onBackspace,
+                            onClear: _onClear,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
             
-            SizedBox(height: rav(context, 24)),
+            const SizedBox(height: 32),
             
             Row(
               children: [
@@ -144,20 +197,22 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                     color: Colors.grey,
                   ),
                 ),
-                SizedBox(width: rav(context, 12)),
+                const SizedBox(width: 16),
                 Expanded(
                   child: KButton(
-                    label: '反映', 
-                    onPressed: () {
+                    label: '反映する', 
+                    onPressed: isValid ? () {
+                      final hour = int.parse(_timeBuffer.substring(0, 2));
+                      final minute = int.parse(_timeBuffer.substring(2, 4));
                       final result = DateTime(
                         _tempDate.year,
                         _tempDate.month,
                         _tempDate.day,
-                        _tempTime.hour,
-                        _tempTime.minute,
+                        hour,
+                        minute,
                       );
                       Navigator.pop(context, result);
-                    },
+                    } : null,
                     color: widget.themeColor,
                   ),
                 ),

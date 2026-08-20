@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer_model.dart';
@@ -197,10 +198,10 @@ class CustomerService {
         throw Exception('メニューマスタの初期化に失敗しました。');
       }
 
-      // 岡崎市の実在施設データを取得
-      final entities = await _addressService.getRandomOkazakiEntities(limit: 40);
+      // 愛知県内の実在施設データを取得 (広域化)
+      final entities = await _addressService.getRandomAichiEntities(limit: 80);
       if (entities.isEmpty) {
-        throw Exception('住所データベースから岡崎市のデータを取得できませんでした。');
+        throw Exception('住所データベースから施設データを取得できませんでした。');
       }
 
       final Map<String, Map<String, dynamic>> geoCache = {};
@@ -213,15 +214,17 @@ class CustomerService {
 
       int totalCreated = 0;
       int entityIdx = 0;
+      const int targetCount = 300; // 300件に増加
 
-      while (totalCreated < 100) {
+      while (totalCreated < targetCount) {
         final entity = entities[entityIdx % entities.length];
         final entityName = entity['name'] ?? '一般';
+        final city = entity['city'] ?? '岡崎市';
         
         // 住所の重複を排除して結合
         final entityAddr = _buildSafeAddress(
-          pref: entity['pref'] ?? '',
-          city: entity['city'] ?? '',
+          pref: entity['pref'] ?? '愛知県',
+          city: city,
           town: entity['town'] ?? '',
           addr: entity['addr'] ?? '',
         );
@@ -230,23 +233,30 @@ class CustomerService {
           final latLng = await _googleMapsService.getLatLngFromAddress("$entityName $entityAddr");
           if (latLng != null && latLng['lat'] != 0.0) {
             geoCache[entityAddr] = latLng;
-            await _addressService.upsertKigyouEntity(name: entityName, address: entityAddr, lat: latLng['lat']!, lng: latLng['lng']!);
+            await _addressService.upsertKigyouEntity(
+              name: entityName, 
+              address: entityAddr, 
+              lat: latLng['lat']!, 
+              lng: latLng['lng']!,
+              prefecture: '愛知県',
+              city: city,
+            );
           } else {
             geoCache[entityAddr] = {'lat': 0.0, 'lng': 0.0};
           }
-          await Future.delayed(const Duration(milliseconds: 100));
+          await Future.delayed(const Duration(milliseconds: 50)); // 高速化
         }
         
         final coords = geoCache[entityAddr]!;
-        int staffCount = random.nextInt(4) + 1;
-        if (totalCreated + staffCount > 100) staffCount = 100 - totalCreated;
+        int staffCount = random.nextInt(5) + 2; // 1施設あたりの人数を少し増やす
+        if (totalCreated + staffCount > targetCount) staffCount = targetCount - totalCreated;
 
         for (int s = 0; staffCount > s; s++) {
           final name = "${lastNames[random.nextInt(lastNames.length)]} ${firstNames[random.nextInt(firstNames.length)]}";
           final phone = '0${random.nextInt(3) + 7}0-${random.nextInt(9000) + 1000}-${random.nextInt(9000) + 1000}';
           
           List<String> historyStrings = [];
-          int historyCount = random.nextInt(6) + 3;
+          int historyCount = random.nextInt(8) + 4; // 履歴数も増加
           final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
 
           for (int h = 0; h < historyCount; h++) {
@@ -254,9 +264,9 @@ class CustomerService {
             final dateStr = "${orderDate.year}-${orderDate.month.toString().padLeft(2, '0')}-${orderDate.day.toString().padLeft(2, '0')}";
             
             final menu = menus[random.nextInt(menus.length)];
-            final qty = random.nextInt(10) + 2;
+            final qty = random.nextInt(15) + 3;
             final branch = branches[random.nextInt(branches.length)];
-            final time = "${11 + random.nextInt(2)}:${random.nextBool() ? '00' : '30'}";
+            final time = "${10 + random.nextInt(4)}:${random.nextBool() ? '00' : '30'}";
 
             // 文字列履歴
             historyStrings.add('$dateStr: [$branch] [$entityName] ${menu['name']} x$qty');
@@ -271,14 +281,20 @@ class CustomerService {
               'phoneNumber': phone,
               'receptionDate': orderDate.subtract(const Duration(days: 1)).toIso8601String(),
               'deliveryDate': orderDate.toIso8601String(),
+              'deliveryDateStr': dateStr, // 文字列形式の日付を追加（Functions用）
               'deliveryTime': time,
               'deliveryType': '配送',
               'items': [{'id': menu['id'], 'name': menu['name'], 'price': menu['price'], 'quantity': qty}],
               'totalCount': qty,
-              'packagingType': qty >= 20 ? 'ダンボール' : '紙袋',
+              'totalPrice': (menu['price'] as int) * qty,
+              'packagingType': qty >= 15 ? 'ダンボール' : '紙袋',
               'paymentMethod': '現金',
               'status': '配送済み',
               'branchName': branch,
+              'snsSent': true, // ダミーは送信済み扱い
+              'preConfirmationMethod': 'SNS',
+              'latitude': coords['lat'],
+              'longitude': coords['lng'],
             });
           }
           historyStrings.sort((a, b) => b.compareTo(a));
@@ -303,7 +319,7 @@ class CustomerService {
         entityIdx++;
       }
     } catch (e) {
-      print('Error in regenerateDummyCustomers: $e');
+      debugPrint('Error in regenerateDummyCustomers: $e');
       rethrow;
     }
   }

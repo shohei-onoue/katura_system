@@ -47,12 +47,12 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: _staffList.length,
-              separatorBuilder: (_, __) => const Divider(),
+              separatorBuilder: (context, index) => const Divider(),
               itemBuilder: (context, index) {
                 final staff = _staffList[index];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.orange.withOpacity(0.1),
+                    backgroundColor: Colors.orange.withValues(alpha: 0.1),
                     child: Text(staff.name[0], style: const TextStyle(color: Colors.orange)),
                   ),
                   title: Text(staff.name, style: const TextStyle(fontWeight: FontWeight.bold)),
