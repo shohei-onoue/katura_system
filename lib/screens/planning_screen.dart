@@ -8,6 +8,7 @@ import '../services/menu_service.dart';
 import '../services/planning_service.dart';
 import 'planning/widgets/ingredient_list.dart';
 import 'planning/widgets/cooking_schedule_list.dart';
+import '../widgets/k_responsive.dart';
 
 class PlanningScreen extends StatefulWidget {
   const PlanningScreen({super.key});
@@ -62,9 +63,9 @@ class _PlanningScreenState extends State<PlanningScreen> {
       body: Row(
         children: [
           Container(
-            width: 320,
+            width: rs(context, 320),
             decoration: BoxDecoration(color: Colors.white, border: Border(right: BorderSide(color: Colors.grey[200]!))),
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(rs(context, 16)),
             child: Column(
               children: [
                 TableCalendar(

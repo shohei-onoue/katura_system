@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:sqlite3/common.dart';
 import 'database_factory.dart';
 import '../constants/address_constants.dart';
+import 'category_service.dart';
 
 /// 現場のスピードに耐えうる SQLite（WASM/Native）ベースの住所検索サービス
 class AddressService {
@@ -11,8 +12,11 @@ class AddressService {
 
   CommonDatabase? _db;
   Completer<void>? _initCompleter;
+  final _categoryService = CategoryService();
 
-  static const Map<String, Map<String, List<String>>> categoryHierarchy = AddressConstants.categoryHierarchy;
+  Future<Map<String, Map<String, List<String>>>> getCategoryHierarchy() async {
+    return await _categoryService.getCategoryHierarchy();
+  }
 
   Future<void> initDatabase() async {
     if (_initCompleter != null) {
@@ -180,7 +184,8 @@ class AddressService {
     required String genre
   }) async {
     await initDatabase();
-    final keywords = categoryHierarchy[category]?[genre] ?? [];
+    final hierarchy = await getCategoryHierarchy();
+    final keywords = hierarchy[category]?[genre] ?? [];
     if (keywords.isEmpty) {
       return [];
     }

@@ -35,13 +35,13 @@ class OrderModel {
   final int teaQuantity; // 特典本数
 
   // 事前連絡
-  final String preConfirmationMethod; // SNS, 電話
+  final String preConfirmationMethod; // SMS, 電話
   final String preConfirmationPhoneType; // この電話番号, 指定番号へ連絡 (電話時)
   final String preConfirmationPhoneNumber; // 指定電話番号 (電話時)
   final DateTime? preConfirmationDateTime; // 連絡希望日時 (電話時)
-  final String preConfirmationSnsTime; // SNS送信時間 (例: "09:00")
-  final DateTime? scheduledSnsDateTime; // 送信予定日時
-  final bool snsSent; // 送信済みフラグ
+  final String preConfirmationSmsTime; // SMS送信時間 (例: "09:00")
+  final DateTime? scheduledSmsDateTime; // 送信予定日時
+  final bool smsSent; // 送信済みフラグ
 
   final String paymentMethod;
   final String status;
@@ -76,13 +76,13 @@ class OrderModel {
     this.trashPickupLocationDetail = '',
     this.teaOption = 'なし',
     this.teaQuantity = 0,
-    this.preConfirmationMethod = 'SNS',
+    this.preConfirmationMethod = 'SMS',
     this.preConfirmationPhoneType = 'この電話番号',
     this.preConfirmationPhoneNumber = '',
     this.preConfirmationDateTime,
-    this.preConfirmationSnsTime = '09:00',
-    this.scheduledSnsDateTime,
-    this.snsSent = false,
+    this.preConfirmationSmsTime = '09:00',
+    this.scheduledSmsDateTime,
+    this.smsSent = false,
     required this.paymentMethod,
     this.status = '受注済み',
     this.branchName = '岡崎本店',
@@ -131,9 +131,9 @@ class OrderModel {
       'preConfirmationPhoneType': preConfirmationPhoneType,
       'preConfirmationPhoneNumber': preConfirmationPhoneNumber,
       'preConfirmationDateTime': preConfirmationDateTime?.toIso8601String(),
-      'preConfirmationSnsTime': preConfirmationSnsTime,
-      'scheduledSnsDateTime': scheduledSnsDateTime?.toUtc().toIso8601String(),
-      'snsSent': snsSent,
+      'preConfirmationSmsTime': preConfirmationSmsTime,
+      'scheduledSmsDateTime': scheduledSmsDateTime?.toUtc().toIso8601String(),
+      'smsSent': smsSent,
       'paymentMethod': paymentMethod,
       'status': status,
       'branchName': branchName,
@@ -195,17 +195,17 @@ class OrderModel {
       trashPickupLocationDetail: map['trashPickupLocationDetail'] ?? '',
       teaOption: map['teaOption'] ?? 'なし',
       teaQuantity: map['teaQuantity'] ?? 0,
-      preConfirmationMethod: map['preConfirmationMethod'] ?? 'SNS',
+      preConfirmationMethod: map['preConfirmationMethod'] ?? 'SMS',
       preConfirmationPhoneType: map['preConfirmationPhoneType'] ?? 'この電話番号',
       preConfirmationPhoneNumber: map['preConfirmationPhoneNumber'] ?? '',
       preConfirmationDateTime: map['preConfirmationDateTime'] != null 
           ? DateTime.parse(map['preConfirmationDateTime']) 
           : null,
-      preConfirmationSnsTime: map['preConfirmationSnsTime'] ?? '09:00',
-      scheduledSnsDateTime: map['scheduledSnsDateTime'] != null 
-          ? DateTime.parse(map['scheduledSnsDateTime']) 
+      preConfirmationSmsTime: map['preConfirmationSmsTime'] ?? '09:00',
+      scheduledSmsDateTime: map['scheduledSmsDateTime'] != null 
+          ? DateTime.parse(map['scheduledSmsDateTime']) 
           : null,
-      snsSent: map['snsSent'] ?? false,
+      smsSent: map['smsSent'] ?? false,
       paymentMethod: map['paymentMethod'] ?? '',
       status: map['status'] ?? '受注済み',
       branchName: map['branchName'] ?? '岡崎本店',

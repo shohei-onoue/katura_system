@@ -25,7 +25,7 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
     const configDoc = await db.collection("settings").doc("sms_config").get();
     const globalSendingTime = configDoc.exists ? configDoc.data().sendingTime : "09:00";
 
-    // 3. 設定時刻と一致しない場合は何もしない (案1の挙動)
+    // 3. 設定時刻と一致しない場合は何もしない
     if (currentJstTime !== globalSendingTime) {
       return;
     }
@@ -36,11 +36,11 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
     const tomorrow = new Date(jstNow.getTime() + 24 * 60 * 60 * 1000);
     const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-    // 5. 明日配達予定 且つ 未送信 の注文を検索
+    // 5. 明日配達予定 且つ 未送信 の注文を検索 (MethodをSMSに修正)
     const snapshot = await db.collection("orders")
-      .where("deliveryDateStr", "==", tomorrowStr) // 配達日(文字列)で検索
-      .where("snsSent", "==", false)
-      .where("preConfirmationMethod", "==", "SNS")
+      .where("deliveryDateStr", "==", tomorrowStr)
+      .where("smsSent", "==", false)
+      .where("preConfirmationMethod", "==", "SMS")
       .get();
 
     if (snapshot.empty) {
@@ -71,7 +71,7 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
         });
 
         if (response.data.messages[0].status === "0") {
-          await doc.ref.update({ snsSent: true, snsSentAt: admin.firestore.FieldValue.serverTimestamp() });
+          await doc.ref.update({ smsSent: true, smsSentAt: admin.firestore.FieldValue.serverTimestamp() });
           console.log(`[V2 Success] Sent to ${order.customerName}`);
         }
       } catch (e) {

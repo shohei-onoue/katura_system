@@ -109,10 +109,9 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
               address: addressController.text,
             );
             await widget.customerService.updateCustomer(updatedCustomer);
-            if (mounted) {
-              Navigator.pop(context);
-              widget.onSaved();
-            }
+            if (!mounted) return;
+            Navigator.pop(context);
+            widget.onSaved();
           },
           style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, foregroundColor: Colors.white),
           child: const Text('保存'),

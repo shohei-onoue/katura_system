@@ -31,17 +31,17 @@ class OrderListCard extends StatelessWidget {
     }
 
     return Card(
-      margin: EdgeInsets.only(bottom: rs(context, 20)),
+      margin: EdgeInsets.only(bottom: rs(context, 12)),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(rav(context, 16)),
-        side: BorderSide(color: branchColor.withValues(alpha: 0.3), width: 1),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
+        side: BorderSide(color: branchColor.withValues(alpha: 0.2), width: 1),
       ),
-      elevation: 3,
+      elevation: 2,
       child: Column(
         children: [
           OrderProcessBar(order: order),
           Padding(
-            padding: EdgeInsets.all(rav(context, 20)),
+            padding: EdgeInsets.all(rs(context, 12)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -57,21 +57,21 @@ class OrderListCard extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   order.customerName, 
-                                  style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              SizedBox(width: rs(context, 12)),
+                              SizedBox(width: rs(context, 8)),
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
+                                padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 2)),
                                 decoration: BoxDecoration(
                                   color: branchColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: branchColor.withValues(alpha: 0.5)),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: branchColor.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
                                   order.branchName,
-                                  style: TextStyle(color: branchColor, fontSize: rf(context, 12), fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: branchColor, fontSize: rf(context, 10), fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -79,7 +79,7 @@ class OrderListCard extends StatelessWidget {
                           if (order.facilityName.isNotEmpty)
                             Text(
                               order.facilityName, 
-                              style: TextStyle(color: Colors.grey[600], fontSize: rf(context, 15)),
+                              style: TextStyle(color: Colors.grey[600], fontSize: rf(context, 13)),
                               overflow: TextOverflow.ellipsis,
                             ),
                         ],
@@ -89,67 +89,61 @@ class OrderListCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildMainTimeDisplay(context, order),
-                        SizedBox(width: rs(context, 16)),
+                        SizedBox(width: rs(context, 12)),
                         IconButton(
-                          icon: Icon(Icons.edit, color: Colors.blueGrey, size: rs(context, 24)),
-                          tooltip: 'この受注を編集',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.edit, color: Colors.blueGrey, size: rs(context, 20)),
                           onPressed: () => onEdit(order),
                         ),
+                        SizedBox(width: rs(context, 8)),
                         IconButton(
-                          icon: Icon(Icons.cancel_outlined, color: Colors.redAccent, size: rs(context, 24)),
-                          tooltip: 'この受注をキャンセル',
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(Icons.cancel_outlined, color: Colors.redAccent, size: rs(context, 20)),
                           onPressed: () => onCancel(order),
                         ),
                       ],
                     ),
                   ],
                 ),
-                SizedBox(height: rs(context, 16)),
+                SizedBox(height: rs(context, 8)),
                 Row(
                   children: [
-                    Icon(Icons.location_on, size: rs(context, 16), color: Colors.grey),
+                    Icon(Icons.location_on, size: rs(context, 14), color: Colors.grey),
                     SizedBox(width: rs(context, 4)),
                     Expanded(
                       child: Text(
                         "${order.address}${order.deliveryLocation.isNotEmpty ? ' (${order.deliveryLocation})' : ''}", 
-                        style: TextStyle(fontSize: rf(context, 14), color: Colors.grey),
+                        style: TextStyle(fontSize: rf(context, 12), color: Colors.grey),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (order.receiverName.isNotEmpty) ...[
-                      SizedBox(width: rs(context, 16)),
-                      Icon(Icons.person_outline, size: rs(context, 16), color: Colors.blueGrey),
-                      SizedBox(width: rs(context, 4)),
-                      Text(
-                        order.receiverName, 
-                        style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.blueGrey)
-                      ),
-                    ],
                   ],
                 ),
-                Divider(height: rs(context, 32)),
+                Divider(height: rs(context, 16)),
                 Wrap(
-                  spacing: rs(context, 8),
-                  runSpacing: rs(context, 8),
+                  spacing: rs(context, 6),
+                  runSpacing: rs(context, 6),
                   children: order.items.map((item) => Container(
-                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 6)),
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                      borderRadius: BorderRadius.circular(rs(context, 6)),
                       border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
                     ),
                     child: Text("${item['name']} x${item['quantity']}", 
-                      style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500)),
+                      style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500)),
                   )).toList(),
                 ),
-                SizedBox(height: rs(context, 16)),
+                SizedBox(height: rs(context, 12)),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text("支払: ${order.paymentMethod} / 梱包: ${order.packagingType}", 
-                      style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 13))),
-                    Text("合計 ${order.totalCount} 個", 
-                      style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                      style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 11))),
+                    Text("${order.totalCount} 個 / ¥${order.totalPrice}", 
+                      style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                   ],
                 ),
               ],
@@ -162,17 +156,17 @@ class OrderListCard extends StatelessWidget {
 
   Widget _buildMainTimeDisplay(BuildContext context, OrderModel order) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 4)),
       decoration: BoxDecoration(
         color: Colors.deepOrange.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(rs(context, 12)),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('配送予定', style: TextStyle(fontSize: rf(context, 10), color: Colors.deepOrange)),
+          Text('配送予定', style: TextStyle(fontSize: rf(context, 9), color: Colors.deepOrange)),
           Text(order.deliveryTime, 
-            style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+            style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
         ],
       ),
     );

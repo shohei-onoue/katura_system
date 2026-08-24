@@ -32,22 +32,20 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     try {
       await _menuService.migrateCategories();
       final data = await _menuService.getAllMenus();
-      if (mounted) {
-        setState(() {
-          _menus = data;
-          _isLoading = false;
-          if (_menus.isNotEmpty && _selectedMenu == null) {
-            _selectedMenu = _menus.first;
-          }
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _menus = data;
+        _isLoading = false;
+        if (_menus.isNotEmpty && _selectedMenu == null) {
+          _selectedMenu = _menus.first;
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('メニューの取得に失敗しました: $e')),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('メニューの取得に失敗しました: $e')),
+      );
     }
   }
 
@@ -181,17 +179,15 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   } else {
                     await _menuService.updateMenu(newMenu, imageBytes: pendingImageBytes);
                   }
-                  if (mounted) {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                    _loadMenus();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
-                  }
+                  if (!mounted) return;
+                  Navigator.pop(context); // Close progress
+                  Navigator.pop(context); // Close dialog
+                  _loadMenus();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
                 } catch (e) {
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red));
-                  }
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red));
                 }
               },
               child: const Text('保存'),
@@ -213,11 +209,10 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
           ElevatedButton(
             onPressed: () async {
               await _menuService.deleteMenu(menu.id);
-              if (mounted) {
-                Navigator.pop(context);
-                _loadMenus();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
-              }
+              if (!mounted) return;
+              Navigator.pop(context);
+              _loadMenus();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('削除する'),
@@ -355,15 +350,14 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               setState(() => _isLoading = true);
               try {
                 await _menuService.seedMenuData();
+                if (!mounted) return;
                 await _loadMenus();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('初期データを登録しました')));
-                }
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('初期データを登録しました')));
               } catch (e) {
-                if (mounted) {
-                  setState(() => _isLoading = false);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('登録に失敗しました: $e')));
-                }
+                if (!mounted) return;
+                setState(() => _isLoading = false);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('登録に失敗しました: $e')));
               }
             },
             icon: const Icon(Icons.download),

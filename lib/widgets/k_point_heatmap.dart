@@ -18,6 +18,7 @@ class KPointHeatmap extends StatefulWidget {
   final double threshold; // 基準値
   final CameraPosition initialPosition;
   final Function(GoogleMapController)? onMapCreated;
+  final bool isLoading;
 
   const KPointHeatmap({
     super.key,
@@ -26,6 +27,7 @@ class KPointHeatmap extends StatefulWidget {
     required this.threshold,
     required this.initialPosition,
     this.onMapCreated,
+    this.isLoading = false,
   });
 
   @override
@@ -67,12 +69,12 @@ class _KPointHeatmapState extends State<KPointHeatmap> {
     int index = 0;
     
     // ズームに応じたサイズ調整
-    double zoomFactor = math.pow(2, 11 - _currentZoom).toDouble().clamp(0.5, 10.0);
-    double baseRadius = 800 * zoomFactor;
+    double zoomFactor = math.pow(2, 11 - _currentZoom).toDouble().clamp(0.5, 12.0);
+    double baseRadius = 600 * zoomFactor; // 800から600に少し小さくして重なりを軽減
 
     for (var p in widget.points) {
       final color = _getColor(p);
-      final double sizeWeight = widget.mode == HeatmapMode.loyalty ? 1.0 : (p.value / widget.threshold).clamp(0.5, 1.5);
+      final double sizeWeight = widget.mode == HeatmapMode.loyalty ? 0.8 : (p.value / widget.threshold).clamp(0.5, 1.5);
 
       newCircles.add(Circle(
         circleId: CircleId('h_$index'),
@@ -90,17 +92,23 @@ class _KPointHeatmapState extends State<KPointHeatmap> {
 
   @override
   Widget build(BuildContext context) {
-    return GoogleMap(
-      initialCameraPosition: widget.initialPosition,
-      onMapCreated: (c) {
-        if (widget.onMapCreated != null) widget.onMapCreated!(c);
-        _rebuildHeatmap();
-      },
-      circles: _circles,
-      onCameraMove: (pos) => _currentZoom = pos.zoom,
-      onCameraIdle: () => _rebuildHeatmap(),
-      myLocationEnabled: false,
-      zoomControlsEnabled: false,
+    return Stack(
+      children: [
+        GoogleMap(
+          initialCameraPosition: widget.initialPosition,
+          onMapCreated: (c) {
+            if (widget.onMapCreated != null) widget.onMapCreated!(c);
+            _rebuildHeatmap();
+          },
+          circles: _circles,
+          onCameraMove: (pos) => _currentZoom = pos.zoom,
+          onCameraIdle: () => _rebuildHeatmap(),
+          myLocationEnabled: false,
+          zoomControlsEnabled: false,
+        ),
+        if (widget.isLoading)
+          const Center(child: CircularProgressIndicator()),
+      ],
     );
   }
 }

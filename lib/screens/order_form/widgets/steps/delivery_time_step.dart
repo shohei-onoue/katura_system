@@ -21,6 +21,7 @@ class DeliveryTimeStep extends StatefulWidget {
   final bool isTypeSelected;
   final TextEditingController receiverController;
   final Customer? currentCustomer;
+  final String customerName;
   final String facilityName;
 
   final String orderSource;
@@ -60,6 +61,7 @@ class DeliveryTimeStep extends StatefulWidget {
     required this.isTypeSelected,
     required this.receiverController,
     required this.currentCustomer,
+    required this.customerName,
     required this.facilityName,
     required this.orderSource,
     required this.orderSourceOtherController,
@@ -92,15 +94,17 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
   @override
   void initState() {
     super.initState();
-    if (widget.currentCustomer != null && widget.receiverController.text == widget.currentCustomer!.name) {
+    final String effectiveName = widget.currentCustomer?.name ?? widget.customerName;
+
+    // 受取人が現在の顧客名と一致している場合、あるいは空の場合に「ご本人様」モードにする
+    if (effectiveName.isNotEmpty && (widget.receiverController.text == effectiveName || widget.receiverController.text.isEmpty)) {
+      widget.receiverController.text = effectiveName;
       _receiverMode = 'ご本人様';
     } else if (widget.receiverController.text.isNotEmpty) {
       _receiverMode = '新規追加';
     } else {
-      if (widget.currentCustomer != null) {
-        widget.receiverController.text = widget.currentCustomer!.name;
-        _receiverMode = 'ご本人様';
-      }
+      // フォールバック
+      _receiverMode = 'ご本人様';
     }
   }
 
@@ -440,10 +444,13 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
           final isSelected = _receiverMode == mode;
           return Expanded(
             child: GestureDetector(
-              onTap: () {
+            onTap: () {
                 setState(() => _receiverMode = mode);
-                if (mode == 'ご本人様' && widget.currentCustomer != null) {
-                  widget.receiverController.text = widget.currentCustomer!.name;
+                if (mode == 'ご本人様') {
+                  final String effectiveName = widget.currentCustomer?.name ?? widget.customerName;
+                  if (effectiveName.isNotEmpty) {
+                    widget.receiverController.text = effectiveName;
+                  }
                 } else if (mode == '新規追加') {
                   widget.receiverController.clear();
                 }

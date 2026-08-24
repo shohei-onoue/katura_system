@@ -6,6 +6,7 @@ class MenuModel {
   final String description;
   final String imageUrl;
   final Map<String, String> ingredients; // { "材料名": "使用量" }
+  final List<String> cookingSteps; // 調理工程
 
   MenuModel({
     required this.id,
@@ -15,6 +16,7 @@ class MenuModel {
     this.description = '',
     this.imageUrl = '',
     this.ingredients = const {},
+    this.cookingSteps = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +28,7 @@ class MenuModel {
       'description': description,
       'imageUrl': imageUrl,
       'ingredients': ingredients,
+      'cookingSteps': cookingSteps,
     };
   }
 
@@ -38,6 +41,7 @@ class MenuModel {
       description: map['description'] ?? '',
       imageUrl: map['imageUrl'] ?? '',
       ingredients: Map<String, String>.from(map['ingredients'] ?? {}),
+      cookingSteps: List<String>.from(map['cookingSteps'] ?? []),
     );
   }
 
@@ -49,6 +53,7 @@ class MenuModel {
     String? description,
     String? imageUrl,
     Map<String, String>? ingredients,
+    List<String>? cookingSteps,
   }) {
     return MenuModel(
       id: id ?? this.id,
@@ -58,6 +63,7 @@ class MenuModel {
       description: description ?? this.description,
       imageUrl: imageUrl ?? this.imageUrl,
       ingredients: ingredients ?? this.ingredients,
+      cookingSteps: cookingSteps ?? this.cookingSteps,
     );
   }
 }

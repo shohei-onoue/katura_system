@@ -23,24 +23,24 @@ class CustomerDataTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 列幅の定義 (レスポンスシブ)
-    final double nameWidth = rs(context, 160);
-    final double companyWidth = rs(context, 200);
-    final double actionWidth = rs(context, 60);
+    final double nameWidth = rs(context, 120);
+    final double companyWidth = rs(context, 180);
+    final double actionWidth = rs(context, 50);
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(rs(context, 16)),
       child: Card(
         clipBehavior: Clip.antiAlias,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           side: BorderSide(color: Colors.grey[200]!),
         ),
         child: Column(
           children: [
             // 固定ヘッダー
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
@@ -77,7 +77,7 @@ class CustomerDataTable extends StatelessWidget {
                   return InkWell(
                     onTap: () => onSelect(customer),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                       color: isSelected ? Colors.deepPurple.withValues(alpha: 0.05) : null,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -89,16 +89,25 @@ class CustomerDataTable extends StatelessWidget {
                               customer.name,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: rf(context, 14),
+                                fontSize: rf(context, 13),
                                 color: isSelected ? Colors.deepPurple : Colors.black87,
                               ),
+                            ),
+                          ),
+                          // 企業名
+                          SizedBox(
+                            width: companyWidth,
+                            child: Text(
+                              customer.companyName,
+                              style: TextStyle(fontSize: rf(context, 12), color: Colors.grey[700]),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           // 電話番号
                           Expanded(
                             child: Text(
                               customer.phoneNumber,
-                              style: TextStyle(fontSize: rf(context, 14)),
+                              style: TextStyle(fontSize: rf(context, 13)),
                             ),
                           ),
                           // 操作 (PopupMenu)
@@ -106,14 +115,16 @@ class CustomerDataTable extends StatelessWidget {
                             width: actionWidth,
                             child: Center(
                               child: PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                                 onSelected: (value) {
                                   if (value == 'detail') onShowDetail(customer);
                                   if (value == 'edit') onEdit(customer);
                                   if (value == 'delete') onDelete(customer);
                                 },
                                 itemBuilder: (context) => [
-                                  _buildPopupItem('detail', Icons.info_outline, '詳細確認', Colors.deepOrange),
+                                  _buildPopupItem('detail', Icons.info_outline, '詳細', Colors.deepOrange),
                                   _buildPopupItem('edit', Icons.edit, '編集', Colors.blue),
                                   _buildPopupItem('delete', Icons.delete_outline, '削除', Colors.red),
                                 ],
@@ -136,7 +147,7 @@ class CustomerDataTable extends StatelessWidget {
   TextStyle _headerStyle(BuildContext context) {
     return TextStyle(
       fontWeight: FontWeight.bold,
-      fontSize: rf(context, 14),
+      fontSize: rf(context, 13),
       color: Colors.blueGrey[800],
     );
   }
@@ -144,11 +155,12 @@ class CustomerDataTable extends StatelessWidget {
   PopupMenuItem<String> _buildPopupItem(String value, IconData icon, String label, Color color) {
     return PopupMenuItem(
       value: value,
+      height: 36,
       child: Row(
         children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 12),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
         ],
       ),
     );

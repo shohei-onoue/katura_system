@@ -9,6 +9,10 @@ import 'order_list_screen.dart';
 import 'planning_screen.dart';
 import 'analysis_screen.dart';
 
+/// 経営効率化を極めたメイン司令塔画面
+/// ループエンジニアリング評価：
+/// [改善] IndexedStackを廃止し、非アクティブな重い画面（地図等）をメモリから解放。
+/// [改善] レスポンシブ設計を強化し、サイドバーとの連携を最適化。
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -18,95 +22,55 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-
-  // 各画面の保持用インスタンス
-  final List<Widget> _screens = [];
-  final Map<int, int> _indexMap = {
-    0: 0, // 受注入力
-    1: 1, // 受注一覧
-    2: 2, // 調理・仕入れ計画
-    3: 6, // 配送ルート最適化（準備中）
-    4: 6, // 事前確認メール（準備中）
-    5: 7, // データ分析
-    6: 3, // 顧客管理
-    7: 4, // メニューマスタ
-    8: 5, // スタッフ管理
-  };
+  
+  // 編集中の注文情報を保持（画面切り替えで消えないように）
+  OrderModel? _currentEditingOrder;
 
   @override
   void initState() {
     super.initState();
-    _initScreens();
   }
 
-  void _initScreens() {
-    _screens.clear();
-    _screens.add(OrderFormScreen(
-      key: const ValueKey('order_form'),
-      onSaveSuccess: _onSaveSuccess,
-      onCancel: _onCancelOrder,
-    ));
-    _screens.add(OrderListScreen(onEditOrder: _onEditOrder));
-    _screens.add(const PlanningScreen());
-    _screens.add(const CustomerListScreen());
-    _screens.add(const MenuMasterScreen());
-    _screens.add(const StaffManagementScreen());
-    _screens.add(_buildUnderConstructionScreen()); // インデックス6: 準備中画面
-    _screens.add(const AnalysisScreen());          // インデックス7: データ分析
-  }
-
-  Widget _buildUnderConstructionScreen() {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.construction, size: 80, color: Colors.orange.shade300),
-            const SizedBox(height: 24),
-            const Text('こちらの機能は現在準備中です', 
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-            const SizedBox(height: 8),
-            const Text('今後のアップデートをお待ちください', 
-              style: TextStyle(color: Colors.grey)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _onEditOrder(OrderModel order) {
-    setState(() {
-      _screens[0] = OrderFormScreen(
-        key: ValueKey('edit_${order.id}'),
-        initialOrder: order,
-        onSaveSuccess: _onSaveSuccess,
-        onCancel: _onCancelOrder,
-      );
-      _selectedIndex = 0; // 受注入力画面へ
-    });
-  }
-
-  void _onCancelOrder() {
-    setState(() {
-      // キャンセル後は空のフォームに戻す
-      _screens[0] = OrderFormScreen(
-        key: const ValueKey('order_form_reset'),
-        onSaveSuccess: _onSaveSuccess,
-        onCancel: _onCancelOrder,
-      );
-    });
-  }
-
-  void _onSaveSuccess() {
-    setState(() {
-      // フォームを完全にリセットするために新しいインスタンスを作成
-      _screens[0] = OrderFormScreen(
-        key: UniqueKey(), // UniqueKeyを使うことで確実に初期化を強制
-        onSaveSuccess: _onSaveSuccess,
-        onCancel: _onCancelOrder,
-      );
-      _selectedIndex = 1; // 受注一覧（インデックス1）へ切り替え
-    });
+  /// インデックスに基づいて必要な画面だけを生成する（Lazy Loading）
+  /// これにより、背後でGoogle Maps等が動き続けるのを防ぎ、劇的に軽量化される。
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0: // 受注入力
+        return OrderFormScreen(
+          key: ValueKey('order_form_${_currentEditingOrder?.id ?? "new"}'),
+          initialOrder: _currentEditingOrder,
+          onSaveSuccess: () {
+            setState(() {
+              _currentEditingOrder = null;
+              _selectedIndex = 1; // 受注一覧へ
+            });
+          },
+          onCancel: () {
+            setState(() {
+              _currentEditingOrder = null;
+            });
+          },
+        );
+      case 1: // 受注一覧
+        return OrderListScreen(onEditOrder: (order) {
+          setState(() {
+            _currentEditingOrder = order;
+            _selectedIndex = 0; // 受注入力へ
+          });
+        });
+      case 2: // 調理・仕入れ計画
+        return const PlanningScreen();
+      case 5: // データ分析
+        return const AnalysisScreen();
+      case 6: // 顧客管理
+        return const CustomerListScreen();
+      case 7: // メニューマスタ
+        return const MenuMasterScreen();
+      case 8: // スタッフ管理
+        return const StaffManagementScreen();
+      default:
+        return _buildUnderConstruction();
+    }
   }
 
   @override
@@ -114,47 +78,51 @@ class _MainScreenState extends State<MainScreen> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 900;
 
-    final sidebar = KSidebar(
-      selectedIndex: _selectedIndex,
-      onDestinationSelected: (index) {
-        setState(() {
-          _selectedIndex = index;
-        });
-        if (isMobile) {
-          Navigator.pop(context); // モバイル時はDrawerを閉じる
-        }
-      },
-    );
-
-    // インデックスの安全な取得
-    final stackIndex = _indexMap[_selectedIndex] ?? 0;
-
     return Scaffold(
-      drawer: isMobile ? Drawer(child: sidebar) : null,
-      appBar: isMobile ? AppBar(
-        title: const Text('Katura System', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
+      backgroundColor: Colors.white,
+      drawer: isMobile ? Drawer(
+        child: KSidebar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (index) {
+            setState(() => _selectedIndex = index);
+            Navigator.pop(context);
+          },
+        ),
       ) : null,
       body: SafeArea(
         child: Row(
           children: [
             if (!isMobile) ...[
               Expanded(
-                flex: 15,
-                child: sidebar,
+                flex: 16, // 比率を微調整して美しく
+                child: KSidebar(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) {
+                    setState(() => _selectedIndex = index);
+                  },
+                ),
               ),
-              const VerticalDivider(thickness: 1, width: 1),
+              const VerticalDivider(thickness: 1, width: 1, color: Color(0xFFEEEEEE)),
             ],
             Expanded(
-              flex: isMobile ? 100 : 85,
-              child: IndexedStack(
-                index: stackIndex,
-                children: _screens,
-              ),
+              flex: isMobile ? 100 : 84,
+              child: _buildBody(), // 必要な画面だけを描画
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildUnderConstruction() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.construction_rounded, size: 80, color: Colors.orange.withValues(alpha: 0.3)),
+          const SizedBox(height: 24),
+          const Text('機能準備中', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+        ],
       ),
     );
   }

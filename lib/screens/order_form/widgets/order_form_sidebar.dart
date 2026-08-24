@@ -15,6 +15,7 @@ import 'sidebar/sidebar_ranking.dart';
 
 class OrderFormSidebar extends StatefulWidget {
   final int currentStep;
+  final bool isCompletingPhone;
   final TextEditingController phoneController;
   final bool isLoading;
   final Customer? currentCustomer;
@@ -64,6 +65,7 @@ class OrderFormSidebar extends StatefulWidget {
   const OrderFormSidebar({
     super.key,
     required this.currentStep,
+    this.isCompletingPhone = false,
     required this.phoneController,
     required this.isLoading,
     this.currentCustomer,

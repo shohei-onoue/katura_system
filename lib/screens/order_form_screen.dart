@@ -16,7 +16,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
-import '../constants/address_constants.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
@@ -36,6 +35,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _orderService = OrderService();
   
   final _phoneController = TextEditingController();
+  final _phonePrefixController = TextEditingController();
+  bool _isCompletingPhone = false;
   final _nameController = TextEditingController();
   final _receiverController = TextEditingController();
   final _facilityController = TextEditingController();
@@ -78,12 +79,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _trashPickupLocation = '引渡し場所';
   String _teaOption = 'なし';
   int _teaQuantity = 0;
-  String _preConfirmationMethod = 'SNS';
+  String _preConfirmationMethod = 'SMS';
   String _preConfirmationPhoneType = 'この電話番号';
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
-  String _preConfirmationSnsTime = '09:00';
-  DateTime? _scheduledSnsDateTime; // 追加
+  String _preConfirmationSmsTime = '09:00';
+  DateTime? _scheduledSmsDateTime; // 追加
   final _preConfirmationPhoneController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
@@ -150,7 +151,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       
       if (doc.exists) {
         setState(() {
-          _preConfirmationSnsTime = doc.data()?['sendingTime'] ?? '09:00';
+          _preConfirmationSmsTime = doc.data()?['sendingTime'] ?? '09:00';
         });
       }
     } catch (e) {
@@ -165,7 +166,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         databaseId: 'katura-system-database'
       ).collection('settings').doc('sms_config').set({'sendingTime': time});
       setState(() {
-        _preConfirmationSnsTime = time;
+        _preConfirmationSmsTime = time;
       });
     } catch (e) {
       debugPrint('Error saving SMS settings: $e');
@@ -242,9 +243,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _syncSearchQuery() {
-    final town = _searchTown == '（すべて）' ? '' : _searchTown;
+    final town = (_searchTown == '（すべて）' || _searchTown.isEmpty) ? '' : _searchTown;
     final area = '$_searchPrefecture$_searchCity$town';
-    String suffix = _searchTabIndex == 0 ? (_searchGenre ?? '') : (_searchTabIndex == 2 ? _keywordQueryController.text : '');
+    String suffix = _searchTabIndex == 0 ? (_searchGenre ?? '') : (_searchTabIndex == 1 ? _keywordQueryController.text : '');
     _combinedSearchController.text = '$area $suffix'.trim();
   }
 
@@ -278,7 +279,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _preConfirmationPhoneNumber = order.preConfirmationPhoneNumber;
       _preConfirmationPhoneController.text = order.preConfirmationPhoneNumber;
       _preConfirmationDateTime = order.preConfirmationDateTime;
-      _preConfirmationSnsTime = order.preConfirmationSnsTime;
+      _preConfirmationSmsTime = order.preConfirmationSmsTime;
 
       final timeParts = order.deliveryTime.split(':'); if (timeParts.length == 2) _selectedTime = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
       _selectedQuantities.clear(); for (var item in order.items) { _selectedQuantities[item['id']] = item['quantity']; }
@@ -299,7 +300,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   void _resetForm() {
     setState(() {
       _phoneController.clear();
-      _nameController.clear();
+      _phonePrefixController.clear();
+      _isCompletingPhone = false;
+      _nameController.clear(); 
       _receiverController.clear();
       _facilityController.clear();
       _addressController.clear();
@@ -320,19 +323,73 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryDateSelected = false;
       _isDeliveryTimeSelected = false;
       _isDeliveryTypeSelected = false;
-      _preConfirmationMethod = 'SNS';
+      _preConfirmationMethod = 'SMS';
       _preConfirmationPhoneType = 'この電話番号';
       _preConfirmationPhoneNumber = '';
       _preConfirmationDateTime = null;
-      _preConfirmationSnsTime = '09:00';
-      _scheduledSnsDateTime = null;
+      _preConfirmationSmsTime = '09:00';
+      _scheduledSmsDateTime = null;
       _markers = {};
       _setInitialBranchMarker();
     });
     widget.onCancel?.call();
   }
 
+  void _handlePhoneInput(String d) {
+    if (_isCompletingPhone) {
+      setState(() {
+        _phonePrefixController.text += d;
+      });
+    } else {
+      _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); 
+      _lookupCustomer(_phoneController.text); 
+    }
+  }
+
+  void _handlePhoneClear() {
+    if (_isCompletingPhone) {
+      setState(() {
+        _phonePrefixController.clear();
+      });
+    } else {
+      _phoneController.clear(); 
+      _lookupCustomer(''); 
+    }
+  }
+
+  void _handlePhoneBackspace() {
+    if (_isCompletingPhone) {
+      setState(() {
+        if (_phonePrefixController.text.isNotEmpty) {
+          _phonePrefixController.text = _phonePrefixController.text.substring(0, _phonePrefixController.text.length - 1);
+        }
+      });
+    } else {
+      if (_phoneController.text.isNotEmpty) { 
+        final clean = _phoneController.text.replaceAll('-', ''); 
+        _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); 
+        _lookupCustomer(_phoneController.text); 
+      } 
+    }
+  }
+
   void _updateStep(int newStep) {
+    if (newStep != 0) {
+      _isCompletingPhone = false;
+    }
+
+    // ステップ遷移時のデータ同期
+    if (newStep > _currentStep) {
+      if (_currentStep == 1) {
+        // ステップ1（顧客確認）から進む際、名前を受取人に反映
+        if (_receiverController.text.isEmpty || 
+            (_currentCustomer != null && _receiverController.text == _currentCustomer!.name) ||
+            (_currentCustomer == null)) {
+          _receiverController.text = _nameController.text;
+        }
+      }
+    }
+
     setState(() {
       _currentStep = newStep;
       if (newStep > _maxStepReached) {
@@ -355,6 +412,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _isLoadingNotifier.value = false;
             _phoneSearchCandidates = candidates;
             _currentCustomer = null;
+            _nameController.clear();
+            _facilityController.clear();
           });
         }
       }
@@ -397,6 +456,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     setState(() { 
       _isLoadingNotifier.value = false; 
       _currentCustomer = customer; 
+      _isCompletingPhone = false;
       _customerOrderHistory = myHistory; 
       _companyOrderHistory = companyHistory; 
       _phoneController.text = _formatPhone(customer.phoneNumber); 
@@ -553,29 +613,34 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           : await _customerService.getAddressService().searchByLocationAndKeyword(prefecture: _searchPrefecture, city: _searchCity, town: _searchTown, keyword: _keywordQueryController.text);
       }
       if (results.isEmpty || forceApi || ignoreFilter) {
-        final List<String> genreKeywords = (_searchTabIndex == 0 && _searchCategory != null && _searchGenre != null) ? (AddressConstants.categoryHierarchy[_searchCategory]?[_searchGenre] ?? []) : [];
-        final kw = _combinedSearchController.text.trim();
+        final hierarchy = await _customerService.getAddressService().getCategoryHierarchy();
+        final List<String> genreKeywords = (_searchTabIndex == 0 && _searchCategory != null && _searchGenre != null) 
+          ? (hierarchy[_searchCategory]?[_searchGenre] ?? []) : [];
+        
+        final town = (_searchTown == '（すべて）' || _searchTown.isEmpty) ? '' : _searchTown;
+        final kw = '$_searchPrefecture$_searchCity$town ${_searchTabIndex == 0 ? (_searchGenre ?? "") : _keywordQueryController.text}'.trim();
+        
         if (kw.isEmpty) { _isLoadingNotifier.value = false; return; }
+        
         final raw = await _customerService.getGoogleMapsService().searchPlacesByText(kw, location: _branchCoordinates[_branchName]);
+        
         final nC = _normalize(_searchCity), nT = _normalize(_searchTown == '（すべて）' ? '' : _searchTown), nP = _normalize(_searchPrefecture);
+        
         final processed = raw.map((item) {
           final nA = _normalize(item['address'] ?? ''), nN = _normalize(item['name'] ?? '');
-          bool isMatch = (nA.contains(nC) || nN.contains(nC)) && (nA.contains('都') || nA.contains('道') || nA.contains('府') || nA.contains('県') ? nA.contains(nP) : true) && (nT.isEmpty || nA.contains(nT) || nN.contains(nT));
+          bool isMatch = nA.contains(nP) || nA.contains(nC) || nN.contains(nC) || (nT.isNotEmpty && (nA.contains(nT) || nN.contains(nT)));
           bool matchesGenre = genreKeywords.isEmpty || genreKeywords.any((k) => nN.contains(_normalize(k)) || nA.contains(_normalize(k)));
           return { ...item, 'isNearby': !isMatch, 'matchesGenre': matchesGenre };
         }).toList();
-        final inAreaMatchGenre = processed.where((i) => !i['isNearby'] && i['matchesGenre']).toList();
-        final nearbyMatchGenre = processed.where((i) => i['isNearby'] && i['matchesGenre']).toList();
-        final inAreaAll = processed.where((i) => !i['isNearby']).toList();
-        if (inAreaMatchGenre.isNotEmpty && !ignoreFilter) {
-          results = inAreaMatchGenre;
-        } else if (nearbyMatchGenre.isNotEmpty && !ignoreFilter) {
-          results = nearbyMatchGenre;
-        } else if (inAreaAll.isNotEmpty && !ignoreFilter) {
-          results = inAreaAll;
-        } else {
-          results = processed;
-        }
+
+        final List<Map<String, dynamic>> sortedResults = [];
+        sortedResults.addAll(processed.where((i) => !i['isNearby'] && i['matchesGenre']));
+        sortedResults.addAll(processed.where((i) => !i['isNearby'] && !i['matchesGenre']));
+        sortedResults.addAll(processed.where((i) => i['isNearby'] && i['matchesGenre']));
+        sortedResults.addAll(processed.where((i) => i['isNearby'] && !i['matchesGenre']));
+        
+        results = sortedResults;
+
         for (var i in results) {
           await _customerService.getAddressService().upsertKigyouEntity(
             name: i['name'], 
@@ -644,9 +709,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       preConfirmationPhoneType: _preConfirmationPhoneType,
       preConfirmationPhoneNumber: _preConfirmationPhoneController.text,
       preConfirmationDateTime: _preConfirmationDateTime,
-      preConfirmationSnsTime: _preConfirmationSnsTime,
-      scheduledSnsDateTime: _scheduledSnsDateTime ?? _calculateScheduledSnsDateTime(),
-      snsSent: false,
+      preConfirmationSmsTime: _preConfirmationSmsTime,
+      scheduledSmsDateTime: _scheduledSmsDateTime ?? _calculateScheduledSmsDateTime(),
+      smsSent: false,
       paymentMethod: _paymentMethod, 
       status: '受注済み',
       branchName: _branchName, 
@@ -687,6 +752,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         }
       }
       if (customerUpdated) await _customerService.updateCustomer(updatedCustomer);
+    } else if (_nameController.text.isNotEmpty) {
+      // 新規顧客として保存
+      final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+      final newCustomer = Customer(
+        id: '',
+        name: _nameController.text,
+        companyName: _facilityController.text,
+        phoneNumber: _phoneController.text,
+        address: _addressController.text,
+        latitude: destMarker?.position.latitude ?? 0,
+        longitude: destMarker?.position.longitude ?? 0,
+        deliveryAddresses: ["${_facilityController.text}: ${_addressController.text} (${destMarker?.position.latitude ?? 0}, ${destMarker?.position.longitude ?? 0})"],
+        facilityReceivers: {_facilityController.text: [_nameController.text]},
+      );
+      await _customerService.createCustomer(newCustomer);
     }
 
     await _orderService.saveOrder(order); 
@@ -738,6 +818,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     if (s <= _maxStepReached || isJumpableToFinal) {
                       _updateStep(s);
                       if (s == 0) {
+                        setState(() => _isCompletingPhone = false);
                         _phoneController.text = _lastPhoneQuery;
                         _lookupCustomer(_lastPhoneQuery);
                       }
@@ -751,7 +832,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             if (!isMobile)
               OrderFormSidebar(
                 currentStep: _currentStep, 
-                phoneController: _phoneController, 
+                isCompletingPhone: _isCompletingPhone,
+                phoneController: _isCompletingPhone ? _phonePrefixController : _phoneController, 
                 isLoading: _isLoadingNotifier.value, 
                 currentCustomer: _currentCustomer,
                 allMenus: _menus,
@@ -809,9 +891,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 totalCount: _totalCount, 
                 markers: _markers, 
                 initialCenter: _initialCenter, 
-                onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
-                onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
-                onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
+                onPhoneInput: _handlePhoneInput, 
+                onPhoneClear: _handlePhoneClear, 
+                onPhoneBackspace: _handlePhoneBackspace, 
                 onMapCreated: (c) {
                   _mapController = c;
                   _fitMapToMarkers();
@@ -845,7 +927,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Widget _buildSidebar() {
     return OrderFormSidebar(
       currentStep: _currentStep, 
-      phoneController: _phoneController, 
+      isCompletingPhone: _isCompletingPhone,
+      phoneController: _isCompletingPhone ? _phonePrefixController : _phoneController, 
       isLoading: _isLoadingNotifier.value, 
       currentCustomer: _currentCustomer,
       allMenus: _menus,
@@ -903,9 +986,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       totalCount: _totalCount, 
       markers: _markers, 
       initialCenter: _initialCenter, 
-      onPhoneInput: (d) { _phoneController.text = _formatPhone((_phoneController.text + d).replaceAll(RegExp(r'[^0-9]'), '')); _lookupCustomer(_phoneController.text); }, 
-      onPhoneClear: () { _phoneController.clear(); _lookupCustomer(''); }, 
-      onPhoneBackspace: () { if (_phoneController.text.isNotEmpty) { final clean = _phoneController.text.replaceAll('-', ''); _phoneController.text = _formatPhone(clean.substring(0, clean.length - 1)); _lookupCustomer(_phoneController.text); } }, 
+      onPhoneInput: _handlePhoneInput, 
+      onPhoneClear: _handlePhoneClear, 
+      onPhoneBackspace: _handlePhoneBackspace, 
       onMapCreated: (c) {
         _mapController = c;
         _fitMapToMarkers();
@@ -935,13 +1018,46 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Widget _buildStepContent() {
     final phoneDisplay = _phoneController.text;
     switch (_currentStep) {
-      case 0: return PhoneConfirmStep(phoneController: _phoneController, isLoading: _isLoadingNotifier.value, candidates: _phoneSearchCandidates, currentCustomer: _currentCustomer, phoneDisplay: phoneDisplay, onNext: () => _updateStep(1), onSelectCustomer: _selectCustomer);
+      case 0: return PhoneConfirmStep(
+          phoneController: _phoneController, 
+          isLoading: _isLoadingNotifier.value, 
+          candidates: _phoneSearchCandidates, 
+          currentCustomer: _currentCustomer, 
+          phoneDisplay: phoneDisplay, 
+          isCompletingPhone: _isCompletingPhone,
+          phonePrefixController: _phonePrefixController,
+          onNext: () {
+            if (!_isCompletingPhone && _currentCustomer == null) {
+              setState(() {
+                _isCompletingPhone = true;
+              });
+            } else {
+              if (_isCompletingPhone) {
+                final prefix = _phonePrefixController.text;
+                final suffix = _phoneController.text;
+                _phoneController.text = _formatPhone("$prefix$suffix");
+                setState(() => _isCompletingPhone = false);
+              }
+              _updateStep(1);
+            }
+          }, 
+          onSelectCustomer: _selectCustomer
+      );
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController, 
+          nameController: _nameController,
+          companyController: _facilityController,
           currentCustomer: _currentCustomer, 
           phoneDisplay: phoneDisplay,
           onNext: () => _updateStep(2), 
-          onBack: () { setState(() { _currentStep = 0; _phoneController.text = _lastPhoneQuery; _lookupCustomer(_lastPhoneQuery); }); }
+          onBack: () { 
+            setState(() { 
+              _currentStep = 0; 
+              _isCompletingPhone = false;
+              _phoneController.text = _lastPhoneQuery; 
+              _lookupCustomer(_lastPhoneQuery); 
+            }); 
+          }
       );
       case 2: return DeliveryDestinationStep(
           currentCustomer: _currentCustomer, 
@@ -1003,6 +1119,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           isTypeSelected: _isDeliveryTypeSelected,
           receiverController: _receiverController,
           currentCustomer: _currentCustomer,
+          customerName: _nameController.text,
           facilityName: _facilityController.text,
           orderSource: _orderSource,
           orderSourceOtherController: _orderSourceOtherController,
@@ -1074,8 +1191,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           preConfirmationPhoneNumber: _preConfirmationPhoneNumber,
           preConfirmationPhoneController: _preConfirmationPhoneController,
           preConfirmationDateTime: _preConfirmationDateTime,
-          preConfirmationSnsTime: _preConfirmationSnsTime,
-          scheduledSnsDateTime: _scheduledSnsDateTime,
+          preConfirmationSmsTime: _preConfirmationSmsTime,
+          scheduledSmsDateTime: _scheduledSmsDateTime,
           phoneDisplay: phoneDisplay,
           customerName: _nameController.text,
           receiverName: _receiverController.text,
@@ -1106,16 +1223,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _preConfirmationPhoneController.text = v;
           }),
           onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
-          onPreConfirmationSnsTimeChanged: (v) => _saveGlobalSmsSettings(v),
-          onScheduledSnsDateTimeChanged: (v) => setState(() => _scheduledSnsDateTime = v),
+          onPreConfirmationSmsTimeChanged: (v) => _saveGlobalSmsSettings(v),
+          onScheduledSmsDateTimeChanged: (v) => setState(() => _scheduledSmsDateTime = v),
           onSave: _handleSave
       );
       default: return Container();
     }
   }
 
-  DateTime? _calculateScheduledSnsDateTime() {
-    if (_preConfirmationMethod != 'SNS' && _preConfirmationMethod != 'SMS') {
+  DateTime? _calculateScheduledSmsDateTime() {
+    if (_preConfirmationMethod != 'SMS') {
       return null;
     }
     
@@ -1124,13 +1241,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final prevDay = _deliveryDate.subtract(const Duration(days: 1));
       
       // 時間と分をパース
-      final timeParts = _preConfirmationSnsTime.split(':');
+      final timeParts = _preConfirmationSmsTime.split(':');
       final hour = int.parse(timeParts[0]);
       final minute = int.parse(timeParts[1]);
       
       return DateTime(prevDay.year, prevDay.month, prevDay.day, hour, minute);
     } catch (e) {
-      debugPrint('Error calculating scheduled SNS time: $e');
+      debugPrint('Error calculating scheduled SMS time: $e');
       return null;
     }
   }

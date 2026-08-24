@@ -23,8 +23,8 @@ class FinalizeStep extends StatelessWidget {
   final String preConfirmationPhoneNumber;
   final TextEditingController preConfirmationPhoneController;
   final DateTime? preConfirmationDateTime;
-  final String preConfirmationSnsTime;
-  final DateTime? scheduledSnsDateTime; // 送信予定日時
+  final String preConfirmationSmsTime;
+  final DateTime? scheduledSmsDateTime; // 送信予定日時
   final String phoneDisplay; // 受電番号
   final String customerName;
   final String receiverName;
@@ -45,8 +45,8 @@ class FinalizeStep extends StatelessWidget {
   final Function(String) onPreConfirmationPhoneTypeChanged;
   final Function(String) onPreConfirmationPhoneNumberChanged;
   final Function(DateTime) onPreConfirmationDateTimeChanged;
-  final Function(String) onPreConfirmationSnsTimeChanged;
-  final Function(DateTime) onScheduledSnsDateTimeChanged; // 追加
+  final Function(String) onPreConfirmationSmsTimeChanged;
+  final Function(DateTime) onScheduledSmsDateTimeChanged; // 追加
   final VoidCallback onSave;
 
   const FinalizeStep({
@@ -61,8 +61,8 @@ class FinalizeStep extends StatelessWidget {
     required this.preConfirmationPhoneNumber,
     required this.preConfirmationPhoneController,
     this.preConfirmationDateTime,
-    required this.preConfirmationSnsTime,
-    this.scheduledSnsDateTime, // 追加
+    required this.preConfirmationSmsTime,
+    this.scheduledSmsDateTime, // 追加
     required this.phoneDisplay,
     required this.customerName,
     required this.receiverName,
@@ -82,8 +82,8 @@ class FinalizeStep extends StatelessWidget {
     required this.onPreConfirmationPhoneTypeChanged,
     required this.onPreConfirmationPhoneNumberChanged,
     required this.onPreConfirmationDateTimeChanged,
-    required this.onPreConfirmationSnsTimeChanged,
-    required this.onScheduledSnsDateTimeChanged, // 追加
+    required this.onPreConfirmationSmsTimeChanged,
+    required this.onScheduledSmsDateTimeChanged, // 追加
     required this.onSave,
   });
 
@@ -237,7 +237,7 @@ class FinalizeStep extends StatelessWidget {
   }
 
   Widget _buildAdvanceNotificationSection(BuildContext context) {
-    final bool isSns = preConfirmationMethod == 'SNS' || preConfirmationMethod == 'SMS';
+    final bool isSms = preConfirmationMethod == 'SMS';
     final bool isPhoneSelf = preConfirmationMethod == '電話' && preConfirmationPhoneType == 'この電話番号';
     final bool isPhoneOther = preConfirmationMethod == '電話' && preConfirmationPhoneType == '指定番号へ連絡';
 
@@ -248,18 +248,18 @@ class FinalizeStep extends StatelessWidget {
         const SizedBox(height: 12),
         _notificationCard(
           context: context,
-          isSelected: isSns,
-          title: 'SNS送信',
-          onTap: () => onPreConfirmationMethodChanged('SNS'),
+          isSelected: isSms,
+          title: 'SMS送信',
+          onTap: () => onPreConfirmationMethodChanged('SMS'),
           child: Row(
             children: [
               const Icon(Icons.info_outline, size: 16, color: Colors.blue),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  scheduledSnsDateTime != null 
-                    ? '${scheduledSnsDateTime!.month}月${scheduledSnsDateTime!.day}日 ${scheduledSnsDateTime!.hour}:${scheduledSnsDateTime!.minute.toString().padLeft(2, '0')} に送信予約'
-                    : '前日 $preConfirmationSnsTime に自動送信されます', 
+                  scheduledSmsDateTime != null 
+                    ? '${scheduledSmsDateTime!.month}月${scheduledSmsDateTime!.day}日 ${scheduledSmsDateTime!.hour}:${scheduledSmsDateTime!.minute.toString().padLeft(2, '0')} に送信予約'
+                    : '前日 $preConfirmationSmsTime に自動送信されます', 
                   style: TextStyle(fontSize: rf(context, 12), color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
               ),
               const SizedBox(width: 8),
@@ -279,7 +279,7 @@ class FinalizeStep extends StatelessWidget {
               const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.settings, size: 20, color: Colors.blue),
-                onPressed: () => _showSnsScheduleDialog(context),
+                onPressed: () => _showSmsScheduleDialog(context),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
@@ -535,22 +535,22 @@ class FinalizeStep extends StatelessWidget {
     }
   }
 
-  void _showSnsScheduleDialog(BuildContext context) async {
+  void _showSmsScheduleDialog(BuildContext context) async {
     // 現在の送信時間（例: "09:00"）を DateTime に変換して初期値にする
-    final timeParts = preConfirmationSnsTime.split(':');
+    final timeParts = preConfirmationSmsTime.split(':');
     final initial = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
 
     final result = await showDialog<DateTime>(
       context: context,
       builder: (context) => KTimeSelectionDialog(
         initialDateTime: initial,
-        title: '店舗全体のSNS送信時間設定',
+        title: '店舗全体のSMS送信時間設定',
       ),
     );
 
     if (result != null) {
       final newTime = "${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}";
-      onPreConfirmationSnsTimeChanged(newTime);
+      onPreConfirmationSmsTimeChanged(newTime);
     }
   }
 

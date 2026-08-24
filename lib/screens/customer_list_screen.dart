@@ -85,18 +85,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     });
 
     try {
-      // 全注文から当該顧客のものを抽出（効率化のため全取得後のフィルタリング）
       final allOrders = await _orderService.getAllOrders();
+      if (!mounted) return;
+      
       final customerOrders = allOrders.where((o) => 
         o.phoneNumber.replaceAll('-', '') == customer.phoneNumber.replaceAll('-', '') &&
         o.customerName.replaceAll(' ', '') == customer.name.replaceAll(' ', '')
       ).toList();
 
-      if (mounted) {
-        setState(() {
-          _selectedCustomerOrders = customerOrders;
-        });
-      }
+      setState(() {
+        _selectedCustomerOrders = customerOrders;
+      });
     } catch (e) {
       debugPrint('Error loading customer details: $e');
     }
@@ -146,11 +145,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           ElevatedButton(
             onPressed: () async {
               await _customerService.deleteCustomer(customer.id);
-              if (mounted) {
-                Navigator.pop(context);
-                _loadCustomers();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
-              }
+              if (!mounted) return;
+              Navigator.pop(context);
+              _loadCustomers();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('削除する'),
@@ -173,11 +171,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               Navigator.pop(context);
               showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
               await _customerService.deleteAllCustomers();
-              if (mounted) {
-                Navigator.pop(context);
-                _loadCustomers();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('全顧客データを削除しました')));
-              }
+              if (!mounted) return;
+              Navigator.pop(context);
+              _loadCustomers();
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('全顧客データを削除しました')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('一括削除する'),
@@ -211,20 +208,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
               try {
                 await _customerService.regenerateDummyCustomers();
-                if (mounted) {
-                  Navigator.pop(context);
-                }
+                if (!mounted) return;
+                Navigator.pop(context);
                 _loadCustomers();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ダミーデータを生成しました（300件）')));
-                }
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ダミーデータを生成しました（300件）')));
               } catch (e) {
-                if (mounted) {
-                  Navigator.pop(context);
-                }
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $e')));
-                }
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $e')));
               }
             },
           ),

@@ -6,7 +6,9 @@ import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_dial_pad.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_pen_canvas.dart';
+import '../../../../widgets/k_text_field.dart';
 import '../../../../services/address_service.dart';
+import '../../../../services/category_service.dart';
 import '../order_form_parts.dart';
 
 class DeliveryDestinationStep extends StatelessWidget {
@@ -427,38 +429,67 @@ class DeliveryDestinationStep extends StatelessWidget {
   }
 
   Widget _buildAreaKeywordSearchUI(BuildContext context) {
-    return Column(children: [
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: _AddressDialField(
-              label: '地域・キーワード検索を開始',
-              value: keywordQueryController.text.isEmpty 
-                  ? _buildJoinedAddress() 
-                  : "${_buildJoinedAddress()} / ${keywordQueryController.text}",
-              onTap: () => _showIntegratedAddressPicker(context, isKeywordMode: true),
-              isWarning: isApproximateLocation,
-              warningLabel: '代表地点',
-            ),
-          ),
-          SizedBox(width: rs(context, 12)),
-          SizedBox(
-            height: rs(context, 50),
-            child: ElevatedButton.icon(
-              onPressed: onAdjustTap,
-              icon: const Icon(Icons.map, size: 20),
-              label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: _AddressDialField(
+                label: '1. 地域を選択',
+                value: _buildJoinedAddress(),
+                onTap: () => _showIntegratedAddressPicker(context, isKeywordMode: false),
+                isWarning: isApproximateLocation,
+                warningLabel: '代表地点',
               ),
             ),
-          ),
-        ],
-      ),
-    ]);
+            SizedBox(width: rs(context, 12)),
+            SizedBox(
+              height: rs(context, 50),
+              child: ElevatedButton.icon(
+                onPressed: onAdjustTap,
+                icon: const Icon(Icons.map, size: 20),
+                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: rs(context, 16)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: KMultimodalTextField(
+                label: '2. 検索キーワードを入力（ペン入力対応）',
+                controller: keywordQueryController,
+                hintText: '例：病院、斎場、会館など',
+                height: rs(context, 54),
+              ),
+            ),
+            SizedBox(width: rs(context, 12)),
+            SizedBox(
+              height: rs(context, 54),
+              width: rs(context, 120),
+              child: ElevatedButton(
+                onPressed: onSearchSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text('検索実行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   void _showIntegratedAddressPicker(BuildContext context, {bool isKeywordMode = false}) {
@@ -1167,6 +1198,9 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   String? tempCategory;
   String? tempGenre;
 
+  Map<String, Map<String, List<String>>> categoryHierarchy = {};
+  final _categoryService = CategoryService();
+
   final mlkit.Ink _ink = mlkit.Ink();
   final KPenCanvasController _canvasController = KPenCanvasController();
   List<mlkit.StrokePoint> _currentStrokePoints = [];
@@ -1218,6 +1252,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       phase = 0;
       items = List.from(widget.initialPrefList);
     }
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    final hierarchy = await _categoryService.getCategoryHierarchy();
+    if (mounted) setState(() => categoryHierarchy = hierarchy);
   }
 
   @override
@@ -1634,8 +1674,10 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   }
 
   Widget _buildCategoryGenreSelector(BuildContext context) {
-    final categories = AddressService.categoryHierarchy.keys.toList();
-    final genres = tempCategory != null ? AddressService.categoryHierarchy[tempCategory]!.keys.toList() : [];
+    if (categoryHierarchy.isEmpty) return const Center(child: CircularProgressIndicator());
+
+    final categories = categoryHierarchy.keys.toList();
+    final genres = tempCategory != null ? categoryHierarchy[tempCategory]!.keys.toList() : [];
 
     return Row(
       children: [
@@ -1650,8 +1692,22 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
               ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: categories.length,
+                  itemCount: categories.length + 1,
                   itemBuilder: (context, index) {
+                    if (index == categories.length) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showAddCategoryDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('カテゴリ追加'),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.deepPurple.shade300),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      );
+                    }
                     final cat = categories[index];
                     final isSelected = tempCategory == cat;
                     return Card(
@@ -1731,6 +1787,52 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           ),
         ),
       ],
+    );
+  }
+
+  void _showAddCategoryDialog(BuildContext context) {
+    final genreController = TextEditingController();
+    final keywordController = TextEditingController();
+    String? selectedParent = tempCategory ?? categoryHierarchy.keys.first;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('新しいカテゴリジャンルを追加'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedParent,
+                decoration: const InputDecoration(labelText: '親カテゴリ'),
+                items: categoryHierarchy.keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setDialogState(() => selectedParent = v),
+              ),
+              const SizedBox(height: 16),
+              KTextField(label: 'ジャンル名（例：美容院）', controller: genreController),
+              const SizedBox(height: 16),
+              KTextField(label: 'キーワード（カンマ区切り。例：ヘア,理容）', controller: keywordController),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedParent != null && genreController.text.isNotEmpty) {
+                  final keywords = keywordController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                  if (keywords.isEmpty) keywords.add(genreController.text);
+                  
+                  await _categoryService.addCategory(selectedParent!, genreController.text, keywords);
+                  await _loadCategories();
+                  if (mounted) Navigator.pop(context);
+                }
+              },
+              child: const Text('登録'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

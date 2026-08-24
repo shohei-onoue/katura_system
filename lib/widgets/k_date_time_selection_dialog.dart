@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_numeric_dial_pad.dart';
@@ -80,12 +81,14 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isValid = _isValidTime();
+    final String formattedDate = DateFormat('yyyy/MM/dd (E)', 'ja_JP').format(_tempDate);
     
-    final double dialogWidth = screenWidth < 600 ? screenWidth * 0.95 : 550;
+    // タブレットなどの広い画面を想定し、横長に調整
+    final double dialogWidth = screenWidth < 900 ? screenWidth * 0.95 : 850;
 
     return Dialog(
       backgroundColor: Colors.white,
-      insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 24)),
+      insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 16)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
         width: dialogWidth,
@@ -93,20 +96,54 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.title, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(widget.title, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.themeColor)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isValid ? widget.themeColor.withValues(alpha: 0.08) : Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: isValid ? widget.themeColor.withValues(alpha: 0.2) : Colors.red.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event, size: 18, color: isValid ? widget.themeColor : Colors.red),
+                      const SizedBox(width: 8),
+                      Text(
+                        "$formattedDate  ",
+                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? Colors.black87 : Colors.red),
+                      ),
+                      Icon(Icons.access_time, size: 18, color: isValid ? widget.themeColor : Colors.red),
+                      const SizedBox(width: 8),
+                      Text(
+                        _displayTime,
+                        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.w900, color: isValid ? Colors.black87 : Colors.red, letterSpacing: 1),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            const SizedBox(height: 24),
             
             Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // カレンダーエリア
-                    Container(
-                      padding: const EdgeInsets.all(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 左側: カレンダーエリア
+                  Expanded(
+                    flex: 55,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade200),
+                        color: Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(rs(context, 12)),
+                        border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: TableCalendar(
                         firstDay: DateTime.now().subtract(const Duration(days: 30)),
@@ -120,100 +157,74 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                         calendarStyle: CalendarStyle(
                           selectedDecoration: BoxDecoration(color: widget.themeColor, shape: BoxShape.circle),
+                          todayDecoration: BoxDecoration(color: widget.themeColor.withValues(alpha: 0.3), shape: BoxShape.circle),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) {
                           setState(() => _tempDate = selectedDay);
                         },
-                        rowHeight: rs(context, 45),
+                        rowHeight: rs(context, 50),
                       ),
                     ),
-                    
-                    const SizedBox(height: 24),
-                    
-                    // 時間表示・入力エリア
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 時間表示
-                        Expanded(
-                          flex: 4,
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(vertical: 24),
-                                decoration: BoxDecoration(
-                                  color: isValid ? Colors.grey.shade50 : Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(rs(context, 12)),
-                                  border: Border.all(
-                                    color: isValid ? widget.themeColor.withValues(alpha: 0.3) : Colors.red.shade200, 
-                                    width: 2
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  _displayTime,
-                                  style: TextStyle(
-                                    fontSize: rf(context, 40), 
-                                    fontWeight: FontWeight.bold, 
-                                    color: isValid ? Colors.black87 : Colors.red,
-                                  ),
-                                ),
-                              ),
-                              if (!isValid)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text('無効な時間', style: TextStyle(color: Colors.red, fontSize: rf(context, 12))),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        // テンキー
-                        Expanded(
-                          flex: 6,
-                          child: KNumericDialPad(
-                            onInput: _onInput,
-                            onBackspace: _onBackspace,
-                            onClear: _onClear,
-                          ),
-                        ),
-                      ],
+                  ),
+                  
+                  SizedBox(width: rs(context, 24)),
+                  const VerticalDivider(width: 1),
+                  SizedBox(width: rs(context, 24)),
+                  
+                  // 右側: 時間入力エリア (テンキーのみ)
+                  Expanded(
+                    flex: 45,
+                    child: Center(
+                      child: KNumericDialPad(
+                        onInput: _onInput,
+                        onBackspace: _onBackspace,
+                        onClear: _onClear,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             
             Row(
               children: [
                 Expanded(
-                  child: KButton(
-                    label: 'キャンセル', 
-                    onPressed: () => Navigator.pop(context),
-                    isSecondary: true,
-                    color: Colors.grey,
+                  child: SizedBox(
+                    height: rs(context, 54),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.grey, width: 2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('キャンセル', 
+                        style: TextStyle(fontSize: rf(context, 18), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 24),
                 Expanded(
-                  child: KButton(
-                    label: '反映する', 
-                    onPressed: isValid ? () {
-                      final hour = int.parse(_timeBuffer.substring(0, 2));
-                      final minute = int.parse(_timeBuffer.substring(2, 4));
-                      final result = DateTime(
-                        _tempDate.year,
-                        _tempDate.month,
-                        _tempDate.day,
-                        hour,
-                        minute,
-                      );
-                      Navigator.pop(context, result);
-                    } : null,
-                    color: widget.themeColor,
+                  child: SizedBox(
+                    height: rs(context, 54),
+                    child: KButton(
+                      label: '設定を反映する', 
+                      onPressed: isValid ? () {
+                        final hour = int.parse(_timeBuffer.substring(0, 2));
+                        final minute = int.parse(_timeBuffer.substring(2, 4));
+                        final result = DateTime(
+                          _tempDate.year,
+                          _tempDate.month,
+                          _tempDate.day,
+                          hour,
+                          minute,
+                        );
+                        Navigator.pop(context, result);
+                      } : null,
+                      color: widget.themeColor,
+                    ),
                   ),
                 ),
               ],
