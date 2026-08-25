@@ -199,7 +199,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             onPressed: _showDeleteAllConfirmDialog,
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, elevation: 0),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: rs(context, 12)),
           ElevatedButton.icon(
             icon: const Icon(Icons.auto_awesome),
             label: const Text('ダミー生成'),
@@ -219,28 +219,28 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               }
             },
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: rs(context, 12)),
           ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
+            constraints: BoxConstraints(maxWidth: rs(context, 300)),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
               child: Container(
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(rs(context, 8))),
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: '名前、企業、電話番号で検索...',
                     prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () { _searchController.clear(); _filterCustomers(''); }) : null,
+                    suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: Icon(Icons.clear, size: rs(context, 20)), onPressed: () { _searchController.clear(); _filterCustomers(''); }) : null,
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(vertical: rs(context, 12)),
                   ),
                   onChanged: _filterCustomers,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: rs(context, 16)),
         ],
       ),
       body: _isLoading
@@ -278,7 +278,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   Widget _buildDetailSidebar(Customer customer) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(rs(context, 24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -287,30 +287,30 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           _sidebarHeaderItem('企業名', customer.companyName.isEmpty ? '個人宅' : customer.companyName),
           _sidebarHeaderItem('電話番号', customer.phoneNumber),
           
-          const SizedBox(height: 24),
+          SizedBox(height: rs(context, 24)),
 
           // 2. 同じ会社の同僚 (ボタン化)
           if (customer.companyName.isNotEmpty) ...[
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.people_outline, size: 18),
+                icon: Icon(Icons.people_outline, size: rs(context, 18)),
                 label: const Text('所属顧客リストを表示', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
                 onPressed: () => _showColleaguesDialog(context, customer.companyName),
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: rs(context, 32)),
           ],
 
           const Divider(),
 
           // 3. 売上分析
           SizedBox(
-            height: 250, // 高さを少し広げて視認性向上
+            height: rs(context, 250), // 高さを少し広げて視認性向上
             child: SidebarAnalysis(history: _selectedCustomerOrders),
           ),
 
@@ -318,7 +318,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
           // 4. 人気メニュー
           SizedBox(
-            height: 280, // 高さを少し広げて視認性向上
+            height: rs(context, 280), // 高さを少し広げて視認性向上
             child: SidebarRanking(history: _selectedCustomerOrders, allMenus: _allMenus),
           ),
         ],
@@ -336,10 +336,10 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       builder: (context) => AlertDialog(
         title: Text('「$companyName」の登録顧客一覧', style: const TextStyle(fontWeight: FontWeight.bold)),
         content: SizedBox(
-          width: 400,
+          width: rs(context, 400),
           child: colleagues.isEmpty 
-            ? const Padding(
-                padding: EdgeInsets.all(24.0),
+            ? Padding(
+                padding: EdgeInsets.all(rs(context, 24.0)),
                 child: Center(child: Text('他の登録顧客はいません', style: TextStyle(color: Colors.grey))),
               )
             : ListView.separated(
@@ -369,12 +369,12 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   Widget _sidebarHeaderItem(String label, String value, {bool isBold = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          Text('$label：', style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold)),
+          Text('$label：', style: TextStyle(fontSize: rf(context, 13), color: Colors.grey, fontWeight: FontWeight.bold)),
           Expanded(
             child: Text(
               value,

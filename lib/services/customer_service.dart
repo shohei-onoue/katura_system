@@ -103,7 +103,7 @@ class CustomerService {
     );
   }
 
-  Future<void> createCustomer(Customer customer) async {
+  Future<Customer> createCustomer(Customer customer) async {
     final docId = customer.id.isEmpty ? _customerCollection.doc().id : customer.id;
     final finalCustomer = customer.copyWith(id: docId);
     await _customerCollection.doc(docId).set(finalCustomer.toMap());
@@ -112,6 +112,7 @@ class CustomerService {
       'INSERT OR REPLACE INTO customers (id, data, name, phoneNumber, companyName) VALUES (?, ?, ?, ?, ?)',
       [docId, jsonEncode(finalCustomer.toMap()), finalCustomer.name, finalCustomer.phoneNumber, finalCustomer.companyName]
     );
+    return finalCustomer;
   }
 
   Future<void> deleteCustomer(String id) async {

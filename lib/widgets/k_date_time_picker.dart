@@ -64,14 +64,14 @@ class KDateTimePicker extends StatelessWidget {
           height: rs(context, 50),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
             color: Colors.white,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: Colors.blueGrey),
-              const SizedBox(width: 12),
+              Icon(icon, size: rs(context, 20), color: Colors.blueGrey),
+              SizedBox(width: rs(context, 12)),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

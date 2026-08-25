@@ -46,7 +46,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             onPressed: _loadStaff,
             tooltip: '再読み込み',
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: rs(context, 16)),
         ],
       ),
       body: _isLoading
@@ -77,7 +77,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
       ),
@@ -109,8 +109,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               _statusChip(staff.isActive),
-              const SizedBox(height: 8),
-              const Icon(Icons.more_horiz, color: Colors.grey, size: 20),
+              SizedBox(height: rs(context, 8)),
+              Icon(Icons.more_horiz, color: Colors.grey, size: rs(context, 20)),
             ],
           ),
         ],
@@ -120,14 +120,14 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
 
   Widget _statusChip(bool isActive) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 2)),
       decoration: BoxDecoration(
         color: (isActive ? Colors.green : Colors.grey).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(rs(context, 20)),
         border: Border.all(color: (isActive ? Colors.green : Colors.grey).withValues(alpha: 0.3)),
       ),
       child: Text(isActive ? '在籍中' : '離職', 
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isActive ? Colors.green.shade800 : Colors.grey.shade700)),
+        style: TextStyle(fontSize: rf(context, 10), fontWeight: FontWeight.bold, color: isActive ? Colors.green.shade800 : Colors.grey.shade700)),
     );
   }
 }

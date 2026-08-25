@@ -83,7 +83,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
           surfaceTintColor: Colors.transparent,
           title: Text(menu == null ? '新規メニュー登録' : 'メニュー編集'),
           content: SizedBox(
-            width: 500,
+            width: rs(context, 500),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -101,35 +101,35 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     },
                     child: Container(
                       width: double.infinity,
-                      height: 200,
+                      height: rs(context, 200),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(rs(context, 12)),
                         border: Border.all(color: Colors.grey[300]!),
                       ),
                       child: pendingImageBytes != null
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(rs(context, 12)),
                               child: Image.memory(pendingImageBytes!, fit: BoxFit.cover),
                             )
                           : currentImageUrl.isNotEmpty
                               ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(rs(context, 12)),
                                   child: Image(image: _getImageProvider(currentImageUrl), fit: BoxFit.cover),
                                 )
-                              : const Column(
+                              : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                                    SizedBox(height: 8),
+                                    Icon(Icons.add_a_photo, size: rs(context, 48), color: Colors.grey),
+                                    SizedBox(height: rs(context, 8)),
                                     Text('写真をアップロード', style: TextStyle(color: Colors.grey)),
                                   ],
                                 ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: rs(context, 16)),
                   TextField(controller: nameController, decoration: const InputDecoration(labelText: '商品名', hintText: '例：特製ステーキ弁当')),
-                  const SizedBox(height: 16),
+                  SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
                     value: dropdownCategories.contains(category) ? category : null,
                     decoration: const InputDecoration(labelText: 'カテゴリー'),
@@ -140,7 +140,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                       }
                     },
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: rs(context, 16)),
                   TextField(controller: priceController, decoration: const InputDecoration(labelText: '価格 (税込)', hintText: '例：1800'), keyboardType: TextInputType.number),
                   TextField(controller: ingredientsController, decoration: const InputDecoration(labelText: '材料:分量 (カンマ区切り)', hintText: '例：牛ステーキ肉:150g, 白米:250g')),
                   TextField(controller: descriptionController, decoration: const InputDecoration(labelText: '説明', hintText: '商品の詳細説明を入力してください'), maxLines: 2),
@@ -240,7 +240,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
             icon: const Icon(Icons.add),
             label: const Text('新規登録'),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: rs(context, 16)),
         ],
       ),
       body: _isLoading
@@ -257,7 +257,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                           _buildCategoryTabs(),
                           Expanded(
                             child: ListView.builder(
-                              padding: const EdgeInsets.all(24),
+                              padding: EdgeInsets.all(rs(context, 24)),
                               itemCount: filteredMenus.length,
                               itemBuilder: (context, index) {
                                 final menu = filteredMenus[index];
@@ -265,13 +265,13 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                 return Card(
                                   elevation: isSelected ? 4 : 1,
                                   color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
-                                  margin: const EdgeInsets.only(bottom: 12),
+                                  margin: EdgeInsets.only(bottom: rs(context, 12)),
                                   child: ListTile(
                                     selected: isSelected,
                                     leading: Container(
-                                      width: 50, height: 50,
+                                      width: rs(context, 50), height: rs(context, 50),
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(rs(context, 8)),
                                         image: DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover),
                                       ),
                                     ),
@@ -285,22 +285,22 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                         if (value == 'delete') _showDeleteConfirmDialog(menu);
                                       },
                                       itemBuilder: (context) => [
-                                        const PopupMenuItem(
+                                        PopupMenuItem(
                                           value: 'edit',
                                           child: Row(
                                             children: [
-                                              Icon(Icons.edit, size: 20, color: Colors.blue),
-                                              SizedBox(width: 12),
+                                              Icon(Icons.edit, size: rs(context, 20), color: Colors.blue),
+                                              SizedBox(width: rs(context, 12)),
                                               Text('編集', style: TextStyle(fontWeight: FontWeight.w500)),
                                             ],
                                           ),
                                         ),
-                                        const PopupMenuItem(
+                                        PopupMenuItem(
                                           value: 'delete',
                                           child: Row(
                                             children: [
-                                              Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                                              SizedBox(width: 12),
+                                              Icon(Icons.delete_outline, size: rs(context, 20), color: Colors.red),
+                                              SizedBox(width: rs(context, 12)),
                                               Text('削除', style: TextStyle(fontWeight: FontWeight.w500)),
                                             ],
                                           ),
@@ -337,14 +337,14 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.restaurant_menu, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 24),
-          const Text('メニューが登録されていません', 
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-          const SizedBox(height: 12),
+          Icon(Icons.restaurant_menu, size: rs(context, 80), color: Colors.grey.shade300),
+          SizedBox(height: rs(context, 24)),
+          Text('メニューが登録されていません', 
+            style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          SizedBox(height: rs(context, 12)),
           const Text('データベースを切り替えたか、初期状態です。\n以下のボタンから初期メニューを登録できます。', 
             textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 32),
+          SizedBox(height: rs(context, 32)),
           ElevatedButton.icon(
             onPressed: () async {
               setState(() => _isLoading = true);
@@ -363,7 +363,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
             icon: const Icon(Icons.download),
             label: const Text('初期データを登録する'),
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 32), vertical: rs(context, 16)),
             ),
           ),
         ],
@@ -375,14 +375,14 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     return Container(
       width: double.infinity,
       color: Colors.grey.shade50,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 8), horizontal: rs(context, 16)),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: _categoryPresets.map((cat) {
             final isSelected = _selectedCategory == cat;
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: rs(context, 8)),
               child: ChoiceChip(
                 label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                 selected: isSelected,
@@ -400,44 +400,44 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
 
   Widget _buildDetailSidebar(MenuModel menu) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(rs(context, 24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image(image: _getImageProvider(menu.imageUrl), width: double.infinity, height: 200, fit: BoxFit.cover),
+            borderRadius: BorderRadius.circular(rs(context, 12)),
+            child: Image(image: _getImageProvider(menu.imageUrl), width: double.infinity, height: rs(context, 200), fit: BoxFit.cover),
           ),
-          const SizedBox(height: 24),
-          Text(menu.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text('¥${menu.price}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepOrange)),
-          const SizedBox(height: 16),
+          SizedBox(height: rs(context, 24)),
+          Text(menu.name, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold)),
+          SizedBox(height: rs(context, 8)),
+          Text('¥${menu.price}', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+          SizedBox(height: rs(context, 16)),
           _detailItem('カテゴリー', menu.category),
-          const Divider(height: 32),
-          const Text('商品説明', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          Divider(height: rs(context, 32)),
+          Text('商品説明', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+          SizedBox(height: rs(context, 8)),
           Text(menu.description.isEmpty ? '説明はありません' : menu.description, style: const TextStyle(color: Colors.blueGrey)),
-          const SizedBox(height: 24),
-          const Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          SizedBox(height: rs(context, 24)),
+          Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+          SizedBox(height: rs(context, 8)),
           ...menu.ingredients.entries.map((e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, size: 16, color: Colors.orange),
-                const SizedBox(width: 8),
+                Icon(Icons.check_circle, size: rs(context, 16), color: Colors.orange),
+                SizedBox(width: rs(context, 8)),
                 Text(e.key),
                 const Spacer(),
                 Text(e.value, style: const TextStyle(color: Colors.grey)),
               ],
             ),
           )),
-          const SizedBox(height: 40),
+          SizedBox(height: rs(context, 40)),
           Row(
             children: [
               Expanded(child: OutlinedButton.icon(onPressed: () => _showEditMenuDialog(menu), icon: const Icon(Icons.edit), label: const Text('編集'))),
-              const SizedBox(width: 12),
+              SizedBox(width: rs(context, 12)),
               Expanded(child: ElevatedButton.icon(onPressed: () => _showDeleteConfirmDialog(menu), icon: const Icon(Icons.delete_outline), label: const Text('削除'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, elevation: 0))),
             ],
           ),

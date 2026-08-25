@@ -69,42 +69,46 @@ class PhoneConfirmStep extends StatelessWidget {
   }
 
   Widget _buildCompletingPhoneUI(BuildContext context) {
+    final double fieldHeight = rs(context, 88);
+    final bool prefixEmpty = phonePrefixController.text.isEmpty;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          width: rs(context, 320),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          width: rs(context, 380),
+          height: fieldHeight,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.deepOrange, width: 2),
-            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.deepOrange, width: rs(context, 2)),
+            borderRadius: BorderRadius.circular(rs(context, 12)),
             color: Colors.deepOrange.withValues(alpha: 0.05),
           ),
           alignment: Alignment.center,
-          child: Text(
-            phonePrefixController.text.isEmpty ? '市外局番から入力' : phonePrefixController.text,
-            style: TextStyle(
-              fontSize: rf(context, 48), 
-              fontWeight: FontWeight.bold, 
-              color: phonePrefixController.text.isEmpty ? Colors.grey.shade400 : Colors.deepOrange
-            ),
-          ),
+          child: prefixEmpty
+              ? Text(
+                  'ここをタップして番号入力',
+                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.grey.shade400),
+                )
+              : Text(
+                  phonePrefixController.text,
+                  style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16), 
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           child: Text('-', style: TextStyle(fontSize: rf(context, 48), color: Colors.grey))
         ),
         Container(
           width: rs(context, 150),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          height: fieldHeight,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300), 
-            borderRadius: BorderRadius.circular(12), 
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(rs(context, 12)),
             color: Colors.grey.shade100
           ),
           alignment: Alignment.center,
           child: Text(
-            phoneController.text, 
+            phoneController.text,
             style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: Colors.grey.shade600)
           ),
         ),
@@ -118,7 +122,7 @@ class PhoneConfirmStep extends StatelessWidget {
       padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: Column(

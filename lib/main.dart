@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'screens/main_screen.dart';
 import 'firebase_options.dart';
+import 'services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,9 @@ void main() async {
 
   // 日本語ロケールの初期化
   await initializeDateFormatting('ja_JP', null);
+
+  // アプリ全体設定（文字入力方式など）の復元
+  await SettingsService.load();
 
   runApp(const KaturaSystemApp());
 }

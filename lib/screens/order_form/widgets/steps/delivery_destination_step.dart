@@ -291,6 +291,107 @@ class DeliveryDestinationStep extends StatelessWidget {
   }
 
   Widget _buildNewForm(BuildContext context) {
+    return FacilitySearchForm(
+      facilityControllerText: facilityControllerText,
+      addressControllerText: addressControllerText,
+      prefList: prefList,
+      searchPrefecture: searchPrefecture,
+      searchCity: searchCity,
+      searchTown: searchTown,
+      searchCategory: searchCategory,
+      searchGenre: searchGenre,
+      searchTabIndex: searchTabIndex,
+      isApproximateLocation: isApproximateLocation,
+      keywordQueryController: keywordQueryController,
+      remarksController: remarksController,
+      facilityResultsListenable: facilityResultsListenable,
+      isLoadingListenable: isLoadingListenable,
+      onAddressSelected: onAddressSelected,
+      onSearchTabChanged: onSearchTabChanged,
+      onPrefChanged: onPrefChanged,
+      onCityChanged: onCityChanged,
+      onTownChanged: onTownChanged,
+      onAddressConfirmed: onAddressConfirmed,
+      onPrefInitialChanged: onPrefInitialChanged,
+      onCityInitialChanged: onCityInitialChanged,
+      onTownInitialChanged: onTownInitialChanged,
+      onCategoryChanged: onCategoryChanged,
+      onGenreChanged: onGenreChanged,
+      onSearchSubmit: onSearchSubmit,
+      onDialogVisibilityChanged: onDialogVisibilityChanged,
+      onAdjustTap: onAdjustTap,
+    );
+  }
+}
+
+/// 施設・住所の検索フォーム（地域・カテゴリ／地域・キーワード／住所・郵便番号）
+/// 「配達先の確定」ステップと「新規顧客の登録」ステップの双方から共通利用する。
+class FacilitySearchForm extends StatelessWidget {
+  final String facilityControllerText;
+  final String addressControllerText;
+  final List<String> prefList;
+  final String searchPrefecture;
+  final String searchCity;
+  final String searchTown;
+  final String? searchCategory;
+  final String? searchGenre;
+  final int searchTabIndex;
+  final bool isApproximateLocation;
+  final TextEditingController keywordQueryController;
+  /// nullの場合は備考フィールドを表示しない
+  final TextEditingController? remarksController;
+  final ValueNotifier<List<Map<String, dynamic>>> facilityResultsListenable;
+  final ValueNotifier<bool> isLoadingListenable;
+
+  final Function(String) onAddressSelected;
+  final Function(int) onSearchTabChanged;
+  final Function(String) onPrefChanged;
+  final Function(String) onCityChanged;
+  final Function(String) onTownChanged;
+  final Function(String, String, String) onAddressConfirmed;
+  final Future<List<String>> Function(String) onPrefInitialChanged;
+  final Future<List<String>> Function(String pref, String initial) onCityInitialChanged;
+  final Future<List<String>> Function(String pref, String city, String initial) onTownInitialChanged;
+  final Function(String?) onCategoryChanged;
+  final Function(String?) onGenreChanged;
+  final Future<void> Function() onSearchSubmit;
+  final Function(bool) onDialogVisibilityChanged;
+  final Future<void> Function() onAdjustTap;
+
+  const FacilitySearchForm({
+    super.key,
+    required this.facilityControllerText,
+    required this.addressControllerText,
+    required this.prefList,
+    required this.searchPrefecture,
+    required this.searchCity,
+    required this.searchTown,
+    required this.searchCategory,
+    required this.searchGenre,
+    required this.searchTabIndex,
+    this.isApproximateLocation = false,
+    required this.keywordQueryController,
+    this.remarksController,
+    required this.facilityResultsListenable,
+    required this.isLoadingListenable,
+    required this.onAddressSelected,
+    required this.onSearchTabChanged,
+    required this.onPrefChanged,
+    required this.onCityChanged,
+    required this.onTownChanged,
+    required this.onAddressConfirmed,
+    required this.onPrefInitialChanged,
+    required this.onCityInitialChanged,
+    required this.onTownInitialChanged,
+    required this.onCategoryChanged,
+    required this.onGenreChanged,
+    required this.onSearchSubmit,
+    required this.onDialogVisibilityChanged,
+    required this.onAdjustTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         Container(
@@ -307,12 +408,14 @@ class DeliveryDestinationStep extends StatelessWidget {
         if (searchTabIndex == 0) _buildAreaCategorySearchUI(context),
         if (searchTabIndex == 1) _buildAreaKeywordSearchUI(context),
         if (searchTabIndex == 2) _buildDirectSearchUI(context),
-        
-        SizedBox(height: rs(context, 16)),
-        KMultimodalTextField(
-          label: '備考 (地図上の目印、搬入口情報など)',
-          controller: remarksController,
-        ),
+
+        if (remarksController != null) ...[
+          SizedBox(height: rs(context, 16)),
+          KMultimodalTextField(
+            label: '備考 (地図上の目印、搬入口情報など)',
+            controller: remarksController!,
+          ),
+        ],
       ],
     );
   }
@@ -363,12 +466,12 @@ class DeliveryDestinationStep extends StatelessWidget {
               height: rs(context, 50),
               child: ElevatedButton.icon(
                 onPressed: onAdjustTap,
-                icon: const Icon(Icons.map, size: 20),
+                icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
             ),
@@ -398,12 +501,12 @@ class DeliveryDestinationStep extends StatelessWidget {
               height: rs(context, 50),
               child: ElevatedButton.icon(
                 onPressed: onAdjustTap,
-                icon: const Icon(Icons.map, size: 20),
+                icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
             ),
@@ -449,12 +552,12 @@ class DeliveryDestinationStep extends StatelessWidget {
               height: rs(context, 50),
               child: ElevatedButton.icon(
                 onPressed: onAdjustTap,
-                icon: const Icon(Icons.map, size: 20),
+                icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
             ),
@@ -469,19 +572,19 @@ class DeliveryDestinationStep extends StatelessWidget {
                 label: '2. 検索キーワードを入力（ペン入力対応）',
                 controller: keywordQueryController,
                 hintText: '例：病院、斎場、会館など',
-                height: rs(context, 54),
+                height: rs(context, 50),
               ),
             ),
             SizedBox(width: rs(context, 12)),
             SizedBox(
-              height: rs(context, 54),
+              height: rs(context, 50),
               width: rs(context, 120),
               child: ElevatedButton(
                 onPressed: onSearchSubmit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
                 child: Text('検索実行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
               ),
@@ -555,7 +658,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                           ],
                         ),
-                        const Divider(height: 32),
+                        Divider(height: rs(context, 32)),
                         if (isLoading)
                           Expanded(
                             child: Center(
@@ -755,9 +858,9 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: rs(context, 16)),
             _buildStepper(),
-            const Divider(height: 32),
+            Divider(height: rs(context, 32)),
             Expanded(
               child: Row(
                 children: [
@@ -765,7 +868,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                   Expanded(
                     child: _buildLeftContent(),
                   ),
-                  VerticalDivider(width: 32, color: Colors.grey.shade200),
+                  VerticalDivider(width: rs(context, 32), color: Colors.grey.shade200),
                   // 右側: ダイヤルパッド
                   SizedBox(
                     width: rs(context, 300),
@@ -775,10 +878,10 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
               ),
             ),
             if (phase == 3) ...[
-              const Divider(height: 32),
+              Divider(height: rs(context, 32)),
               SizedBox(
                 width: double.infinity,
-                height: rs(context, 60),
+                height: rs(context, 50),
                 child: KButton(
                   label: 'この内容で確定',
                   onPressed: () {
@@ -833,7 +936,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
                   color: isActive ? Colors.deepPurple : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.2) : Colors.transparent),
-                  width: 2,
+                  width: rs(context, 2),
                 ),
               ),
               child: Padding(
@@ -889,7 +992,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('郵便番号で検索中: $tempZip', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-          const SizedBox(height: 12),
+          SizedBox(height: rs(context, 12)),
           if (isSearching) const Expanded(child: Center(child: CircularProgressIndicator())),
           if (!isSearching && zipResults.isEmpty) const Expanded(child: Center(child: Text('該当する住所がありません'))),
           if (!isSearching && zipResults.isNotEmpty)
@@ -899,7 +1002,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
                 itemBuilder: (context, i) {
                   final res = zipResults[i];
                   return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
+                    margin: EdgeInsets.only(bottom: rs(context, 8)),
                     child: ListTile(
                       title: Text(res['address'], style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
                       trailing: const Icon(Icons.chevron_right),
@@ -991,8 +1094,8 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
         label: Text(isNumericMode ? '地域名で選択' : '郵便番号で入力',
           style: const TextStyle(fontWeight: FontWeight.bold)),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.deepPurple, width: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: Colors.deepPurple, width: rs(context, 2)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         ),
       ),
     );
@@ -1314,19 +1417,19 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: rs(context, 16)),
             _buildPickerStepper(context),
-            const Divider(height: 32),
+            Divider(height: rs(context, 32)),
             Expanded(
               child: phase == 3 
                 ? (widget.isKeywordMode ? _buildKeywordHandwritingUI(context) : _buildCategoryGenreSelector(context)) 
                 : _buildAddressPicker(context),
             ),
             if (phase == 3) ...[
-              const Divider(height: 32),
+              Divider(height: rs(context, 32)),
               SizedBox(
                 width: double.infinity,
-                height: rs(context, 60),
+                height: rs(context, 50),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: widget.isKeywordMode
@@ -1390,7 +1493,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
                   color: isActive ? Colors.deepPurple : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.2) : Colors.transparent),
-                  width: 2,
+                  width: rs(context, 2),
                 ),
               ),
               child: Padding(
@@ -1484,7 +1587,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           ),
         ),
         
-        VerticalDivider(width: 32, color: Colors.grey.shade200),
+        VerticalDivider(width: rs(context, 32), color: Colors.grey.shade200),
 
         // 右側: かな入力パッド
         SizedBox(
@@ -1526,8 +1629,8 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: Colors.deepPurple.shade50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.deepPurple.shade200, width: 2),
+            borderRadius: BorderRadius.circular(rs(context, 12)),
+            border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -1543,7 +1646,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 ),
                 textAlign: TextAlign.center,
               ),
-              if (_isRecognizing) const Positioned(right: 16, child: CircularProgressIndicator()),
+              if (_isRecognizing) Positioned(right: rs(context, 16), child: CircularProgressIndicator()),
             ],
           ),
         ),
@@ -1561,11 +1664,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300, width: 2),
-                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
+                    borderRadius: BorderRadius.circular(rs(context, 12)),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(rs(context, 10)),
                     child: KPenCanvas(
                       controller: _canvasController,
                       onPointDown: (offset, t) {
@@ -1614,7 +1717,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                   ),
                 ),
               ),
@@ -1644,7 +1747,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blueGrey,
                     side: BorderSide(color: Colors.blueGrey),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                   ),
                 ),
               ),
@@ -1696,14 +1799,14 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                   itemBuilder: (context, index) {
                     if (index == categories.length) {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
                         child: OutlinedButton.icon(
                           onPressed: () => _showAddCategoryDialog(context),
                           icon: const Icon(Icons.add),
                           label: const Text('カテゴリ追加'),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: Colors.deepPurple.shade300),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                           ),
                         ),
                       );
@@ -1736,7 +1839,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           ),
         ),
         
-        VerticalDivider(width: 32, color: Colors.grey.shade200),
+        VerticalDivider(width: rs(context, 32), color: Colors.grey.shade200),
 
         Expanded(
           flex: 6,
@@ -1750,7 +1853,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
               ),
               Expanded(
                 child: tempCategory == null 
-                  ? Center(child: Icon(Icons.arrow_back, size: 64, color: Colors.grey.shade300))
+                  ? Center(child: Icon(Icons.arrow_back, size: rs(context, 64), color: Colors.grey.shade300))
                   : GridView.builder(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
@@ -1809,9 +1912,9 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 items: categoryHierarchy.keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (v) => setDialogState(() => selectedParent = v),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: rs(context, 16)),
               KTextField(label: 'ジャンル名（例：美容院）', controller: genreController),
-              const SizedBox(height: 16),
+              SizedBox(height: rs(context, 16)),
               KTextField(label: 'キーワード（カンマ区切り。例：ヘア,理容）', controller: keywordController),
             ],
           ),
@@ -1977,7 +2080,7 @@ class _AddressDialField extends StatelessWidget {
                 ),
                 if (isWarning && warningLabel != null)
                   Padding(
-                    padding: const EdgeInsets.only(left: 8),
+                    padding: EdgeInsets.only(left: rs(context, 8)),
                     child: Text(warningLabel!, style: TextStyle(color: Colors.pink.shade800, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                   ),
                 Icon(Icons.unfold_more, size: rs(context, 18), color: isWarning ? Colors.pink.shade400 : Colors.grey),

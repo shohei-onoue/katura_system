@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KChoiceGroup<T> extends StatelessWidget {
   final String label;
@@ -31,13 +32,13 @@ class KChoiceGroup<T> extends StatelessWidget {
           if (showLabel && label.isNotEmpty) ...[
             Text(
               label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black54),
+              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: rs(context, 8)),
           ],
           // 固定高さを確保して制約違反を防ぐ
           SizedBox(
-            height: 44,
+            height: rs(context, 44),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: items.asMap().entries.map((entry) {

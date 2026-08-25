@@ -11,7 +11,6 @@ import 'sidebar/sidebar_phone_pad.dart';
 import 'sidebar/sidebar_history_detail.dart';
 import 'sidebar/sidebar_summary.dart';
 import 'sidebar/sidebar_analysis.dart';
-import 'sidebar/sidebar_ranking.dart';
 
 class OrderFormSidebar extends StatefulWidget {
   final int currentStep;
@@ -138,9 +137,9 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                       final totalHeight = constraints.maxHeight.floorToDouble();
                       final width = constraints.maxWidth.floorToDouble();
 
-                      // マップが表示されるステップ(2)では正方形(幅と同じ高さ)にする
+                      // マップが表示されるステップ(1・2)では正方形(幅と同じ高さ)にする
                       final double topAreaHeight;
-                      if (widget.currentStep == 2) {
+                      if (widget.currentStep == 1 || widget.currentStep == 2) {
                         topAreaHeight = width;
                       } else if (widget.currentStep == 3) {
                         topAreaHeight = 0; // ステップ3ではマップを非表示
@@ -179,7 +178,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.phone_callback, size: rs(context, 18), color: Colors.deepOrange),
-          const SizedBox(width: 12),
+          SizedBox(width: rs(context, 12)),
           Text(
             '受電：${widget.phoneController.text}',
             style: TextStyle(
@@ -206,25 +205,20 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       );
     }
 
-    // ステップ1 (顧客確認)
+    // ステップ1 (顧客確認・新規顧客の登録) - 所属企業の場所をマップで表示
     if (widget.currentStep == 1) {
       return Column(
         children: [
-          SizedBox(
-            height: topAreaHeight,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-              child: SidebarAnalysis(
-                history: widget.customerOrderHistory, 
-              ),
-            ),
-          ),
-          const Divider(height: 1),
+          SizedBox(height: topAreaHeight, child: _buildMap()),
+          Divider(height: rs(context, 1), thickness: 1),
           SizedBox(
             height: bottomHeight,
-            child: SidebarRanking(
-              history: widget.customerOrderHistory,
-              allMenus: widget.allMenus,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildFacilitySummarySection(),
+                ],
+              ),
             ),
           ),
         ],
@@ -235,43 +229,8 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     if (widget.currentStep == 2) {
       return Column(
         children: [
-          SizedBox(
-            height: topAreaHeight,
-            child: widget.isSearchResultsDialogOpen
-                ? Container(
-                    color: Colors.grey.shade100,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.map_outlined, size: rs(context, 48), color: Colors.grey.shade400),
-                          SizedBox(height: rs(context, 12)),
-                          Text('施設を選択中...', 
-                            style: TextStyle(fontSize: rf(context, 16), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  )
-                : GoogleMap(
-                    key: _mapKey,
-                    initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
-                    onMapCreated: widget.onMapCreated,
-                    onTap: widget.onMapTap,
-                    markers: widget.markers.map((m) {
-                      if (m.markerId.value == 'dest') {
-                        return m.copyWith(
-                          draggableParam: true,
-                          onDragEndParam: widget.onMarkerDragEnd,
-                        );
-                      }
-                      return m;
-                    }).toSet(),
-                    myLocationEnabled: false,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: true,
-                  ),
-          ),
-          const Divider(height: 1, thickness: 1),
+          SizedBox(height: topAreaHeight, child: _buildMap()),
+          Divider(height: rs(context, 1), thickness: 1),
           SizedBox(
             height: bottomHeight,
             child: SingleChildScrollView(
@@ -297,7 +256,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
             child: Row(
               children: [
                 Icon(Icons.fact_check, color: Colors.blueGrey, size: rs(context, 20)),
-                SizedBox(width: 8),
+                SizedBox(width: rs(context, 8)),
                 Text('現在の決定事項', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade900)),
               ],
             ),
@@ -358,25 +317,25 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                       child: const Text('ゴミ回収希望なし', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                     ),
                   
-                  const Divider(height: 48),
+                  Divider(height: rs(context, 48)),
                   Text('[基本情報]', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-                  SizedBox(height: 8),
+                  SizedBox(height: rs(context, 8)),
                   _buildInfoRow('顧客名：', widget.customerName, TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
                   _buildInfoRow('施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName, TextStyle(fontSize: rf(context, 14))),
                   _buildInfoRow('受取人：', widget.receiverName.isEmpty ? "未確定" : widget.receiverName, TextStyle(fontSize: rf(context, 14))),
                   
                   if (widget.onReset != null) ...[
-                    const Divider(height: 48),
+                    Divider(height: rs(context, 48)),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: widget.onReset,
-                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        icon: Icon(Icons.cancel_outlined, size: rs(context, 18)),
                         label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
                         ),
                       ),
                     ),
@@ -412,7 +371,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                     totalPrice: widget.totalPrice, 
                     totalCount: widget.totalCount
                   ),
-                const Divider(height: 1),
+                Divider(height: rs(context, 1)),
                 if (widget.onReset != null) ...[
                   Padding(
                     padding: EdgeInsets.all(rs(context, 16)),
@@ -420,12 +379,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: widget.onReset,
-                        icon: const Icon(Icons.cancel_outlined, size: 18),
+                        icon: Icon(Icons.cancel_outlined, size: rs(context, 18)),
                         label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.red,
                           side: const BorderSide(color: Colors.red),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
                         ),
                       ),
                     ),
@@ -445,13 +404,85 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     );
   }
 
+  Widget _buildMap() {
+    return widget.isSearchResultsDialogOpen
+        ? Container(
+            color: Colors.grey.shade100,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.map_outlined, size: rs(context, 48), color: Colors.grey.shade400),
+                  SizedBox(height: rs(context, 12)),
+                  Text('施設を選択中...',
+                    style: TextStyle(fontSize: rf(context, 16), color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          )
+        : GoogleMap(
+            key: _mapKey,
+            initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
+            onMapCreated: widget.onMapCreated,
+            onTap: widget.onMapTap,
+            markers: widget.markers.map((m) {
+              if (m.markerId.value == 'dest') {
+                return m.copyWith(
+                  draggableParam: true,
+                  onDragEndParam: widget.onMarkerDragEnd,
+                );
+              }
+              return m;
+            }).toSet(),
+            myLocationEnabled: false,
+            myLocationButtonEnabled: false,
+            zoomControlsEnabled: true,
+          );
+  }
+
+  /// ステップ1（顧客確認・新規顧客の登録）下部：所属企業・施設名／住所／座標
+  Widget _buildFacilitySummarySection() {
+    final destMarker = widget.markers.any((m) => m.markerId.value == 'dest')
+        ? widget.markers.firstWhere((m) => m.markerId.value == 'dest')
+        : null;
+    final coordsText = destMarker != null
+        ? "${destMarker.position.latitude.toStringAsFixed(6)}, ${destMarker.position.longitude.toStringAsFixed(6)}"
+        : null;
+
+    final labelStyle = TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey.shade700, fontWeight: FontWeight.bold);
+    final valueStyle = TextStyle(fontSize: rf(context, 14), color: Colors.black87, fontWeight: FontWeight.w600);
+    final unconfirmedStyle = TextStyle(fontSize: rf(context, 14), color: Colors.red, fontWeight: FontWeight.bold);
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(rs(context, 16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('[所属企業情報]', style: labelStyle),
+          SizedBox(height: rs(context, 8)),
+          _buildInfoRow('所属企業・施設名：', widget.facilityName.isEmpty ? "未確定" : widget.facilityName,
+              widget.facilityName.isEmpty ? unconfirmedStyle : valueStyle),
+          _buildInfoRow('住所：', widget.address.isEmpty ? "未確定" : widget.address,
+              widget.address.isEmpty ? unconfirmedStyle : valueStyle),
+          _buildInfoRow('座標：', coordsText ?? "未確定",
+              coordsText == null ? unconfirmedStyle : valueStyle),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDecisionCard({required String title, required IconData icon, required Color color, required Widget child}) {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
@@ -459,12 +490,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         children: [
           Row(
             children: [
-              Icon(icon, color: color, size: 18),
-              SizedBox(width: 8),
+              Icon(icon, color: color, size: rs(context, 18)),
+              SizedBox(width: rs(context, 8)),
               Text(title, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: color)),
             ],
           ),
-          SizedBox(height: 12),
+          SizedBox(height: rs(context, 12)),
           child,
         ],
       ),
@@ -480,7 +511,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           child: Row(
             children: [
               Icon(Icons.shopping_cart, color: Colors.deepOrange, size: rs(context, 20)),
-              SizedBox(width: 8),
+              SizedBox(width: rs(context, 8)),
               Text('カートの中身', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.deepOrange.shade900)),
               Spacer(),
               Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
@@ -493,7 +524,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               : ListView.separated(
                   padding: EdgeInsets.all(rs(context, 16)),
                   itemCount: widget.confirmedItems.length,
-                  separatorBuilder: (context, index) => Divider(height: 24),
+                  separatorBuilder: (context, index) => Divider(height: rs(context, 24)),
                   itemBuilder: (context, i) {
                     final item = widget.confirmedItems[i];
                     final specialOrder = item['specialOrder'] as String? ?? '';
@@ -506,13 +537,13 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                       children: [
                         Text(item['name'], style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
                         if (specialOrder.isNotEmpty || teaOption != 'なし') ...[
-                          const SizedBox(height: 4),
+                          SizedBox(height: rs(context, 4)),
                           if (specialOrder.isNotEmpty) 
                             Text('・特注 ($specialOrderQty個): $specialOrder', style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
                           if (teaOption != 'なし') 
                             Text('・お茶: $teaOption${teaOption == '特典' ? ' ($teaQty本)' : ''}', style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
                         ],
-                        SizedBox(height: 8),
+                        SizedBox(height: rs(context, 8)),
                         Row(
                           children: [
                             Text('¥${item['price']}', style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 12))),
@@ -545,7 +576,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   Text('¥${widget.totalPrice}', style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                 ],
               ),
-              SizedBox(height: 4),
+              SizedBox(height: rs(context, 4)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -554,13 +585,13 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 ],
               ),
               if (widget.confirmedItems.isNotEmpty) ...[
-                SizedBox(height: 20),
+                SizedBox(height: rs(context, 20)),
                 KButton(
                   label: '注文内容を確定する',
                   onPressed: widget.onNext ?? () {},
                 ),
                 if (widget.onReset != null) ...[
-                  SizedBox(height: 12),
+                  SizedBox(height: rs(context, 12)),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
@@ -604,12 +635,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(4),
+        padding: EdgeInsets.all(rs(context, 4)),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(rs(context, 4)),
         ),
-        child: Icon(icon, size: 16, color: Colors.deepPurple),
+        child: Icon(icon, size: rs(context, 16), color: Colors.deepPurple),
       ),
     );
   }
@@ -642,7 +673,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           _buildInfoRow('企業名：', widget.currentCustomer?.companyName ?? "-", valueStyle),
           _buildInfoRow('電話番号：', widget.currentCustomer?.phoneNumber ?? "-", valueStyle),
           
-          const Divider(height: 16),
+          Divider(height: rs(context, 16)),
 
           Text('[配達先情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
@@ -653,7 +684,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           _buildInfoRow('座標：', coordsText ?? "未確定", 
               coordsText == null ? unconfirmedStyle : valueStyle),
 
-          const Divider(height: 16),
+          Divider(height: rs(context, 16)),
           Text('[配達日時情報]', style: labelStyle),
           SizedBox(height: rs(context, 8)),
           _buildInfoRow('区分：', widget.isTypeSelected ? widget.deliveryType : "未確定", 
@@ -666,11 +697,11 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               widget.receiverName.isEmpty ? unconfirmedStyle : valueStyle),
 
           if (widget.deliveryDestinationImageUrl != null) ...[
-            const Divider(height: 16),
+            Divider(height: rs(context, 16)),
             Text('[配達先写真]', style: labelStyle),
             SizedBox(height: rs(context, 8)),
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(rs(context, 8)),
               child: Image.network(
                 widget.deliveryDestinationImageUrl!,
                 height: rs(context, 200),
@@ -685,12 +716,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
             ),
           ],
           if (widget.onReset != null) ...[
-            const Divider(height: 32),
+            Divider(height: rs(context, 32)),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: widget.onReset,
-                icon: const Icon(Icons.cancel_outlined, size: 16),
+                icon: Icon(Icons.cancel_outlined, size: rs(context, 16)),
                 label: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.red,

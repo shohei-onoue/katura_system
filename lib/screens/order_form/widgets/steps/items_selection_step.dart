@@ -102,9 +102,9 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.confirmedItems.isNotEmpty) ...[
-                Text('生米換算: ${widget.riceAmount.toStringAsFixed(2)}kg', 
-                  style: TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
-                const SizedBox(width: 24),
+                Text('生米換算: ${widget.riceAmount.toStringAsFixed(2)}kg',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
+                SizedBox(width: rs(context, 24)),
               ],
             ],
           ),
@@ -118,7 +118,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                   children: categories.map((cat) {
                     final isSelected = selectedCategory == cat;
                     return Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(right: rs(context, 8)),
                       child: ChoiceChip(
                         label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                         selected: isSelected,
@@ -142,7 +142,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
               if (displayMenus.isEmpty)
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(48.0),
+                    padding: EdgeInsets.all(rs(context, 48.0)),
                     child: Text('このカテゴリに商品はありません', style: TextStyle(color: Colors.grey)),
                   ),
                 )
@@ -189,27 +189,27 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(48),
+      padding: EdgeInsets.all(rs(context, 48)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(rs(context, 16)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 24),
-          const Text('メニューデータが見つかりません', 
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-          const SizedBox(height: 12),
+          Icon(Icons.inventory_2_outlined, size: rs(context, 64), color: Colors.grey.shade300),
+          SizedBox(height: rs(context, 24)),
+          Text('メニューデータが見つかりません', 
+            style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          SizedBox(height: rs(context, 12)),
           const Text('メニューマスタで商品を登録するか、下のボタンを押してください。', 
             textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-          const SizedBox(height: 32),
+          SizedBox(height: rs(context, 32)),
           ElevatedButton.icon(
             onPressed: widget.onReloadMenus,
             icon: const Icon(Icons.refresh),
             label: const Text('メニューを読み直す'),
-            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
+            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: rs(context, 24), vertical: rs(context, 12))),
           ),
         ],
       ),

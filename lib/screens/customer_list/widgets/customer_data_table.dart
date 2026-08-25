@@ -33,14 +33,14 @@ class CustomerDataTable extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(rs(context, 8)),
           side: BorderSide(color: Colors.grey[200]!),
         ),
         child: Column(
           children: [
             // 固定ヘッダー
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              padding: EdgeInsets.symmetric(vertical: rs(context, 12), horizontal: rs(context, 16)),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
@@ -69,7 +69,7 @@ class CustomerDataTable extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 itemCount: customers.length,
-                separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100]),
+                separatorBuilder: (context, index) => Divider(height: rs(context, 1), color: Colors.grey[100]),
                 itemBuilder: (context, index) {
                   final customer = customers[index];
                   final isSelected = customer.id == selectedCustomerId;
@@ -77,7 +77,7 @@ class CustomerDataTable extends StatelessWidget {
                   return InkWell(
                     onTap: () => onSelect(customer),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      padding: EdgeInsets.symmetric(vertical: rs(context, 10), horizontal: rs(context, 16)),
                       color: isSelected ? Colors.deepPurple.withValues(alpha: 0.05) : null,
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -115,7 +115,7 @@ class CustomerDataTable extends StatelessWidget {
                             width: actionWidth,
                             child: Center(
                               child: PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, color: Colors.grey, size: 20),
+                                icon: Icon(Icons.more_vert, color: Colors.grey, size: rs(context, 20)),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onSelected: (value) {
@@ -124,9 +124,9 @@ class CustomerDataTable extends StatelessWidget {
                                   if (value == 'delete') onDelete(customer);
                                 },
                                 itemBuilder: (context) => [
-                                  _buildPopupItem('detail', Icons.info_outline, '詳細', Colors.deepOrange),
-                                  _buildPopupItem('edit', Icons.edit, '編集', Colors.blue),
-                                  _buildPopupItem('delete', Icons.delete_outline, '削除', Colors.red),
+                                  _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', Colors.deepOrange),
+                                  _buildPopupItem(context, 'edit', Icons.edit, '編集', Colors.blue),
+                                  _buildPopupItem(context, 'delete', Icons.delete_outline, '削除', Colors.red),
                                 ],
                               ),
                             ),
@@ -152,15 +152,15 @@ class CustomerDataTable extends StatelessWidget {
     );
   }
 
-  PopupMenuItem<String> _buildPopupItem(String value, IconData icon, String label, Color color) {
+  PopupMenuItem<String> _buildPopupItem(BuildContext context, String value, IconData icon, String label, Color color) {
     return PopupMenuItem(
       value: value,
-      height: 36,
+      height: rs(context, 36),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          Icon(icon, size: rs(context, 16), color: color),
+          SizedBox(width: rs(context, 8)),
+          Text(label, style: TextStyle(fontWeight: FontWeight.w500, fontSize: rf(context, 13))),
         ],
       ),
     );

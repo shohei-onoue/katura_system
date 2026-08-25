@@ -30,6 +30,8 @@ dependencies:
   url_launcher: ^6.3.0
   image_picker: ^1.1.2
   intl: ^0.20.3
+  shared_preferences: ^2.5.5
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

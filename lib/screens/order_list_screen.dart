@@ -146,7 +146,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           margin: EdgeInsets.all(rav(context, 4.0)),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 2),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: rs(context, 2)),
                           ),
                         );
                       }

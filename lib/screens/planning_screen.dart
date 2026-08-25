@@ -75,9 +75,9 @@ class _PlanningScreenState extends State<PlanningScreen> {
                   calendarStyle: CalendarStyle(todayDecoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.3), shape: BoxShape.circle), selectedDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle)),
                   headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
                 ),
-                const Divider(height: 32),
+                Divider(height: rs(context, 32)),
                 _buildBranchSelector(),
-                const SizedBox(height: 16),
+                SizedBox(height: rs(context, 16)),
                 _buildDaySummary(),
                 const Spacer(),
                 _buildExportButton(),
@@ -89,7 +89,7 @@ class _PlanningScreenState extends State<PlanningScreen> {
               length: 2,
               child: Column(
                 children: [
-                  Container(color: Colors.white, child: const TabBar(labelColor: Colors.orange, unselectedLabelColor: Colors.grey, indicatorColor: Colors.orange, indicatorWeight: 3, tabs: [Tab(icon: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.inventory), SizedBox(width: 8), Text('仕入れ・食材集計')])), Tab(icon: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.schedule), SizedBox(width: 8), Text('調理スケジュール')]))])),
+                  Container(color: Colors.white, child: TabBar(labelColor: Colors.orange, unselectedLabelColor: Colors.grey, indicatorColor: Colors.orange, indicatorWeight: 3, tabs: [Tab(icon: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.inventory), SizedBox(width: rs(context, 8)), Text('仕入れ・食材集計')])), Tab(icon: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.schedule), SizedBox(width: rs(context, 8)), Text('調理スケジュール')]))])),
                   Expanded(child: TabBarView(children: [IngredientList(isLoading: _isLoading, ingredientTotals: _ingredientTotals), CookingScheduleList(isLoading: _isLoading, cookingTasks: _cookingTasks)])),
                 ],
               ),
@@ -101,14 +101,14 @@ class _PlanningScreenState extends State<PlanningScreen> {
   }
 
   Widget _buildBranchSelector() {
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[300]!)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: _selectedBranch, isExpanded: true, items: ['すべて', '岡崎本店', '名古屋店', '岐阜店'].map((String v) => DropdownMenuItem<String>(value: v, child: Text(v, style: const TextStyle(fontSize: 14)))).toList(), onChanged: (nv) { setState(() { _selectedBranch = nv!; _updatePlanningData(_selectedDay!); }); })));
+    return Container(padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(rs(context, 8)), border: Border.all(color: Colors.grey[300]!)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(value: _selectedBranch, isExpanded: true, items: ['すべて', '岡崎本店', '名古屋店', '岐阜店'].map((String v) => DropdownMenuItem<String>(value: v, child: Text(v, style: TextStyle(fontSize: rf(context, 14))))).toList(), onChanged: (nv) { setState(() { _selectedBranch = nv!; _updatePlanningData(_selectedDay!); }); })));
   }
 
   Widget _buildDaySummary() {
     final totalBoxes = _dayOrders.fold(0, (sum, o) => sum + o.totalCount);
-    return Card(elevation: 0, color: Colors.orange.shade50, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.orange.shade100)), child: Padding(padding: const EdgeInsets.all(16), child: Column(children: [_summaryItem('受注総数', '${_dayOrders.length} 件'), const SizedBox(height: 8), _summaryItem('製造個数', '$totalBoxes 個')])));
+    return Card(elevation: 0, color: Colors.orange.shade50, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)), side: BorderSide(color: Colors.orange.shade100)), child: Padding(padding: EdgeInsets.all(rs(context, 16)), child: Column(children: [_summaryItem('受注総数', '${_dayOrders.length} 件'), SizedBox(height: rs(context, 8)), _summaryItem('製造個数', '$totalBoxes 個')])));
   }
 
-  Widget _summaryItem(String l, String v) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: const TextStyle(color: Colors.grey, fontSize: 14)), Text(v, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))]);
-  Widget _buildExportButton() => SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.download), label: const Text('指示書を出力 (PDF)'), style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)))));
+  Widget _summaryItem(String l, String v) => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(l, style: TextStyle(color: Colors.grey, fontSize: rf(context, 14))), Text(v, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14)))]);
+  Widget _buildExportButton() => SizedBox(width: double.infinity, child: ElevatedButton.icon(onPressed: () {}, icon: const Icon(Icons.download), label: const Text('指示書を出力 (PDF)'), style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white, padding: EdgeInsets.symmetric(vertical: rs(context, 16)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))))));
 }

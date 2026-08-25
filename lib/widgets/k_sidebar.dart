@@ -21,7 +21,7 @@ class KSidebar extends StatelessWidget {
 
     return NavigationRail(
       extended: true,
-      minExtendedWidth: rs(context, 150), 
+      minExtendedWidth: rs(context, 150),
       groupAlignment: -1.0, // 上寄せ（垂直方向）
       backgroundColor: Colors.grey[50],
       selectedIndex: selectedIndex,
@@ -33,14 +33,14 @@ class KSidebar extends StatelessWidget {
 
           return Padding(
             padding: EdgeInsets.only(
-              top: rs(context, 24),
-              bottom: rs(context, 24),
+              top: rs(context, 12),
+              bottom: rs(context, 12),
               left: rs(context, 16), // 左に少しパディング
             ),
             child: Align(
               alignment: Alignment.centerLeft, // 左寄せ
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(rs(context, 8)),
                 child: SizedBox(
                   width: logoWidth,
                   child: Image.asset(
@@ -97,6 +97,10 @@ class KSidebar extends StatelessWidget {
           icon: const Icon(Icons.badge),
           label: Align(alignment: Alignment.centerLeft, child: Text('スタッフ管理', style: railLabelStyle)),
         ),
+        NavigationRailDestination(
+          icon: const Icon(Icons.settings),
+          label: Align(alignment: Alignment.centerLeft, child: Text('設定', style: railLabelStyle)),
+        ),
       ],
       trailing: Expanded(
         child: Align(
@@ -109,18 +113,18 @@ class KSidebar extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Divider(),
-                  SizedBox(height: rs(context, 24)),
+                  SizedBox(height: rs(context, 12)),
                   _buildStoreInfo(context, '岡崎本店', '岡崎市井田南町3-5', '0564-23-8861'),
-                  SizedBox(height: rs(context, 10)),
+                  SizedBox(height: rs(context, 6)),
                   _buildStoreInfo(context, '名古屋店', '名古屋市緑区森の里1-93', '050-1748-2670'),
-                  SizedBox(height: rs(context, 10)),
+                  SizedBox(height: rs(context, 6)),
                   _buildStoreInfo(context, '岐阜店', '岐阜県岐阜市加納矢場町1-42-1', '050-1748-2670'),
-                  SizedBox(height: rs(context, 40)), 
+                  SizedBox(height: rs(context, 16)),
                   Text(
                     'Version 1.0.52',
                     style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: rs(context, 10)),
+                  SizedBox(height: rs(context, 6)),
                 ],
               ),
             ),

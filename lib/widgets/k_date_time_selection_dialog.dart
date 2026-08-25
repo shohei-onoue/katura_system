@@ -101,23 +101,23 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                 Text(widget.title, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.themeColor)),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                   decoration: BoxDecoration(
                     color: isValid ? widget.themeColor.withValues(alpha: 0.08) : Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(rs(context, 20)),
                     border: Border.all(color: isValid ? widget.themeColor.withValues(alpha: 0.2) : Colors.red.shade200),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.event, size: 18, color: isValid ? widget.themeColor : Colors.red),
-                      const SizedBox(width: 8),
+                      Icon(Icons.event, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
+                      SizedBox(width: rs(context, 8)),
                       Text(
                         "$formattedDate  ",
                         style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? Colors.black87 : Colors.red),
                       ),
-                      Icon(Icons.access_time, size: 18, color: isValid ? widget.themeColor : Colors.red),
-                      const SizedBox(width: 8),
+                      Icon(Icons.access_time, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
+                      SizedBox(width: rs(context, 8)),
                       Text(
                         _displayTime,
                         style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.w900, color: isValid ? Colors.black87 : Colors.red, letterSpacing: 1),
@@ -125,11 +125,11 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: rs(context, 8)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: rs(context, 24)),
             
             Flexible(
               child: Row(
@@ -139,7 +139,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                   Expanded(
                     flex: 55,
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(rs(context, 12)),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(rs(context, 12)),
@@ -169,7 +169,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                   ),
                   
                   SizedBox(width: rs(context, 24)),
-                  const VerticalDivider(width: 1),
+                  VerticalDivider(width: rs(context, 1)),
                   SizedBox(width: rs(context, 24)),
                   
                   // 右側: 時間入力エリア (テンキーのみ)
@@ -187,7 +187,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
               ),
             ),
             
-            const SizedBox(height: 24),
+            SizedBox(height: rs(context, 24)),
             
             Row(
               children: [
@@ -196,8 +196,8 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                     height: rs(context, 54),
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.grey, width: 2),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        side: BorderSide(color: Colors.grey, width: rs(context, 2)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                       ),
                       onPressed: () => Navigator.pop(context),
                       child: Text('キャンセル', 
@@ -205,7 +205,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 24),
+                SizedBox(width: rs(context, 24)),
                 Expanded(
                   child: SizedBox(
                     height: rs(context, 54),

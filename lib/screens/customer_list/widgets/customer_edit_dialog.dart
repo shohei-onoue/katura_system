@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
+import '../../../widgets/k_responsive.dart';
 
 class CustomerEditDialog extends StatefulWidget {
   final Customer customer;
@@ -59,7 +60,7 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
     return AlertDialog(
       title: const Text('顧客情報の編集'),
       content: SizedBox(
-        width: 500,
+        width: rs(context, 500),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -92,8 +92,8 @@ class FinalizeStep extends StatelessWidget {
     return OrderFormCard(
       title: '梱包・支払・確認設定',
       icon: Icons.check_circle,
-      trailing: Text('受電: $phoneDisplay', 
-        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+      trailing: Text('受電: $phoneDisplay',
+        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.white)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -115,14 +115,14 @@ class FinalizeStep extends StatelessWidget {
           ),
 
           SizedBox(height: rs(context, 12)),
-          const Divider(height: 1),
+          Divider(height: rs(context, 1)),
           SizedBox(height: rs(context, 12)),
 
           // 2. 事前連絡
           _buildAdvanceNotificationSection(context),
 
           SizedBox(height: rs(context, 12)),
-          const Divider(height: 1),
+          Divider(height: rs(context, 1)),
           SizedBox(height: rs(context, 12)),
 
           // 3. 店舗
@@ -142,7 +142,7 @@ class FinalizeStep extends StatelessWidget {
           ),
 
           SizedBox(height: rs(context, 12)),
-          const Divider(height: 1),
+          Divider(height: rs(context, 1)),
           SizedBox(height: rs(context, 12)),
 
           // 4. 支払
@@ -178,7 +178,7 @@ class FinalizeStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: _labelStyle(context)),
-        const SizedBox(height: 12),
+        SizedBox(height: rs(context, 12)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -189,7 +189,7 @@ class FinalizeStep extends StatelessWidget {
                 child: buttons,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: rs(context, 16)),
             Expanded(
               flex: 50,
               child: details ?? const SizedBox.shrink(),
@@ -207,15 +207,15 @@ class FinalizeStep extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('数量:', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-            const SizedBox(width: 4),
+            SizedBox(width: rs(context, 4)),
             KSharedQuantityInput(
               value: packagingSmallQty,
               onChanged: onPackagingSmallQtyChanged,
               title: '小分け数量',
               width: rs(context, 60),
-              height: 36,
+              height: rs(context, 36),
             ),
-            const SizedBox(width: 4),
+            SizedBox(width: rs(context, 4)),
             Text('個ずつ', style: TextStyle(fontSize: rf(context, 12))),
           ],
         ),
@@ -229,7 +229,7 @@ class FinalizeStep extends StatelessWidget {
           hintText: '梱包方法（詳細）',
           showLabel: false,
           controller: packagingOtherController,
-          height: rs(context, 40),
+          height: rs(context, 50),
         ),
       );
     }
@@ -245,7 +245,7 @@ class FinalizeStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('事前連絡', style: _labelStyle(context)),
-        const SizedBox(height: 12),
+        SizedBox(height: rs(context, 12)),
         _notificationCard(
           context: context,
           isSelected: isSms,
@@ -253,8 +253,8 @@ class FinalizeStep extends StatelessWidget {
           onTap: () => onPreConfirmationMethodChanged('SMS'),
           child: Row(
             children: [
-              const Icon(Icons.info_outline, size: 16, color: Colors.blue),
-              const SizedBox(width: 8),
+              Icon(Icons.info_outline, size: rs(context, 16), color: Colors.blue),
+              SizedBox(width: rs(context, 8)),
               Expanded(
                 child: Text(
                   scheduledSmsDateTime != null 
@@ -262,23 +262,23 @@ class FinalizeStep extends StatelessWidget {
                     : '前日 $preConfirmationSmsTime に自動送信されます', 
                   style: TextStyle(fontSize: rf(context, 12), color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: rs(context, 8)),
               ElevatedButton.icon(
-                icon: const Icon(Icons.send, size: 14),
-                label: const Text('今すぐ送信', style: TextStyle(fontSize: 11)),
+                icon: Icon(Icons.send, size: rs(context, 14)),
+                label: Text('今すぐ送信', style: TextStyle(fontSize: rf(context, 11))),
                 onPressed: () {
                   _sendActualSms(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                  padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: 0),
                   backgroundColor: Colors.blue.shade600,
                   foregroundColor: Colors.white,
                   elevation: 2,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: rs(context, 8)),
               IconButton(
-                icon: const Icon(Icons.settings, size: 20, color: Colors.blue),
+                icon: Icon(Icons.settings, size: rs(context, 20), color: Colors.blue),
                 onPressed: () => _showSmsScheduleDialog(context),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -286,7 +286,7 @@ class FinalizeStep extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: rs(context, 8)),
         _notificationCard(
           context: context,
           isSelected: isPhoneSelf,
@@ -297,7 +297,7 @@ class FinalizeStep extends StatelessWidget {
           },
           child: _buildDateTimeRow(context),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: rs(context, 8)),
         _notificationCard(
           context: context,
           isSelected: isPhoneOther,
@@ -314,11 +314,11 @@ class FinalizeStep extends StatelessWidget {
                   onTap: () => _showPhoneDialDialog(context),
                   child: Container(
                     height: rs(context, 36),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(rs(context, 8)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -331,13 +331,13 @@ class FinalizeStep extends StatelessWidget {
                             fontWeight: preConfirmationPhoneNumber.isEmpty ? FontWeight.normal : FontWeight.bold,
                           ),
                         ),
-                        const Icon(Icons.phone_android, size: 16, color: Colors.blueGrey),
+                        Icon(Icons.phone_android, size: rs(context, 16), color: Colors.blueGrey),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: rs(context, 12)),
               Expanded(
                 flex: 6,
                 child: _buildDateTimeRow(context),
@@ -358,12 +358,12 @@ class FinalizeStep extends StatelessWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(rs(context, 12)),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
         decoration: BoxDecoration(
           color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(rs(context, 12)),
           border: Border.all(
             color: isSelected ? Colors.deepPurple : Colors.grey.shade300,
             width: isSelected ? 2 : 1,
@@ -373,10 +373,10 @@ class FinalizeStep extends StatelessWidget {
           children: [
             Icon(
               isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: 20,
+              size: rs(context, 20),
               color: isSelected ? Colors.deepPurple : Colors.grey,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: rs(context, 8)),
             SizedBox(
               width: rs(context, 130),
               child: Text(title, 
@@ -386,7 +386,7 @@ class FinalizeStep extends StatelessWidget {
                   color: isSelected ? Colors.deepPurple.shade900 : Colors.black87
                 )),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: rs(context, 12)),
             Expanded(child: child),
           ],
         ),
@@ -398,7 +398,7 @@ class FinalizeStep extends StatelessWidget {
     return Row(
       children: [
         Text('連絡希望日時:', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-        const SizedBox(width: 12),
+        SizedBox(width: rs(context, 12)),
         Expanded(
           child: KDateTimeDisplay(
             label: '',
@@ -559,23 +559,23 @@ class FinalizeStep extends StatelessWidget {
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
         child: Container(
           width: rs(context, 400),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(rs(context, 24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('電話番号の入力', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
+              Text('電話番号の入力', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+              SizedBox(height: rs(context, 20)),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
+                  borderRadius: BorderRadius.circular(rs(context, 12)),
+                  border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
                 ),
                 child: Text(
                   preConfirmationPhoneController.text.isEmpty ? "番号を入力してください" : preConfirmationPhoneController.text,
@@ -586,7 +586,7 @@ class FinalizeStep extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: rs(context, 24)),
               KNumericDialPad(
                 onInput: (digit) {
                   onPreConfirmationPhoneNumberChanged(preConfirmationPhoneController.text + digit);
@@ -600,7 +600,7 @@ class FinalizeStep extends StatelessWidget {
                   }
                 },
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: rs(context, 24)),
               SizedBox(
                 width: double.infinity,
                 child: KButton(
@@ -629,7 +629,7 @@ class FinalizeStep extends StatelessWidget {
         onSelected: enabled ? onSelected : null,
         selectedColor: Colors.deepPurple,
         labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+        padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: 0),
         visualDensity: VisualDensity.compact,
         showCheckmark: false,
       ),

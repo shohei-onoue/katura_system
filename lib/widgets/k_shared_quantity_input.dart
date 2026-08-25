@@ -25,10 +25,10 @@ class KSharedQuantityInput extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildButton(Icons.remove, () {
+        _buildButton(context, Icons.remove, () {
           if (value > 0) onChanged(value - 1);
         }),
-        const SizedBox(width: 4),
+        SizedBox(width: rs(context, 4)),
         GestureDetector(
           onTap: () => _showDialDialog(context),
           child: Container(
@@ -37,8 +37,8 @@ class KSharedQuantityInput extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: value > 0 ? themeColor.withValues(alpha: 0.05) : Colors.white,
-              border: Border.all(color: value > 0 ? themeColor : Colors.grey.shade300, width: 2),
-              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: value > 0 ? themeColor : Colors.grey.shade300, width: rs(context, 2)),
+              borderRadius: BorderRadius.circular(rs(context, 8)),
             ),
             child: Text(
               '$value',
@@ -50,27 +50,27 @@ class KSharedQuantityInput extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 4),
-        _buildButton(Icons.add, () => onChanged(value + 1)),
+        SizedBox(width: rs(context, 4)),
+        _buildButton(context, Icons.add, () => onChanged(value + 1)),
       ],
     );
   }
 
-  Widget _buildButton(IconData icon, VoidCallback onTap) {
+  Widget _buildButton(BuildContext context, IconData icon, VoidCallback onTap) {
     return Material(
       color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(rs(context, 8)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
         child: Container(
           width: height ?? 44,
           height: height ?? 44,
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
-          child: Icon(icon, size: 20, color: Colors.blueGrey),
+          child: Icon(icon, size: rs(context, 20), color: Colors.blueGrey),
         ),
       ),
     );
@@ -119,30 +119,30 @@ class _QuantityDialDialogState extends State<_QuantityDialDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
         width: rs(context, 400),
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(rs(context, 24)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
+            Text(widget.title, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+            SizedBox(height: rs(context, 20)),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300, width: 2),
+                borderRadius: BorderRadius.circular(rs(context, 12)),
+                border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
               ),
               child: Text(
                 _currentText.isEmpty ? "0" : _currentText,
-                style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: widget.themeColor),
+                style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: widget.themeColor),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: rs(context, 24)),
             KNumericDialPad(
               buttonColor: Colors.blueGrey.shade800,
               onInput: (digit) {
@@ -157,20 +157,20 @@ class _QuantityDialDialogState extends State<_QuantityDialDialog> {
                 }
               },
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: rs(context, 24)),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                     ),
                     child: const Text('キャンセル', style: TextStyle(color: Colors.grey)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: rs(context, 12)),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
@@ -181,8 +181,8 @@ class _QuantityDialDialogState extends State<_QuantityDialDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.themeColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                     ),
                     child: const Text('確定', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),

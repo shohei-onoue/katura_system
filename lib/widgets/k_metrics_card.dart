@@ -26,31 +26,31 @@ class KMetricsCard extends StatelessWidget {
       padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isAlert ? Colors.red.shade200 : Colors.grey.shade200, width: 1.5),
+        borderRadius: BorderRadius.circular(rs(context, 12)),
+        border: Border.all(color: isAlert ? Colors.red.shade200 : Colors.grey.shade200, width: rs(context, 1.5)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 24),
+            padding: EdgeInsets.all(rs(context, 10)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(rs(context, 10))),
+            child: Icon(icon, color: color, size: rs(context, 24)),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: rs(context, 16)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(label, style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
+                SizedBox(height: rs(context, 4)),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
                     Text(value, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.w900, color: Colors.black87)),
-                    const SizedBox(width: 6),
+                    SizedBox(width: rs(context, 6)),
                     Text(subValue, style: TextStyle(fontSize: rf(context, 11), color: isAlert ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
                   ],
                 ),

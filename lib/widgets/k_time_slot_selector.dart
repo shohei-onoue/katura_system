@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KTimeSlotSelector extends StatelessWidget {
   final String label;
@@ -29,17 +30,17 @@ class KTimeSlotSelector extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black54),
+          style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: rs(context, 8)),
         SizedBox(
-          height: 120,
+          height: rs(context, 120),
           child: GridView.builder(
             scrollDirection: Axis.horizontal,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
+              mainAxisSpacing: rs(context, 8),
+              crossAxisSpacing: rs(context, 8),
               childAspectRatio: 0.5,
             ),
             itemCount: slots.length,
@@ -54,13 +55,13 @@ class KTimeSlotSelector extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: isSelected ? Colors.deepOrange : Colors.white,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(rs(context, 8)),
                     border: Border.all(color: isSelected ? Colors.deepOrange : Colors.grey.shade300),
                   ),
                   child: Text(
                     timeStr,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: rf(context, 16),
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       color: isSelected ? Colors.white : Colors.black87,
                     ),

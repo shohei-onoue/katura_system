@@ -24,7 +24,8 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
 
   final KPenCanvasController _canvasController = KPenCanvasController();
   List<mlkit.StrokePoint> _currentStrokePoints = [];
-  
+  KPenTool _currentTool = KPenTool.pen;
+
   bool _isRecognizing = false;
   bool _isModelReady = false;
   String _statusMessage = "";
@@ -65,25 +66,38 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   }
 
   void _handlePointDown(Offset offset, int timestamp) {
+    if (_currentTool == KPenTool.eraser) return;
     _currentStrokePoints = [
       mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: timestamp)
     ];
   }
 
   void _handlePointMove(Offset offset, int timestamp) {
+    if (_currentTool == KPenTool.eraser) return;
     _currentStrokePoints.add(
       mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: timestamp)
     );
   }
 
   void _handlePointUp() {
+    if (_currentTool == KPenTool.eraser) {
+      // 消しゴム操作の結果に合わせて認識用インクを再構築する
+      setState(() {
+        _pagesInks[_currentPageIndex] = _inkFromPoints(_canvasController.points);
+        _pagesPoints[_currentPageIndex] = List.from(_canvasController.points);
+        _isRecognizing = true;
+      });
+      _recognize();
+      return;
+    }
+
     if (!_isModelReady || _currentStrokePoints.isEmpty) return;
 
     final stroke = mlkit.Stroke();
     for (final p in _currentStrokePoints) {
       stroke.points.add(p);
     }
-    
+
     setState(() {
       _pagesInks[_currentPageIndex].strokes.add(stroke);
       _pagesPoints[_currentPageIndex] = List.from(_canvasController.points);
@@ -91,6 +105,25 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
       _isRecognizing = true;
     });
     _recognize();
+  }
+
+  /// ストローク間の区切り(null)で分割された点列から、ML Kit認識用のInkを再構築する。
+  /// 消しゴムで一部が削除された後もキャンバスの点列とインクの内容を一致させるために使う。
+  mlkit.Ink _inkFromPoints(List<DrawingPoint?> points) {
+    final ink = mlkit.Ink();
+    mlkit.Stroke? current;
+    for (final p in points) {
+      if (p == null) {
+        current = null;
+        continue;
+      }
+      if (current == null) {
+        current = mlkit.Stroke();
+        ink.strokes.add(current);
+      }
+      current.points.add(mlkit.StrokePoint(x: p.offset.dx, y: p.offset.dy, t: p.timestamp));
+    }
+    return ink;
   }
 
   Future<void> _recognize() async {
@@ -182,10 +215,12 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
               child: Row(
                 children: [
                   Icon(Icons.edit_note, color: Colors.deepPurple.shade300, size: rav(context, 24)),
-                  const SizedBox(width: 8),
-                  Text('手書き入力（AI判定）', 
+                  SizedBox(width: rs(context, 8)),
+                  Text('手書き入力（AI判定）',
                     style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.white)),
                   const Spacer(),
+                  _buildToolToggle(),
+                  SizedBox(width: rs(context, 8)),
                   IconButton(
                     icon: Icon(Icons.close, size: rav(context, 22), color: Colors.white), 
                     onPressed: () => Navigator.pop(context)
@@ -201,18 +236,18 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                 height: rav(context, 80),
                 width: double.infinity,
                 margin: EdgeInsets.symmetric(vertical: rav(context, 8)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
+                  borderRadius: BorderRadius.circular(rs(context, 12)),
+                  border: Border.all(color: Colors.grey.shade300, width: rs(context, 1)),
                 ),
                 child: Stack(
                   children: [
                     SingleChildScrollView(
                       child: RichText(
                         text: TextSpan(
-                          style: TextStyle(fontSize: rf(context, 22), height: 1.2),
+                          style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
                           children: [
                             for (int i = 0; i < _pagesTexts.length; i++)
                               TextSpan(
@@ -233,7 +268,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                       ),
                     ),
                     if (_isRecognizing)
-                      const Positioned(right: 0, top: 0, child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                      Positioned(right: 0, top: 0, child: SizedBox(width: rs(context, 16), height: rs(context, 16), child: CircularProgressIndicator(strokeWidth: 2))),
                   ],
                 ),
               ),
@@ -253,14 +288,15 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border: Border.all(color: Colors.grey.shade400, width: 2),
-                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade400, width: rs(context, 2)),
+                        borderRadius: BorderRadius.circular(rs(context, 12)),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(rs(context, 10)),
                         child: KPenCanvas(
                           controller: _canvasController,
                           strokeWidth: 5.0,
+                          tool: _currentTool,
                           onPointDown: _handlePointDown,
                           onPointMove: _handlePointMove,
                           onPointUp: _handlePointUp,
@@ -293,7 +329,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                       onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _undoStroke : null,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: rs(context, 12)),
                   Expanded(
                     flex: 1,
                     child: KButton(
@@ -302,7 +338,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                       onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _clearCanvas : null,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: rs(context, 12)),
                   Expanded(
                     flex: 2,
                     child: KButton(
@@ -317,6 +353,47 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildToolToggle() {
+    return Container(
+      padding: EdgeInsets.all(rs(context, 4)),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(rs(context, 10)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildToolBtn(KPenTool.pen, Icons.edit, 'ペン'),
+          SizedBox(width: rs(context, 4)),
+          _buildToolBtn(KPenTool.eraser, Icons.auto_fix_normal, '消しゴム'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolBtn(KPenTool tool, IconData icon, String label) {
+    final bool isSelected = _currentTool == tool;
+    return InkWell(
+      onTap: () => setState(() => _currentTool = tool),
+      borderRadius: BorderRadius.circular(rs(context, 8)),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.deepPurple.shade300 : Colors.transparent,
+          borderRadius: BorderRadius.circular(rs(context, 8)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: rs(context, 18), color: Colors.white),
+            SizedBox(width: rs(context, 6)),
+            Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.white)),
           ],
         ),
       ),
@@ -340,7 +417,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
         color: Colors.transparent,
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Icon(
             icon, 
             color: onPressed != null ? Colors.white : Colors.grey.shade800,

@@ -264,8 +264,8 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
             if (val) setState(() => _teaOption = opt);
           },
           selectedColor: Colors.deepPurple,
-          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: 13),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: rf(context, 13)),
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 10)),
           visualDensity: VisualDensity.standard,
           showCheckmark: false,
         );

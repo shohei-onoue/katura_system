@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
+import '../../../widgets/k_responsive.dart';
 
 class OrderProcessBar extends StatelessWidget {
   final OrderModel order;
@@ -36,25 +37,25 @@ class OrderProcessBar extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 12), horizontal: rs(context, 20)),
       decoration: BoxDecoration(
         color: Colors.grey[50],
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(rs(context, 16))),
         border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Row(
         children: [
-          _buildProcessStep("受注", orderColor, "${order.receptionDate.month}/${order.receptionDate.day}"),
-          _buildProcessConnector(orderColor == Colors.green && cookColor != Colors.pink.shade100),
-          _buildProcessStep("調理", cookColor, _getCookingTime(order)),
-          _buildProcessConnector(cookColor == Colors.green && deliverColor != Colors.pink.shade100),
-          _buildProcessStep("配送", deliverColor, order.deliveryTime),
+          _buildProcessStep(context, "受注", orderColor, "${order.receptionDate.month}/${order.receptionDate.day}"),
+          _buildProcessConnector(context, orderColor == Colors.green && cookColor != Colors.pink.shade100),
+          _buildProcessStep(context, "調理", cookColor, _getCookingTime(order)),
+          _buildProcessConnector(context, cookColor == Colors.green && deliverColor != Colors.pink.shade100),
+          _buildProcessStep(context, "配送", deliverColor, order.deliveryTime),
         ],
       ),
     );
   }
 
-  Widget _buildProcessStep(String label, Color color, String time) {
+  Widget _buildProcessStep(BuildContext context, String label, Color color, String time) {
     bool isDone = color == Colors.green;
     bool isActive = color == Colors.orange;
 
@@ -65,40 +66,40 @@ class OrderProcessBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 24,
-                height: 24,
+                width: rs(context, 24),
+                height: rs(context, 24),
                 decoration: BoxDecoration(
                   color: color,
                   shape: BoxShape.circle,
                 ),
                 child: isDone 
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
+                  ? Icon(Icons.check, size: rs(context, 16), color: Colors.white)
                   : isActive 
-                    ? const Padding(
-                        padding: EdgeInsets.all(4.0),
+                    ? Padding(
+                        padding: EdgeInsets.all(rs(context, 4.0)),
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : null,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: rs(context, 8)),
               Text(label, style: TextStyle(
                 fontWeight: FontWeight.bold, 
                 color: isActive ? Colors.orange : isDone ? Colors.green : Colors.grey,
-                fontSize: 14,
+                fontSize: rf(context, 14),
               )),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(time, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          SizedBox(height: rs(context, 4)),
+          Text(time, style: TextStyle(fontSize: rf(context, 11), color: Colors.grey[600])),
         ],
       ),
     );
   }
 
-  Widget _buildProcessConnector(bool active) {
+  Widget _buildProcessConnector(BuildContext context, bool active) {
     return Container(
-      width: 40,
-      height: 2,
+      width: rs(context, 40),
+      height: rs(context, 2),
       color: active ? Colors.green : Colors.grey[300],
     );
   }

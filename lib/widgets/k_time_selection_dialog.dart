@@ -99,7 +99,7 @@ class _KTimeSelectionDialogState extends State<KTimeSelectionDialog> {
                 borderRadius: BorderRadius.circular(rs(context, 12)),
                 border: Border.all(
                   color: isValid ? widget.themeColor.withValues(alpha: 0.3) : Colors.red.shade200, 
-                  width: 2
+                  width: rs(context, 2)
                 ),
               ),
               alignment: Alignment.center,
@@ -116,7 +116,7 @@ class _KTimeSelectionDialogState extends State<KTimeSelectionDialog> {
             
             if (!isValid)
               Padding(
-                padding: const EdgeInsets.only(top: 8.0),
+                padding: EdgeInsets.only(top: rs(context, 8.0)),
                 child: Text('無効な時間です', style: TextStyle(color: Colors.red, fontSize: rf(context, 12))),
               ),
 

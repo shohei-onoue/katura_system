@@ -38,6 +38,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _phonePrefixController = TextEditingController();
   bool _isCompletingPhone = false;
   final _nameController = TextEditingController();
+  final _furiganaController = TextEditingController();
   final _receiverController = TextEditingController();
   final _facilityController = TextEditingController();
   final _addressController = TextEditingController();
@@ -302,7 +303,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _phoneController.clear();
       _phonePrefixController.clear();
       _isCompletingPhone = false;
-      _nameController.clear(); 
+      _nameController.clear();
+      _furiganaController.clear();
       _receiverController.clear();
       _facilityController.clear();
       _addressController.clear();
@@ -413,6 +415,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _phoneSearchCandidates = candidates;
             _currentCustomer = null;
             _nameController.clear();
+            _furiganaController.clear();
             _facilityController.clear();
           });
         }
@@ -459,14 +462,50 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isCompletingPhone = false;
       _customerOrderHistory = myHistory; 
       _companyOrderHistory = companyHistory; 
-      _phoneController.text = _formatPhone(customer.phoneNumber); 
-      _nameController.text = customer.name; 
+      _phoneController.text = _formatPhone(customer.phoneNumber);
+      _nameController.text = customer.name;
+      _furiganaController.text = customer.furigana;
       _facilityController.clear();
       _addressController.clear();
       _deliveryLocationController.clear();
       _receiverController.text = customer.name; 
       _updateStep(1); 
     });
+  }
+
+  /// 顧客確認ステップ完了時の処理。
+  /// 新規顧客の場合はこの時点で即座にCustomerを登録し、以降のステップ
+  /// （配達先の確定「履歴から選択」等）に反映されるようにする。
+  Future<void> _completeCustomerConfirmation() async {
+    if (_currentCustomer == null && (_nameController.text.isNotEmpty || _furiganaController.text.isNotEmpty)) {
+      _isLoadingNotifier.value = true;
+      final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+      final facility = _facilityController.text;
+      final address = _addressController.text;
+      final newCustomer = Customer(
+        id: '',
+        name: _nameController.text,
+        furigana: _furiganaController.text,
+        companyName: facility,
+        phoneNumber: _phoneController.text,
+        address: address,
+        latitude: destMarker?.position.latitude,
+        longitude: destMarker?.position.longitude,
+        deliveryAddresses: (facility.isNotEmpty && address.isNotEmpty)
+            ? ["$facility: $address (${destMarker?.position.latitude ?? 0}, ${destMarker?.position.longitude ?? 0})"]
+            : [],
+        facilityReceivers: (facility.isNotEmpty && _nameController.text.isNotEmpty)
+            ? {facility: [_nameController.text]}
+            : {},
+      );
+      final created = await _customerService.createCustomer(newCustomer);
+      if (!mounted) return;
+      setState(() {
+        _currentCustomer = created;
+        _isLoadingNotifier.value = false;
+      });
+    }
+    _updateStep(2);
   }
 
   String _formatPhone(String phone) {
@@ -758,6 +797,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final newCustomer = Customer(
         id: '',
         name: _nameController.text,
+        furigana: _furiganaController.text,
         companyName: _facilityController.text,
         phoneNumber: _phoneController.text,
         address: _addressController.text,
@@ -788,7 +828,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         child: _buildSidebar(),
       ) : null,
       appBar: isMobile ? AppBar(
-        title: Text(_stepLabels[_currentStep], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        title: Text(_stepLabels[_currentStep], style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
         actions: [
           Builder(
             builder: (context) => IconButton(
@@ -1044,20 +1084,48 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onSelectCustomer: _selectCustomer
       );
       case 1: return CustomerConfirmationStep(
-          phoneController: _phoneController, 
+          phoneController: _phoneController,
           nameController: _nameController,
+          furiganaController: _furiganaController,
           companyController: _facilityController,
-          currentCustomer: _currentCustomer, 
+          currentCustomer: _currentCustomer,
           phoneDisplay: phoneDisplay,
-          onNext: () => _updateStep(2), 
-          onBack: () { 
-            setState(() { 
-              _currentStep = 0; 
+          onNext: _completeCustomerConfirmation,
+          onBack: () {
+            setState(() {
+              _currentStep = 0;
               _isCompletingPhone = false;
-              _phoneController.text = _lastPhoneQuery; 
-              _lookupCustomer(_lastPhoneQuery); 
-            }); 
-          }
+              _phoneController.text = _lastPhoneQuery;
+              _lookupCustomer(_lastPhoneQuery);
+            });
+          },
+          facilityControllerText: _facilityController.text,
+          addressControllerText: _addressController.text,
+          prefList: _prefList,
+          searchPrefecture: _searchPrefecture,
+          searchCity: _searchCity,
+          searchTown: _searchTown,
+          searchCategory: _searchCategory,
+          searchGenre: _searchGenre,
+          searchTabIndex: _searchTabIndex,
+          isApproximateLocation: _isApproximateLocation,
+          keywordQueryController: _keywordQueryController,
+          facilityResultsListenable: _facilityResultsNotifier,
+          isLoadingListenable: _isLoadingNotifier,
+          onAddressSelected: _onAddressSelectedFromList,
+          onSearchTabChanged: (v) { setState(() => _searchTabIndex = v); _syncSearchQuery(); },
+          onPrefChanged: (v) => _updateCityList(v, 'すべて'),
+          onCityChanged: (v) => _updateTownList(_searchPrefecture, v, 'すべて'),
+          onTownChanged: (v) { setState(() => _searchTown = v); _syncSearchQuery(); },
+          onAddressConfirmed: _onAddressConfirmed,
+          onPrefInitialChanged: _updatePrefList,
+          onCityInitialChanged: _updateCityList,
+          onTownInitialChanged: _updateTownList,
+          onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); },
+          onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); },
+          onSearchSubmit: _onSearchSubmit,
+          onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
+          onAdjustTap: _showLocationAdjustmentDialog,
       );
       case 2: return DeliveryDestinationStep(
           currentCustomer: _currentCustomer, 

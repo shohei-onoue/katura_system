@@ -34,7 +34,7 @@ class OrderListCard extends StatelessWidget {
       margin: EdgeInsets.only(bottom: rs(context, 12)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(rs(context, 12)),
-        side: BorderSide(color: branchColor.withValues(alpha: 0.2), width: 1),
+        side: BorderSide(color: branchColor.withValues(alpha: 0.2), width: rs(context, 1)),
       ),
       elevation: 2,
       child: Column(
@@ -66,7 +66,7 @@ class OrderListCard extends StatelessWidget {
                                 padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 2)),
                                 decoration: BoxDecoration(
                                   color: branchColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(rs(context, 12)),
                                   border: Border.all(color: branchColor.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(

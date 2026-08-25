@@ -16,6 +16,16 @@ class StaffService {
         .toList();
   }
 
+  /// PINハッシュを設定・更新する（初回登録／リセット後の再登録で使用）
+  Future<void> setPinHash(String staffId, String pinHash) async {
+    await _staffCollection.doc(staffId).set({'pinHash': pinHash}, SetOptions(merge: true));
+  }
+
+  /// PINをリセットし、次回ログイン時に再登録させる（管理者操作）
+  Future<void> resetPin(String staffId) async {
+    await setPinHash(staffId, '');
+  }
+
   List<Staff> _getDummyStaff() {
     return [
       Staff(id: 's1', name: '佐藤 健一', role: '店長'),

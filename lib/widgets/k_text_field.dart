@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KTextField extends StatelessWidget {
   final String label;
@@ -23,7 +24,7 @@ class KTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 8.0)),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
@@ -34,7 +35,7 @@ class KTextField extends StatelessWidget {
           prefixIcon: icon != null ? Icon(icon) : null,
           suffixIcon: suffix,
           border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 12)),
         ),
       ),
     );

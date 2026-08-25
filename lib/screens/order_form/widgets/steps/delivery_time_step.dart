@@ -124,30 +124,23 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. 配達・引取り区分
-            _buildSectionHeader('① 配達・引取り区分'),
+            // 1. 受注区分（デリカ・結膳・直取・その他）＋ 配達日時
+            _buildSectionHeader('① 受注区分'),
+            _buildOrderSourceRow(context),
+            SizedBox(height: rs(context, 10)),
             Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: KChoiceGroup(
-                    label: '', 
-                    selectedValue: widget.deliveryType, 
-                    items: [
-                      KChoiceItem(label: '配送', value: '配送'), 
-                      KChoiceItem(label: '引取', value: '引取')
-                    ], 
-                    onSelected: widget.onTypeSelected,
-                    showLabel: false,
-                  ),
+                  child: _buildOrderSourceResultText(context),
                 ),
                 SizedBox(width: rs(context, 12)),
                 Expanded(
                   flex: 7,
                   child: _buildDateTimeDisplayField(
-                    context, 
-                    widget.deliveryDate, 
-                    widget.selectedTime, 
+                    context,
+                    widget.deliveryDate,
+                    widget.selectedTime,
                     widget.isDateSelected,
                     widget.isTimeSelected,
                     Colors.deepPurple,
@@ -159,15 +152,10 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             ),
             SizedBox(height: rs(context, 10)),
 
-            // 1.5 受注区分 (追加)
-            _buildSectionHeader('② 受注区分の選択'),
-            _buildOrderSourceRow(context),
-            SizedBox(height: rs(context, 10)),
-
             // 2. ゴミ回収の日時
-            _buildSectionHeader('③ ゴミ回収の日時'),
+            _buildSectionHeader('② ゴミ回収の日時'),
             SizedBox(
-              height: 44,
+              height: rs(context, 50),
               child: Row(
                 children: [
                   Expanded(
@@ -202,9 +190,9 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                       children: [
                         Expanded(
                           child: Container(
-                            height: 44,
+                            height: rs(context, 50),
                             alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.transparent), // Align with fields
                             ),
@@ -231,7 +219,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             SizedBox(height: rs(context, 10)),
 
             // 3. 受取人の選択
-            _buildSectionHeader('④ 受取人の選択'),
+            _buildSectionHeader('③ 受取人の選択'),
             _buildReceiverArea(context),
 
             SizedBox(height: rs(context, 20)),
@@ -279,20 +267,20 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     final String timeText = isTimeSelected ? "${time.hour}:${time.minute.toString().padLeft(2, '0')}" : "未設定";
 
     return Container(
-      height: 44,
+      height: rs(context, 50),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
       child: Row(
         children: [
           Expanded(
             child: InkWell(
               onTap: onTap,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(8)),
+              borderRadius: BorderRadius.horizontal(left: Radius.circular(rs(context, 8))),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
                 child: Row(
                   children: [
                     Text(
@@ -303,7 +291,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                         color: isDateSelected ? Colors.black87 : Colors.grey,
                       ),
                     ),
-                    SizedBox(width: 24),
+                    SizedBox(width: rs(context, 24)),
                     Text(
                       "時間：$timeText",
                       style: TextStyle(
@@ -319,12 +307,12 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
               ),
             ),
           ),
-          VerticalDivider(width: 1, thickness: 1, color: Colors.grey.shade200, indent: 8, endIndent: 8),
+          VerticalDivider(width: rs(context, 1), thickness: 1, color: Colors.grey.shade200, indent: 8, endIndent: 8),
           IconButton(
-            icon: Icon(Icons.settings, color: color, size: 20),
+            icon: Icon(Icons.settings, color: color, size: rs(context, 20)),
             onPressed: onSettingsPressed,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 40),
+            constraints: BoxConstraints(minWidth: rs(context, 40)),
             splashRadius: 20,
           ),
         ],
@@ -405,10 +393,10 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                             label: '詳細',
                             controller: widget.trashPickupLocationController,
                             maxLines: 1,
-                            height: 44,
+                            height: rs(context, 50),
                             showLabel: false,
                           )
-                        : const SizedBox(height: 44), // No label, so just field height
+                        : SizedBox(height: rs(context, 50)), // No label, so just field height
                   ),
                   SizedBox(width: rs(context, 8)),
                   SizedBox(width: rs(context, 12)),
@@ -434,10 +422,10 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
 
   Widget _buildReceiverModeToggle(BuildContext context) {
     return Container(
-      height: rs(context, 44),
+      height: rs(context, 50),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
       child: Row(
         children: ['ご本人様', '履歴から選択', '新規追加'].map((mode) {
@@ -459,7 +447,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.deepPurple : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
                 ),
                 child: Text(
                   mode,
@@ -485,9 +473,9 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
       ).toList();
 
       if (filteredReceivers.isEmpty) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-          child: Text('履歴なし', style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold)),
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: rs(context, 12.0), horizontal: rs(context, 8.0)),
+          child: Text('履歴なし', style: TextStyle(color: Colors.grey, fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
         );
       }
       return Wrap(
@@ -514,16 +502,16 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: Colors.blue.shade50,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
         border: Border.all(color: Colors.blue.shade100),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: Colors.blue, size: 18),
-          const SizedBox(width: 8),
+          Icon(Icons.check_circle, color: Colors.blue, size: rs(context, 18)),
+          SizedBox(width: rs(context, 8)),
           Expanded(
             child: Text('受取人：${widget.receiverController.text}', 
               style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: rf(context, 14))),
@@ -546,13 +534,17 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     );
   }
 
+  /// 受注区分の選択に応じて配送・引取区分(deliveryType)を自動的に決定する。
+  /// 「直取」＝引取、それ以外（デリカ・結膳・その他）＝配送。
+  void _selectOrderSource(String source) {
+    widget.onOrderSourceChanged(source);
+    widget.onTypeSelected(source == '直取' ? '引取' : '配送');
+  }
+
   Widget _buildOrderSourceRow(BuildContext context) {
-    final bool isPickup = widget.deliveryType == '引取';
-    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // ボタンエリア (50%) // 修正：支払いステップと統一感を出すため比率を調整
         Expanded(
           flex: 50,
           child: Align(
@@ -561,31 +553,24 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                _choiceChip(context, '直取', widget.orderSource == '直取', (v) => widget.onOrderSourceChanged('直取')),
-                _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => widget.onOrderSourceChanged('結膳'), enabled: !isPickup),
-                _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => widget.onOrderSourceChanged('デリカ'), enabled: !isPickup),
-                _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => widget.onOrderSourceChanged('その他'), enabled: !isPickup),
+                _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => _selectOrderSource('デリカ')),
+                _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => _selectOrderSource('結膳')),
+                _choiceChip(context, '直取', widget.orderSource == '直取', (v) => _selectOrderSource('直取')),
+                _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => _selectOrderSource('その他')),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 16),
-        // 詳細エリア (50%) // 修正：入力フィールドの幅を最大限広げるため 50:50 に設定
+        SizedBox(width: rs(context, 16)),
         Expanded(
           flex: 50,
           child: (widget.orderSource == 'その他')
-              ? Opacity(
-                  opacity: isPickup ? 0.5 : 1.0,
-                  child: IgnorePointer(
-                    ignoring: isPickup,
-                    child: KMultimodalTextField(
-                      label: '',
-                      hintText: '受注区分（詳細）を入力',
-                      showLabel: false,
-                      controller: widget.orderSourceOtherController,
-                      height: rs(context, 44),
-                    ),
-                  ),
+              ? KMultimodalTextField(
+                  label: '',
+                  hintText: '受注区分（詳細）を入力',
+                  showLabel: false,
+                  controller: widget.orderSourceOtherController,
+                  height: rs(context, 50),
                 )
               : const SizedBox.shrink(),
         ),
@@ -593,19 +578,40 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     );
   }
 
-  Widget _choiceChip(BuildContext context, String label, bool isSelected, Function(bool) onSelected, {bool enabled = true}) {
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
-      child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
-        selected: isSelected,
-        onSelected: enabled ? onSelected : null,
-        selectedColor: Colors.deepPurple,
-        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        visualDensity: VisualDensity.compact,
-        showCheckmark: false,
+  /// 選択された受注区分と配達日時のまとめテキスト（例：直取：8月25日 0:00）
+  Widget _buildOrderSourceResultText(BuildContext context) {
+    final String sourceLabel = widget.orderSource == 'その他' && widget.orderSourceOtherController.text.isNotEmpty
+        ? widget.orderSourceOtherController.text
+        : widget.orderSource;
+    final String dateText = widget.isDateSelected ? DateFormat('M月d日').format(widget.deliveryDate) : "未設定";
+    final String timeText = widget.isTimeSelected ? "${widget.selectedTime.hour}:${widget.selectedTime.minute.toString().padLeft(2, '0')}" : "未設定";
+
+    return Container(
+      height: rs(context, 50),
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
+      child: Text(
+        '$sourceLabel：$dateText $timeText',
+        style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.deepPurple),
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  Widget _choiceChip(BuildContext context, String label, bool isSelected, Function(bool) onSelected) {
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
+      selected: isSelected,
+      onSelected: onSelected,
+      selectedColor: Colors.deepPurple,
+      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
+      visualDensity: VisualDensity.compact,
+      showCheckmark: false,
     );
   }
 }
@@ -770,7 +776,7 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
                           child: _buildInputFields(),
                         ),
                         SizedBox(width: rav(context, 32)),
-                        Container(width: 1, height: rs(context, 300), color: Colors.grey.shade200),
+                        Container(width: rs(context, 1), height: rs(context, 300), color: Colors.grey.shade200),
                         SizedBox(width: rav(context, 32)),
                         SizedBox(
                           width: rs(context, 260),
@@ -859,7 +865,7 @@ class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
         padding: EdgeInsets.symmetric(horizontal: rav(context, 16), vertical: rav(context, 8)),
         decoration: BoxDecoration(
           color: isActive ? widget.themeColor.withValues(alpha: 0.05) : Colors.white,
-          border: Border.all(color: isActive ? widget.themeColor : Colors.grey.shade300, width: 2),
+          border: Border.all(color: isActive ? widget.themeColor : Colors.grey.shade300, width: rs(context, 2)),
           borderRadius: BorderRadius.circular(rav(context, 12)),
         ),
         child: Row(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'k_responsive.dart';
 
 class KTileSelector<T> extends StatelessWidget {
   final String label;
@@ -23,16 +24,16 @@ class KTileSelector<T> extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.black54),
+          style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: rs(context, 8)),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
+            mainAxisSpacing: rs(context, 8),
+            crossAxisSpacing: rs(context, 8),
             childAspectRatio: 2.5,
           ),
           itemCount: items.length,
@@ -44,20 +45,20 @@ class KTileSelector<T> extends StatelessWidget {
               onTap: () => onSelected(item.value),
               child: Container(
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 8)),
                 decoration: BoxDecoration(
                   color: isSelected ? Colors.blueGrey.shade700 : Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
                   border: Border.all(
                     color: isSelected ? Colors.blueGrey.shade700 : Colors.grey.shade300,
-                    width: 1.5,
+                    width: rs(context, 1.5),
                   ),
                 ),
                 child: Text(
                   item.label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: rf(context, 15),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     color: isSelected ? Colors.white : Colors.black87,
                   ),

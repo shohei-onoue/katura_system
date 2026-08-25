@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/k_japanese_input_pad.dart';
+import '../../../widgets/k_responsive.dart';
 
 class RegistrationInputPad extends StatelessWidget {
   final TextEditingController controller;
@@ -14,8 +15,8 @@ class RegistrationInputPad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 400,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      width: rs(context, 400),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 10)),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
         border: Border(left: BorderSide(color: Colors.grey.shade200)),

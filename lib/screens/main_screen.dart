@@ -8,6 +8,8 @@ import 'staff_management_screen.dart';
 import 'order_list_screen.dart';
 import 'planning_screen.dart';
 import 'analysis_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/k_responsive.dart';
 
 /// 経営効率化を極めたメイン司令塔画面
 /// ループエンジニアリング評価：
@@ -68,6 +70,8 @@ class _MainScreenState extends State<MainScreen> {
         return const MenuMasterScreen();
       case 8: // スタッフ管理
         return const StaffManagementScreen();
+      case 9: // 設定
+        return const SettingsScreen();
       default:
         return _buildUnderConstruction();
     }
@@ -102,7 +106,7 @@ class _MainScreenState extends State<MainScreen> {
                   },
                 ),
               ),
-              const VerticalDivider(thickness: 1, width: 1, color: Color(0xFFEEEEEE)),
+              VerticalDivider(thickness: 1, width: rs(context, 1), color: Color(0xFFEEEEEE)),
             ],
             Expanded(
               flex: isMobile ? 100 : 84,
@@ -119,9 +123,9 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.construction_rounded, size: 80, color: Colors.orange.withValues(alpha: 0.3)),
-          const SizedBox(height: 24),
-          const Text('機能準備中', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          Icon(Icons.construction_rounded, size: rs(context, 80), color: Colors.orange.withValues(alpha: 0.3)),
+          SizedBox(height: rs(context, 24)),
+          Text('機能準備中', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
         ],
       ),
     );

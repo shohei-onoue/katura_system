@@ -99,7 +99,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     flex: 65,
                     child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(rs(context, 20)),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15)],
                       ),
                       clipBehavior: Clip.antiAlias,
@@ -149,8 +149,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+          padding: EdgeInsets.all(rs(context, 6)),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(rs(context, 12)), border: Border.all(color: Colors.grey.shade200)),
           child: Row(
             children: [
               _modeTab('売上規模', HeatmapMode.revenue),
@@ -163,12 +163,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         Expanded(
           child: Container(
             padding: EdgeInsets.all(rs(context, 20)),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(rs(context, 16)), border: Border.all(color: Colors.grey.shade200)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('SKU別 利益・廃棄分析', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
-                const SizedBox(height: 16),
+                SizedBox(height: rs(context, 16)),
                 Expanded(
                   child: ListView(
                     children: [
@@ -194,13 +194,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         behavior: HitTestBehavior.opaque,
         onTap: () { setState(() => _selectedMode = mode); _calculateMetrics(); },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
           decoration: BoxDecoration(
             color: isSelected ? Colors.deepOrange : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
           alignment: Alignment.center,
-          child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 11)),
+          child: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: rf(context, 11))),
         ),
       ),
     );
@@ -208,12 +208,12 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   Widget _buildSkuItem(String name, double margin, double waste, int sales) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(rs(context, 12)),
         decoration: BoxDecoration(
           color: Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(rs(context, 8)),
         ),
         child: Row(
           children: [
@@ -221,14 +221,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 2),
-                  Text('累計売上: $sales個', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                  Text(name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 13))),
+                  SizedBox(height: rs(context, 2)),
+                  Text('累計売上: $sales個', style: TextStyle(fontSize: rf(context, 10), color: Colors.grey.shade600)),
                 ],
               ),
             ),
             _metricBadge('${(margin * 100).toInt()}%', Colors.blue.shade700, '利益率'),
-            const SizedBox(width: 12),
+            SizedBox(width: rs(context, 12)),
             _metricBadge('${(waste * 100).toInt()}%', Colors.red.shade700, '廃棄率', isWarning: waste > 0.05),
           ],
         ),
@@ -239,21 +239,21 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget _metricBadge(String text, Color color, String label, {bool isWarning = false}) {
     final activeColor = isWarning ? Colors.red : color;
     return SizedBox(
-      width: 45,
+      width: rs(context, 45),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 8, color: Colors.grey)),
-          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: rf(context, 8), color: Colors.grey)),
+          SizedBox(height: rs(context, 2)),
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: EdgeInsets.symmetric(vertical: rs(context, 2)),
             width: double.infinity,
             decoration: BoxDecoration(
               color: activeColor.withValues(alpha: 0.1), 
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(rs(context, 4)),
               border: Border.all(color: activeColor.withValues(alpha: 0.2)),
             ),
             alignment: Alignment.center,
-            child: Text(text, style: TextStyle(color: activeColor, fontWeight: FontWeight.bold, fontSize: 11)),
+            child: Text(text, style: TextStyle(color: activeColor, fontWeight: FontWeight.bold, fontSize: rf(context, 11))),
           ),
         ],
       ),
@@ -266,23 +266,23 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (_selectedMode == HeatmapMode.loyalty) title = '顧客継続状況 (リピート判定)';
 
     return Positioned(
-      top: 16, left: 16,
+      top: rs(context, 16), left: rs(context, 16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(8), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
+        padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
+        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(rs(context, 8)), boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)]),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
             if (_selectedMode == HeatmapMode.loyalty) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: rs(context, 8)),
               Row(
                 children: [
                   _legendItem('新規', Colors.red),
-                  const SizedBox(width: 8),
+                  SizedBox(width: rs(context, 8)),
                   _legendItem('継続', Colors.orange),
-                  const SizedBox(width: 8),
+                  SizedBox(width: rs(context, 8)),
                   _legendItem('離反', Colors.grey),
                 ],
               ),
@@ -296,9 +296,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget _legendItem(String label, Color color) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color.withValues(alpha: 0.7), shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black87)),
+        Container(width: rs(context, 8), height: rs(context, 8), decoration: BoxDecoration(color: color.withValues(alpha: 0.7), shape: BoxShape.circle)),
+        SizedBox(width: rs(context, 4)),
+        Text(label, style: TextStyle(fontSize: rf(context, 10), color: Colors.black87)),
       ],
     );
   }

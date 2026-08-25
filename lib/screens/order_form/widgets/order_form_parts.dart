@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../../widgets/k_responsive.dart';
 
+/// 受注フォーム全ステップで共通の色・高さトークン
+class OrderFormTokens {
+  static const Color titleBarColor = Color(0xFF000038);
+  /// 入力フィールド・ボタンの共通高さ
+  static double fieldHeight(BuildContext context) => rs(context, 50);
+}
+
 class OrderFormCard extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -18,11 +25,12 @@ class OrderFormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(rav(context, 16));
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(rav(context, 16)),
+        borderRadius: radius,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -34,18 +42,26 @@ class OrderFormCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: EdgeInsets.all(rav(context, 16)),
-            child: Row(
-              children: [
-                Icon(icon, color: Colors.deepOrange, size: rav(context, 20)),
-                SizedBox(width: rav(context, 8)),
-                Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
-                if (trailing != null) ...[const Spacer(), trailing!],
-              ],
+          Container(
+            decoration: BoxDecoration(
+              color: OrderFormTokens.titleBarColor,
+              borderRadius: BorderRadius.only(
+                topLeft: radius.topLeft,
+                topRight: radius.topRight,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(rav(context, 16)),
+              child: Row(
+                children: [
+                  Icon(icon, color: Colors.white, size: rav(context, 20)),
+                  SizedBox(width: rav(context, 8)),
+                  Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.white)),
+                  if (trailing != null) ...[const Spacer(), trailing!],
+                ],
+              ),
             ),
           ),
-          const Divider(height: 1),
           Padding(padding: EdgeInsets.all(rav(context, 16)), child: child),
         ],
       ),
@@ -71,7 +87,7 @@ class CustomerInfoBanner extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(rav(context, 12)),
-          border: Border.all(color: Colors.blueGrey.shade100, width: 1.5),
+          border: Border.all(color: Colors.blueGrey.shade100, width: rs(context, 1.5)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -86,14 +102,14 @@ class CustomerInfoBanner extends StatelessWidget {
                   SizedBox(height: rav(context, 4)),
                   if (customer!.furigana.isNotEmpty)
                     Text(customer!.furigana, 
-                      style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, height: 1.1)),
+                      style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, height: rs(context, 1.1))),
                   Text(
                     customer!.name,
                     style: TextStyle(
                       fontSize: rf(context, 28),
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,
-                      height: 1.2,
+                      height: rs(context, 1.2),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -119,7 +135,7 @@ class CustomerInfoBanner extends StatelessWidget {
                       fontSize: rf(context, 22),
                       fontWeight: FontWeight.bold,
                       color: Colors.blueGrey.shade700,
-                      height: 1.2,
+                      height: rs(context, 1.2),
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,

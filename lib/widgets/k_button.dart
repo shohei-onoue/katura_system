@@ -32,7 +32,7 @@ class KButton extends StatelessWidget {
           ? OutlinedButton(
               onPressed: onPressed,
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: primaryColor, width: 2),
+                side: BorderSide(color: primaryColor, width: rs(context, 2)),
                 foregroundColor: primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(rav(context, 8)),

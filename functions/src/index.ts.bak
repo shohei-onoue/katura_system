@@ -1,0 +1,83 @@
+import * as functions from "firebase-functions";
+import * as admin from "firebase-admin";
+import axios from "axios";
+
+admin.initializeApp();
+
+// 第1世代のスケジュール関数
+export const scheduledSmsSender = functions.pubsub
+  .schedule("every 1 minutes")
+  .onRun(async (context) => {
+    const now = new Date();
+
+    const pendingOrders = await admin.firestore()
+      .collection("orders")
+      .where("scheduledSnsDateTime", "<=", now.toISOString())
+      .where("snsSent", "==", false)
+      .get();
+
+    console.log(`Checking for pending SMS... Found: ${pendingOrders.size}`);
+
+    for (const doc of pendingOrders.docs) {
+      const order = doc.data();
+      const rawPhone = order.phoneNumber || "";
+      const cleanPhone = rawPhone.replace(/[^0-9]/g, "");
+      const internationalPhone = cleanPhone.startsWith("0") ? "81" + cleanPhone.substring(1) : cleanPhone;
+
+      const message = buildSmsMessage(order);
+
+      try {
+        const response = await axios.post("https://rest.nexmo.com/sms/json", {
+          api_key: "14caff28",
+          api_secret: "FumC5ojafuwOcWXK",
+          from: "Katura",
+          to: internationalPhone,
+          text: message,
+          type: "unicode"
+        });
+
+        const status = response.data.messages[0].status;
+        if (status === "0") {
+          await doc.ref.update({ snsSent: true });
+          console.log(`Successfully sent SMS to ${order.customerName}`);
+        } else {
+          console.error(`Vonage error for ${order.customerName}: ${response.data.messages[0]["error-text"]}`);
+        }
+      } catch (error) {
+        console.error(`Failed to send SMS:`, error);
+      }
+    }
+    return null;
+  });
+
+function buildSmsMessage(order: any): string {
+  const deliveryDate = new Date(order.deliveryDate);
+  const dateStr = `${deliveryDate.getMonth() + 1}月${deliveryDate.getDate()}日`;
+  const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
+  const weekDay = weekDays[deliveryDate.getDay()];
+
+  let itemsText = "";
+  if (Array.isArray(order.items)) {
+    order.items.forEach((item: any, index: number) => {
+      itemsText += `${index + 1}.${item.name} x${item.quantity}\n`;
+    });
+  }
+
+  let trashInfo = "なし";
+  if (order.trashPickupDateTime) {
+    const trashDate = new Date(order.trashPickupDateTime);
+    trashInfo = `${trashDate.getHours()}:${trashDate.getMinutes().toString().padStart(2, '0')}`;
+  }
+
+  const isPickup = order.deliveryType === '引取' || order.deliveryType === '店頭引取';
+  const actionText = isPickup ? "お待ちしております" : "お届けいたします";
+
+  const branchPhones: {[key: string]: string} = {
+    '岡崎本店': '0564-23-8861',
+    '名古屋店': '050-1748-2670',
+    '岐阜店': '050-1748-2670',
+  };
+  const storePhone = branchPhones[order.branchName] || "";
+
+  return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${actionText}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
+}

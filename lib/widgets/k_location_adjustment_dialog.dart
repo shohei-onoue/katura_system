@@ -46,7 +46,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
     <title>Street View Adjustment</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=places&language=ja"></script>
     <style>
-      html, body, #map { height: 100%; margin: 0; padding: 0; }
+      html, body, #map { height: rs(context, 100)%; margin: 0; padding: 0; }
     </style>
   </head>
   <body>
@@ -186,14 +186,14 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
                   Row(
                     children: [
                       const Icon(Icons.location_on, color: Colors.deepOrange),
-                      const SizedBox(width: 12),
+                      SizedBox(width: rs(context, 12)),
                       Expanded(
                         child: Text(_currentAddress, 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: rs(context, 4)),
                   Text('※ストリートビューで向きを合わせると、その写真が保存されます', 
                     style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
                 ],

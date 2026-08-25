@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
+import '../../../widgets/k_responsive.dart';
 
 class CustomerDetailDialog extends StatelessWidget {
   final Customer customer;
@@ -12,7 +13,7 @@ class CustomerDetailDialog extends StatelessWidget {
       title: Row(
         children: [
           const Icon(Icons.person, color: Colors.deepOrange),
-          const SizedBox(width: 8),
+          SizedBox(width: rs(context, 8)),
           Text('${customer.name} 様 詳細'),
           const Spacer(),
           IconButton(
@@ -22,7 +23,7 @@ class CustomerDetailDialog extends StatelessWidget {
         ],
       ),
       content: SizedBox(
-        width: 700,
+        width: rs(context, 700),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,10 +36,10 @@ class CustomerDetailDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _detailItem('顧客氏名', customer.name),
-                        _detailItem('ふりがな', customer.furigana),
-                        _detailItem('所属企業', customer.companyName),
-                        _detailItem('電話番号', customer.phoneNumber),
+                        _detailItem(context, '顧客氏名', customer.name),
+                        _detailItem(context, 'ふりがな', customer.furigana),
+                        _detailItem(context, '所属企業', customer.companyName),
+                        _detailItem(context, '電話番号', customer.phoneNumber),
                       ],
                     ),
                   ),
@@ -46,28 +47,28 @@ class CustomerDetailDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _detailItem('代表住所', customer.address),
-                        _detailItem('位置座標', '${customer.latitude ?? "-"}, ${customer.longitude ?? "-"}'),
-                        _detailItem('メール', customer.email),
+                        _detailItem(context, '代表住所', customer.address),
+                        _detailItem(context, '位置座標', '${customer.latitude ?? "-"}, ${customer.longitude ?? "-"}'),
+                        _detailItem(context, 'メール', customer.email),
                       ],
                     ),
                   ),
                 ],
               ),
-              const Divider(height: 48, thickness: 1),
-              const Text('【 配達先マスター・履歴 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blueGrey)),
-              const SizedBox(height: 16),
+              Divider(height: rs(context, 48), thickness: 1),
+              Text('【 配達先マスター・履歴 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18), color: Colors.blueGrey)),
+              SizedBox(height: rs(context, 16)),
               ...customer.deliveryAddresses.map((addr) {
                 final parts = addr.split(': ');
                 final facilityName = parts.length > 1 ? parts[0] : '名称なし';
                 final addressWithCoord = parts.length > 1 ? parts[1] : addr;
                 
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
+                  margin: EdgeInsets.only(bottom: rs(context, 12)),
+                  padding: EdgeInsets.all(rs(context, 16)),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(rs(context, 8)),
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: Column(
@@ -75,16 +76,16 @@ class CustomerDetailDialog extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.business, size: 18, color: Colors.deepOrange),
-                          const SizedBox(width: 8),
+                          Icon(Icons.business, size: rs(context, 18), color: Colors.deepOrange),
+                          SizedBox(width: rs(context, 8)),
                           Expanded(
-                            child: Text(facilityName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            child: Text(facilityName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: rs(context, 8)),
                       Padding(
-                        padding: const EdgeInsets.only(left: 26),
+                        padding: EdgeInsets.only(left: rs(context, 26)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -92,7 +93,7 @@ class CustomerDetailDialog extends StatelessWidget {
                             if (addressWithCoord.contains('('))
                               Text(
                                 '座標: ${addressWithCoord.substring(addressWithCoord.indexOf('('))}',
-                                style: const TextStyle(color: Colors.blueGrey, fontSize: 13, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: Colors.blueGrey, fontSize: rf(context, 13), fontWeight: FontWeight.bold),
                               ),
                           ],
                         ),
@@ -101,23 +102,23 @@ class CustomerDetailDialog extends StatelessWidget {
                   ),
                 );
               }),
-              const Divider(height: 48, thickness: 1),
-              const Text('【 注文履歴（施設別サマリー） 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.blueGrey)),
-              const SizedBox(height: 16),
+              Divider(height: rs(context, 48), thickness: 1),
+              Text('【 注文履歴（施設別サマリー） 】', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18), color: Colors.blueGrey)),
+              SizedBox(height: rs(context, 16)),
               if (customer.orderHistory.isEmpty)
                 const Text('履歴なし', style: TextStyle(color: Colors.grey))
               else
                 ...customer.orderHistory.map((history) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      padding: EdgeInsets.symmetric(vertical: rs(context, 6)),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.history, size: 16, color: Colors.grey),
-                          const SizedBox(width: 8),
+                          Icon(Icons.history, size: rs(context, 16), color: Colors.grey),
+                          SizedBox(width: rs(context, 8)),
                           Expanded(
                             child: Text(
                               history,
-                              style: const TextStyle(fontSize: 15, fontFamily: 'monospace'),
+                              style: TextStyle(fontSize: rf(context, 15), fontFamily: 'monospace'),
                             ),
                           ),
                         ],
@@ -136,17 +137,17 @@ class CustomerDetailDialog extends StatelessWidget {
     );
   }
 
-  Widget _detailItem(String label, String value) {
+  Widget _detailItem(BuildContext context, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: rs(context, 8.0)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: rs(context, 120),
             child: Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
+          Expanded(child: Text(value, style: TextStyle(fontSize: rf(context, 16)))),
         ],
       ),
     );

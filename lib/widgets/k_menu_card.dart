@@ -48,7 +48,7 @@ class KMenuCard extends StatelessWidget {
           Expanded(
             flex: 10,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(rs(context, 10))),
               child: _buildImage(menu.imageUrl),
             ),
           ),
@@ -66,7 +66,7 @@ class KMenuCard extends StatelessWidget {
                   child: Text(
                     menu.name,
                     style: TextStyle(
-                      fontSize: rf(context, 14), 
+                      fontSize: rf(context, 14),
                       fontWeight: FontWeight.bold,
                       height: 1.2,
                     ),
@@ -94,7 +94,7 @@ class KMenuCard extends StatelessWidget {
                     onChanged: onQuantityChanged,
                     title: menu.name,
                     width: rs(context, 60),
-                    height: 36,
+                    height: rs(context, 36),
                   ),
                 ),
                 SizedBox(height: rs(context, 8)),
@@ -103,8 +103,8 @@ class KMenuCard extends StatelessWidget {
                 KButton(
                   label: '詳細設定',
                   onPressed: onDetailsPressed,
-                  height: 36,
-                  fontSize: 13,
+                  height: rs(context, 36),
+                  fontSize: rf(context, 13),
                 ),
               ],
             ),
