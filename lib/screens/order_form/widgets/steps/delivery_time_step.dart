@@ -6,7 +6,6 @@ import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_date_time_selection_dialog.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
-import '../../../../widgets/k_dial_pad.dart';
 import '../order_form_parts.dart';
 
 class DeliveryTimeStep extends StatefulWidget {
@@ -127,29 +126,17 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             // 1. 受注区分（デリカ・結膳・直取・その他）＋ 配達日時
             _buildSectionHeader('① 受注区分'),
             _buildOrderSourceRow(context),
-            SizedBox(height: rs(context, 10)),
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: _buildOrderSourceResultText(context),
-                ),
-                SizedBox(width: rs(context, 12)),
-                Expanded(
-                  flex: 7,
-                  child: _buildDateTimeDisplayField(
-                    context,
-                    widget.deliveryDate,
-                    widget.selectedTime,
-                    widget.isDateSelected,
-                    widget.isTimeSelected,
-                    Colors.deepPurple,
-                    () => _showDateTimeDialog(context, isTrash: false),
-                    () => _showSettingsCustomDialog(context, isTrash: false),
-                  ),
-                ),
-              ],
-            ),
+            if (widget.orderSource == 'その他') ...[
+              SizedBox(height: rs(context, 10)),
+              KMultimodalTextField(
+                label: '',
+                hintText: '受注区分（詳細）を入力',
+                showLabel: false,
+                controller: widget.orderSourceOtherController,
+                height: rs(context, 50),
+                maxLines: 1,
+              ),
+            ],
             SizedBox(height: rs(context, 10)),
 
             // 2. ゴミ回収の日時
@@ -159,7 +146,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
               child: Row(
                 children: [
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: KChoiceGroup<bool>(
                       label: '',
                       selectedValue: widget.trashPickupRequested,
@@ -176,16 +163,14 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                   ),
                   SizedBox(width: rs(context, 12)),
                   Expanded(
-                    flex: 7,
+                    flex: 6,
                     child: widget.trashPickupRequested ? _buildDateTimeDisplayField(
-                      context, 
-                      widget.trashPickupDateTime ?? widget.deliveryDate, 
-                      widget.trashPickupDateTime ?? widget.deliveryDate, 
+                      context,
+                      widget.trashPickupDateTime ?? widget.deliveryDate,
+                      widget.trashPickupDateTime ?? widget.deliveryDate,
                       widget.trashPickupDateTime != null,
                       widget.trashPickupDateTime != null,
-                      Colors.orange,
                       () => _showDateTimeDialog(context, isTrash: true),
-                      () => _showSettingsCustomDialog(context, isTrash: true),
                     ) : Row(
                       children: [
                         Expanded(
@@ -254,14 +239,12 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
   }
 
   Widget _buildDateTimeDisplayField(
-    BuildContext context, 
-    DateTime date, 
-    DateTime time, 
+    BuildContext context,
+    DateTime date,
+    DateTime time,
     bool isDateSelected,
-    bool isTimeSelected, 
-    Color color,
+    bool isTimeSelected,
     VoidCallback onTap,
-    VoidCallback onSettingsPressed,
   ) {
     final String dateText = isDateSelected ? DateFormat('yyyy年M月d日').format(date) : "未設定";
     final String timeText = isTimeSelected ? "${time.hour}:${time.minute.toString().padLeft(2, '0')}" : "未設定";
@@ -306,14 +289,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
                 ),
               ),
             ),
-          ),
-          VerticalDivider(width: rs(context, 1), thickness: 1, color: Colors.grey.shade200, indent: 8, endIndent: 8),
-          IconButton(
-            icon: Icon(Icons.settings, color: color, size: rs(context, 20)),
-            onPressed: onSettingsPressed,
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(minWidth: rs(context, 40)),
-            splashRadius: 20,
           ),
         ],
       ),
@@ -367,7 +342,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 3,
+              flex: 4,
               child: KChoiceGroup<String>(
                 label: '',
                 selectedValue: widget.trashPickupLocation,
@@ -383,25 +358,16 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             ),
             SizedBox(width: rs(context, 12)),
             Expanded(
-              flex: 7,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: (widget.trashPickupLocation == '指定場所' && enabled)
-                        ? KMultimodalTextField(
-                            label: '詳細',
-                            controller: widget.trashPickupLocationController,
-                            maxLines: 1,
-                            height: rs(context, 50),
-                            showLabel: false,
-                          )
-                        : SizedBox(height: rs(context, 50)), // No label, so just field height
-                  ),
-                  SizedBox(width: rs(context, 8)),
-                  SizedBox(width: rs(context, 12)),
-                ],
-              ),
+              flex: 6,
+              child: (widget.trashPickupLocation == '指定場所' && enabled)
+                  ? KMultimodalTextField(
+                      label: '詳細',
+                      controller: widget.trashPickupLocationController,
+                      maxLines: 1,
+                      height: kFieldHeight(context),
+                      showLabel: false,
+                    )
+                  : SizedBox(height: kFieldHeight(context)), // No label, so just field height
             ),
           ],
         ),
@@ -521,19 +487,6 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     );
   }
 
-  void _showSettingsCustomDialog(BuildContext context, {required bool isTrash}) {
-    showDialog(
-      context: context,
-      builder: (context) => _TimeSettingsCustomDialog(
-        initialMin: isTrash ? widget.trashTimeMin : widget.timeMin,
-        initialMax: isTrash ? widget.trashTimeMax : widget.timeMax,
-        initialInterval: isTrash ? widget.trashTimeInterval : widget.timeInterval,
-        themeColor: isTrash ? Colors.orange : Colors.deepPurple,
-        onSave: isTrash ? widget.onTrashTimeSettingsChanged : widget.onTimeSettingsChanged,
-      ),
-    );
-  }
-
   /// 受注区分の選択に応じて配送・引取区分(deliveryType)を自動的に決定する。
   /// 「直取」＝引取、それ以外（デリカ・結膳・その他）＝配送。
   void _selectOrderSource(String source) {
@@ -541,349 +494,44 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     widget.onTypeSelected(source == '直取' ? '引取' : '配送');
   }
 
+  /// 受注区分の選択ボタンと配達日時の入力フィールドを同じRowに配置する。
+  /// ボタンサイズは②ゴミ回収の日時項目（KChoiceGroup）と同一にする。
   Widget _buildOrderSourceRow(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          flex: 50,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                _choiceChip(context, 'デリカ', widget.orderSource == 'デリカ', (v) => _selectOrderSource('デリカ')),
-                _choiceChip(context, '結膳', widget.orderSource == '結膳', (v) => _selectOrderSource('結膳')),
-                _choiceChip(context, '直取', widget.orderSource == '直取', (v) => _selectOrderSource('直取')),
-                _choiceChip(context, 'その他', widget.orderSource == 'その他', (v) => _selectOrderSource('その他')),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(width: rs(context, 16)),
-        Expanded(
-          flex: 50,
-          child: (widget.orderSource == 'その他')
-              ? KMultimodalTextField(
-                  label: '',
-                  hintText: '受注区分（詳細）を入力',
-                  showLabel: false,
-                  controller: widget.orderSourceOtherController,
-                  height: rs(context, 50),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-
-  /// 選択された受注区分と配達日時のまとめテキスト（例：直取：8月25日 0:00）
-  Widget _buildOrderSourceResultText(BuildContext context) {
-    final String sourceLabel = widget.orderSource == 'その他' && widget.orderSourceOtherController.text.isNotEmpty
-        ? widget.orderSourceOtherController.text
-        : widget.orderSource;
-    final String dateText = widget.isDateSelected ? DateFormat('M月d日').format(widget.deliveryDate) : "未設定";
-    final String timeText = widget.isTimeSelected ? "${widget.selectedTime.hour}:${widget.selectedTime.minute.toString().padLeft(2, '0')}" : "未設定";
-
-    return Container(
+    return SizedBox(
       height: rs(context, 50),
-      alignment: Alignment.centerLeft,
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
-      decoration: BoxDecoration(
-        color: Colors.deepPurple.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(rs(context, 8)),
-      ),
-      child: Text(
-        '$sourceLabel：$dateText $timeText',
-        style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.deepPurple),
-        overflow: TextOverflow.ellipsis,
-      ),
-    );
-  }
-
-  Widget _choiceChip(BuildContext context, String label, bool isSelected, Function(bool) onSelected) {
-    return ChoiceChip(
-      label: Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
-      selected: isSelected,
-      onSelected: onSelected,
-      selectedColor: Colors.deepPurple,
-      labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
-      visualDensity: VisualDensity.compact,
-      showCheckmark: false,
-    );
-  }
-}
-
-
-class _TimeSettingsCustomDialog extends StatefulWidget {
-  final TimeOfDay initialMin;
-  final TimeOfDay initialMax;
-  final int initialInterval;
-  final Color themeColor;
-  final Function(TimeOfDay, TimeOfDay, int) onSave;
-
-  const _TimeSettingsCustomDialog({
-    required this.initialMin,
-    required this.initialMax,
-    required this.initialInterval,
-    required this.themeColor,
-    required this.onSave,
-  });
-
-  @override
-  State<_TimeSettingsCustomDialog> createState() => _TimeSettingsCustomDialogState();
-}
-
-class _TimeSettingsCustomDialogState extends State<_TimeSettingsCustomDialog> {
-  late String minStr;
-  late String maxStr;
-  late String intervalStr;
-  int activeField = 0; 
-  bool _shouldOverwrite = true; 
-
-  @override
-  void initState() {
-    super.initState();
-    minStr = _timeTo4Digit(widget.initialMin);
-    maxStr = _timeTo4Digit(widget.initialMax);
-    intervalStr = widget.initialInterval.toString();
-  }
-
-  String _timeTo4Digit(TimeOfDay time) {
-    return "${time.hour.toString().padLeft(2, '0')}${time.minute.toString().padLeft(2, '0')}";
-  }
-
-  TimeOfDay? _parse4Digit(String s) {
-    if (s.isEmpty) {
-      return null;
-    }
-    final String padded = s.padLeft(4, '0');
-    final h = int.tryParse(padded.substring(0, 2));
-    final m = int.tryParse(padded.substring(2, 4));
-    if (h == null || m == null || h >= 24 || m >= 60) {
-      return null;
-    }
-    return TimeOfDay(hour: h, minute: m);
-  }
-
-  String _formatTimeDisplay(String s) {
-    if (s.isEmpty) {
-      return "00:00";
-    }
-    final String padded = s.padLeft(4, '0');
-    return "${padded.substring(0, 2)}:${padded.substring(2)}";
-  }
-
-  void _handleKeyTap(String key) {
-    setState(() {
-      if (key == 'クリア') {
-        if (activeField == 0) {
-          minStr = "";
-        } else if (activeField == 1) {
-          maxStr = "";
-        } else {
-          intervalStr = "";
-        }
-        _shouldOverwrite = false;
-        return;
-      }
-
-      String current = activeField == 0 ? minStr : (activeField == 1 ? maxStr : intervalStr);
-      
-      if (key == '⌫') {
-        if (current.isNotEmpty) {
-          current = current.substring(0, current.length - 1);
-        }
-        _shouldOverwrite = false;
-      } else {
-        if (_shouldOverwrite) {
-          current = key;
-          _shouldOverwrite = false;
-        } else {
-          final int limit = activeField == 2 ? 2 : 4;
-          if (current.length < limit) {
-            String next = current + key;
-            if (activeField == 2) {
-              if ((int.tryParse(next) ?? 0) > 60) {
-                next = "60";
-              }
-            }
-            current = next;
-          }
-        }
-      }
-
-      if (activeField == 0) {
-        minStr = current;
-      } else if (activeField == 1) {
-        maxStr = current;
-      } else {
-        intervalStr = current;
-      }
-    });
-  }
-
-  void _setActiveField(int field) {
-    setState(() {
-      activeField = field;
-      _shouldOverwrite = true;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final List<KDialKey> dialKeys = [
-      '1', '2', '3',
-      '4', '5', '6',
-      '7', '8', '9',
-      'クリア', '0', '⌫'
-    ].map((k) {
-      return KDialKey(
-        label: k,
-        onTap: () => _handleKeyTap(k),
-      );
-    }).toList();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double screenWidth = MediaQuery.of(context).size.width;
-        final double screenHeight = MediaQuery.of(context).size.height;
-        final bool isHorizontal = screenWidth > screenHeight && screenWidth > 600;
-
-        return Dialog(
-          backgroundColor: Colors.white,
-          insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 20), vertical: rs(context, 10)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
-          child: Container(
-            width: isHorizontal ? rs(context, 620) : wp(context, 0.9),
-            constraints: BoxConstraints(maxHeight: hp(context, 0.9)),
-            padding: EdgeInsets.all(rav(context, 20)),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('時間選択のカスタマイズ', 
-                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
-                  SizedBox(height: rav(context, 20)),
-                  if (isHorizontal)
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _buildInputFields(),
-                        ),
-                        SizedBox(width: rav(context, 32)),
-                        Container(width: rs(context, 1), height: rs(context, 300), color: Colors.grey.shade200),
-                        SizedBox(width: rav(context, 32)),
-                        SizedBox(
-                          width: rs(context, 260),
-                          child: _buildDialPadSection(dialKeys),
-                        ),
-                      ],
-                    )
-                  else
-                    Column(
-                      children: [
-                        _buildInputFields(),
-                        SizedBox(height: rav(context, 20)),
-                        _buildDialPadSection(dialKeys),
-                      ],
-                    ),
-                ],
-              ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: KChoiceGroup<String>(
+              label: '',
+              selectedValue: widget.orderSource,
+              items: [
+                KChoiceItem(label: 'デリカ', value: 'デリカ'),
+                KChoiceItem(label: '結膳', value: '結膳'),
+                KChoiceItem(label: '直取', value: '直取'),
+                KChoiceItem(label: 'その他', value: 'その他'),
+              ],
+              onSelected: _selectOrderSource,
+              showLabel: false,
+              selectedColor: Colors.deepPurple,
             ),
           ),
-        );
-      }
-    );
-  }
-
-  Widget _buildInputFields() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildInputRow('開始時間', _formatTimeDisplay(minStr), activeField == 0, () => _setActiveField(0)),
-        SizedBox(height: rav(context, 8)),
-        _buildInputRow('終了時間', _formatTimeDisplay(maxStr), activeField == 1, () => _setActiveField(1)),
-        SizedBox(height: rav(context, 8)),
-        _buildInputRow('表示間隔', intervalStr.isEmpty ? "0分" : "$intervalStr分", activeField == 2, () => _setActiveField(2)),
-        SizedBox(height: rav(context, 16)),
-        Text('※各項目をタップしてテンキーで入力してください', 
-          style: TextStyle(fontSize: KR.fontTiny(context), color: Colors.grey), textAlign: TextAlign.center),
-      ],
-    );
-  }
-
-  Widget _buildDialPadSection(List<KDialKey> dialKeys) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        KDialPad(keys: dialKeys),
-        SizedBox(height: rav(context, 16)),
-        Row(
-          children: [
-            Expanded(
-              child: KButton(
-                label: '戻る', 
-                onPressed: () => Navigator.pop(context),
-                isSecondary: true,
-                color: Colors.grey,
-              ),
+          SizedBox(width: rs(context, 12)),
+          Expanded(
+            flex: 6,
+            child: _buildDateTimeDisplayField(
+              context,
+              widget.deliveryDate,
+              widget.selectedTime,
+              widget.isDateSelected,
+              widget.isTimeSelected,
+              () => _showDateTimeDialog(context, isTrash: false),
             ),
-            SizedBox(width: rav(context, 12)),
-            Expanded(
-              child: KButton(
-                label: '反映', 
-                onPressed: () {
-                  final minTime = _parse4Digit(minStr);
-                  final maxTime = _parse4Digit(maxStr);
-                  final int? intervalVal = int.tryParse(intervalStr);
-      
-                  if (minTime == null || maxTime == null || intervalVal == null || intervalVal <= 0 || intervalVal > 60) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('入力内容が正しくありません（間隔は1〜60分以内）')));
-                    return;
-                  }
-                  widget.onSave(minTime, maxTime, intervalVal);
-                  Navigator.pop(context);
-                },
-                color: widget.themeColor,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInputRow(String label, String value, bool isActive, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: rav(context, 16), vertical: rav(context, 8)),
-        decoration: BoxDecoration(
-          color: isActive ? widget.themeColor.withValues(alpha: 0.05) : Colors.white,
-          border: Border.all(color: isActive ? widget.themeColor : Colors.grey.shade300, width: rs(context, 2)),
-          borderRadius: BorderRadius.circular(rav(context, 12)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: TextStyle(
-              fontSize: KR.fontSmall(context), 
-              fontWeight: FontWeight.bold, 
-              color: isActive ? widget.themeColor : Colors.blueGrey
-            )),
-            Text(value, style: TextStyle(
-              fontSize: rf(context, 20), 
-              fontWeight: FontWeight.bold,
-              color: isActive ? Colors.black87 : Colors.blueGrey.shade300
-            )),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
+

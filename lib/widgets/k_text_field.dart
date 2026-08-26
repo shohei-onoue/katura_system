@@ -25,17 +25,22 @@ class KTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: rs(context, 8.0)),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        autofocus: autofocus,
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: icon != null ? Icon(icon) : null,
-          suffixIcon: suffix,
-          border: const OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 12)),
+      child: SizedBox(
+        height: kFieldHeight(context),
+        child: TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          autofocus: autofocus,
+          onChanged: onChanged,
+          textAlignVertical: TextAlignVertical.center,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: icon != null ? Icon(icon) : null,
+            suffixIcon: suffix,
+            isDense: true,
+            border: const OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: 0),
+          ),
         ),
       ),
     );

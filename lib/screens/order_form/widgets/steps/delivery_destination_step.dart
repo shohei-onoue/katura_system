@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart' hide Ink;
-import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_recognition.dart' as mlkit;
+import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_dial_pad.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
-import '../../../../widgets/k_pen_canvas.dart';
+import '../../../../widgets/k_pen_input_dialog.dart';
 import '../../../../widgets/k_text_field.dart';
 import '../../../../services/address_service.dart';
 import '../../../../services/category_service.dart';
@@ -542,7 +541,7 @@ class FacilitySearchForm extends StatelessWidget {
               child: _AddressDialField(
                 label: '1. 地域を選択',
                 value: _buildJoinedAddress(),
-                onTap: () => _showIntegratedAddressPicker(context, isKeywordMode: false),
+                onTap: () => _showIntegratedAddressPicker(context, isKeywordMode: true),
                 isWarning: isApproximateLocation,
                 warningLabel: '代表地点',
               ),
@@ -559,34 +558,6 @@ class FacilitySearchForm extends StatelessWidget {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: rs(context, 16)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: KMultimodalTextField(
-                label: '2. 検索キーワードを入力（ペン入力対応）',
-                controller: keywordQueryController,
-                hintText: '例：病院、斎場、会館など',
-                height: rs(context, 50),
-              ),
-            ),
-            SizedBox(width: rs(context, 12)),
-            SizedBox(
-              height: rs(context, 50),
-              width: rs(context, 120),
-              child: ElevatedButton(
-                onPressed: onSearchSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
-                ),
-                child: Text('検索実行', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
               ),
             ),
           ],
@@ -726,16 +697,27 @@ class FacilitySearchForm extends StatelessWidget {
 
   String _cleanResultAddress(String addr) {
     String res = addr.replaceAll('　', ' ').trim();
-    final pref = '愛知県';
-    final city = '岡崎市';
-    final List<String> regions = [pref, city];
+
+    // 住所中に埋め込まれた郵便番号（〒000-0000）は、都道府県より前へ並べ替える
+    String zipPrefix = '';
+    final zipMatch = RegExp(r'〒\s*\d{3}-?\d{4}').firstMatch(res);
+    if (zipMatch != null) {
+      final digits = zipMatch.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
+      zipPrefix = '〒${digits.substring(0, 3)}-${digits.substring(3)} ';
+      res = (res.substring(0, zipMatch.start) + res.substring(zipMatch.end)).trim();
+    }
+
+    final pref = searchPrefecture;
+    final city = searchCity;
+    if (pref.isEmpty) return (zipPrefix + res).trim();
+    final List<String> regions = [pref, if (city.isNotEmpty) city];
     for (var region in regions) {
       while (res.contains('$region$region')) {
         res = res.replaceAll('$region$region', region);
       }
     }
     final fullRegion = '$pref$city';
-    if (res.startsWith(fullRegion)) {
+    if (fullRegion.isNotEmpty && res.startsWith(fullRegion)) {
       final tail = res.substring(fullRegion.length);
       if (tail.contains(fullRegion)) {
         res = tail.trim();
@@ -744,7 +726,7 @@ class FacilitySearchForm extends StatelessWidget {
     if (!res.startsWith(pref) && !res.contains('県')) {
       res = '$pref$city$res';
     }
-    return res.trim();
+    return (zipPrefix + res).trim();
   }
 }
 
@@ -1304,14 +1286,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   Map<String, Map<String, List<String>>> categoryHierarchy = {};
   final _categoryService = CategoryService();
 
-  final mlkit.Ink _ink = mlkit.Ink();
-  final KPenCanvasController _canvasController = KPenCanvasController();
-  List<mlkit.StrokePoint> _currentStrokePoints = [];
-  bool _isRecognizing = false;
-  bool _isModelReady = false;
   String _recognizedKeyword = "";
-  late final mlkit.DigitalInkRecognizer _recognizer;
-  final _modelManager = mlkit.DigitalInkRecognizerModelManager();
 
   final Map<String, List<String>> kanaMap = {
     'あ': ['あ', 'い', 'う', 'え', 'お'],
@@ -1336,8 +1311,6 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     tempGenre = widget.initialGenre;
     if (widget.isKeywordMode) {
       _recognizedKeyword = widget.keywordController?.text ?? "";
-      _recognizer = mlkit.DigitalInkRecognizer(languageCode: 'ja');
-      _checkModel();
     }
 
     if (tempPref.isNotEmpty && tempCity.isNotEmpty) {
@@ -1361,23 +1334,6 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   Future<void> _loadCategories() async {
     final hierarchy = await _categoryService.getCategoryHierarchy();
     if (mounted) setState(() => categoryHierarchy = hierarchy);
-  }
-
-  @override
-  void dispose() {
-    if (widget.isKeywordMode) {
-      _recognizer.close();
-      _canvasController.dispose();
-    }
-    super.dispose();
-  }
-
-  Future<void> _checkModel() async {
-    final isDownloaded = await _modelManager.isModelDownloaded('ja');
-    if (!isDownloaded) {
-      await _modelManager.downloadModel('ja');
-    }
-    if (mounted) setState(() => _isModelReady = true);
   }
 
   Future<void> _loadCities() async {
@@ -1412,7 +1368,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('地域・施設カテゴリの検索',
+                Text(widget.isKeywordMode ? '地域・キーワードの検索' : '地域・施設カテゴリの検索',
                   style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepPurple)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
@@ -1427,22 +1383,15 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             ),
             if (phase == 3) ...[
               Divider(height: rs(context, 32)),
-              SizedBox(
-                width: double.infinity,
-                height: rs(context, 50),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.isKeywordMode
-                        ? (_recognizedKeyword.isNotEmpty ? Colors.deepPurple : Colors.grey)
-                        : (tempCategory != null && tempGenre != null ? Colors.deepPurple : Colors.grey),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                  ),
-                  onPressed: widget.isKeywordMode
-                      ? (_recognizedKeyword.isNotEmpty ? widget.onSearchSubmit : null)
-                      : (tempCategory != null && tempGenre != null ? widget.onSearchSubmit : null),
-                  child: Text('この条件で検索', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
-                ),
+              KButton(
+                label: 'この条件で検索',
+                fontSize: rf(context, 20),
+                color: widget.isKeywordMode
+                    ? (_recognizedKeyword.isNotEmpty ? KR.primaryColor : Colors.grey)
+                    : (tempCategory != null && tempGenre != null ? KR.primaryColor : Colors.grey),
+                onPressed: widget.isKeywordMode
+                    ? (_recognizedKeyword.isNotEmpty ? widget.onSearchSubmit : null)
+                    : (tempCategory != null && tempGenre != null ? widget.onSearchSubmit : null),
               ),
             ],
           ],
@@ -1616,164 +1565,67 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     return KDialPad(keys: keys);
   }
 
+  void _openKeywordPenInput() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => KPenInputDialog(
+        onTextRecognized: (text) {
+          setState(() => _recognizedKeyword = text);
+          widget.keywordController?.text = text;
+        },
+      ),
+    );
+  }
+
   Widget _buildKeywordHandwritingUI(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. 判定された文字
         Text('判定されたキーワード', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
         SizedBox(height: rs(context, 8)),
-        Container(
-          height: rs(context, 80),
-          width: double.infinity,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.deepPurple.shade50,
-            borderRadius: BorderRadius.circular(rs(context, 12)),
-            border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
-          ),
-          child: Stack(
+        InkWell(
+          onTap: _openKeywordPenInput,
+          borderRadius: BorderRadius.circular(rs(context, 12)),
+          child: Container(
+            height: rs(context, 80),
+            width: double.infinity,
             alignment: Alignment.center,
-            children: [
-              Text(
-                !_isModelReady 
-                  ? "準備中..." 
-                  : (_isRecognizing ? "判定中..." : (_recognizedKeyword.isEmpty ? "下にキーワードを書いてください" : _recognizedKeyword)),
-                style: TextStyle(
-                  fontSize: rf(context, 32),
-                  fontWeight: FontWeight.bold,
-                  color: (_recognizedKeyword.isEmpty || _isRecognizing || !_isModelReady) ? Colors.grey : Colors.deepPurple.shade900,
-                ),
-                textAlign: TextAlign.center,
+            decoration: BoxDecoration(
+              color: Colors.deepPurple.shade50,
+              borderRadius: BorderRadius.circular(rs(context, 12)),
+              border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
+            ),
+            child: Text(
+              _recognizedKeyword.isEmpty ? "タップしてペン入力で書いてください" : _recognizedKeyword,
+              style: TextStyle(
+                fontSize: rf(context, 32),
+                fontWeight: FontWeight.bold,
+                color: _recognizedKeyword.isEmpty ? Colors.grey : Colors.deepPurple.shade900,
               ),
-              if (_isRecognizing) Positioned(right: rs(context, 16), child: CircularProgressIndicator()),
-            ],
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         SizedBox(height: rs(context, 16)),
-
-        // 2. 入力エリア (横いっぱい)
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('手書き入力エリア (横いっぱいに書けます)', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-              SizedBox(height: rs(context, 8)),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
-                    borderRadius: BorderRadius.circular(rs(context, 12)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(rs(context, 10)),
-                    child: KPenCanvas(
-                      controller: _canvasController,
-                      onPointDown: (offset, t) {
-                        _currentStrokePoints = [mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: t)];
-                      },
-                      onPointMove: (offset, t) {
-                        _currentStrokePoints.add(mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: t));
-                      },
-                      onPointUp: () {
-                        if (!_isModelReady || _currentStrokePoints.isEmpty) return;
-                        final stroke = mlkit.Stroke();
-                        stroke.points.addAll(_currentStrokePoints);
-                        setState(() {
-                          _ink.strokes.add(stroke);
-                          _currentStrokePoints = [];
-                          _isRecognizing = true;
-                        });
-                        _recognize();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
+        SizedBox(
+          height: rs(context, 50),
+          child: OutlinedButton.icon(
+            onPressed: _recognizedKeyword.isNotEmpty ? () {
+              setState(() => _recognizedKeyword = "");
+              widget.keywordController?.clear();
+            } : null,
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('内容をクリア', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+            ),
           ),
-        ),
-        SizedBox(height: rs(context, 16)),
-
-        // 3. クリアボタン｜戻るボタン
-        Row(
-          children: [
-            Expanded(
-              child: SizedBox(
-                height: rs(context, 50),
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _canvasController.clear();
-                      _ink.strokes.clear();
-                      _recognizedKeyword = "";
-                    });
-                    widget.keywordController?.clear();
-                  },
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('内容をクリア', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(width: rs(context, 16)),
-            Expanded(
-              child: SizedBox(
-                height: rs(context, 50),
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    if (_ink.strokes.isNotEmpty) {
-                      setState(() {
-                        _canvasController.undo();
-                        _ink.strokes.removeLast();
-                        if (_ink.strokes.isEmpty) {
-                          _recognizedKeyword = "";
-                          widget.keywordController?.clear();
-                        } else {
-                          _isRecognizing = true;
-                        }
-                      });
-                      if (_ink.strokes.isNotEmpty) _recognize();
-                    }
-                  },
-                  icon: const Icon(Icons.undo),
-                  label: const Text('1つ戻す (Ctrl+Z)', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.blueGrey,
-                    side: BorderSide(color: Colors.blueGrey),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ],
     );
-  }
-
-  Future<void> _recognize() async {
-    try {
-      final candidates = await _recognizer.recognize(_ink);
-      if (mounted) {
-        setState(() {
-          if (candidates.isNotEmpty) {
-            _recognizedKeyword = candidates.first.text;
-            widget.keywordController?.text = _recognizedKeyword;
-          }
-          _isRecognizing = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('Recognition error: $e');
-      if (mounted) setState(() => _isRecognizing = false);
-    }
   }
 
   Widget _buildCategoryGenreSelector(BuildContext context) {
@@ -2057,8 +1909,8 @@ class _AddressDialField extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Container(
-            height: rs(context, 50), 
-            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)), 
+            height: kFieldHeight(context),
+            padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
             decoration: BoxDecoration(
               color: isWarning ? Colors.pink.shade50 : Colors.white,
               border: Border.all(color: isWarning ? Colors.pink.shade200 : Colors.grey.shade300, width: isWarning ? 2 : 1),

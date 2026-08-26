@@ -9,6 +9,7 @@ class KButton extends StatelessWidget {
   final bool isSecondary;
   final double? height;
   final double? fontSize;
+  final IconData? icon;
 
   const KButton({
     super.key,
@@ -19,15 +20,18 @@ class KButton extends StatelessWidget {
     this.isSecondary = false,
     this.height,
     this.fontSize,
+    this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = color ?? Theme.of(context).primaryColor;
-    
+    final primaryColor = color ?? KR.primaryColor;
+    final textStyle = TextStyle(fontSize: fontSize ?? rf(context, 16), fontWeight: FontWeight.bold);
+    final labelWidget = Text(label, style: textStyle);
+
     return SizedBox(
       width: fullWidth ? double.infinity : null,
-      height: height ?? rav(context, 48),
+      height: height ?? kFieldHeight(context),
       child: isSecondary
           ? OutlinedButton(
               onPressed: onPressed,
@@ -38,10 +42,9 @@ class KButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(rav(context, 8)),
                 ),
               ),
-              child: Text(
-                label,
-                style: TextStyle(fontSize: fontSize ?? rf(context, 16), fontWeight: FontWeight.bold),
-              ),
+              child: icon == null
+                  ? labelWidget
+                  : Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: rs(context, 18)), SizedBox(width: rs(context, 8)), labelWidget]),
             )
           : ElevatedButton(
               onPressed: onPressed,
@@ -52,10 +55,9 @@ class KButton extends StatelessWidget {
                   borderRadius: BorderRadius.circular(rav(context, 8)),
                 ),
               ),
-              child: Text(
-                label,
-                style: TextStyle(fontSize: fontSize ?? rf(context, 16), fontWeight: FontWeight.bold),
-              ),
+              child: icon == null
+                  ? labelWidget
+                  : Row(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: rs(context, 18)), SizedBox(width: rs(context, 8)), labelWidget]),
             ),
     );
   }

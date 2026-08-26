@@ -46,7 +46,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
     <title>Street View Adjustment</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=places&language=ja"></script>
     <style>
-      html, body, #map { height: rs(context, 100)%; margin: 0; padding: 0; }
+      html, body, #map { height: 100%; margin: 0; padding: 0; }
     </style>
   </head>
   <body>

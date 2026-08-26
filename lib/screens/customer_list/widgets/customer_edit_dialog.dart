@@ -67,14 +67,17 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
             children: [
               TextField(
                 controller: nameController,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(labelText: '氏名'),
               ),
               TextField(
                 controller: companyController,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(labelText: '企業名'),
               ),
               TextField(
                 controller: phoneController,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(labelText: '電話番号'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [
@@ -84,10 +87,12 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
               ),
               TextField(
                 controller: emailController,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(labelText: 'メールアドレス'),
               ),
               TextField(
                 controller: addressController,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: const InputDecoration(labelText: '住所'),
                 maxLines: 2,
               ),

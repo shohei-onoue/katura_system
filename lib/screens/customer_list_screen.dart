@@ -228,6 +228,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(rs(context, 8))),
                 child: TextField(
                   controller: _searchController,
+                  textAlignVertical: TextAlignVertical.center,
                   decoration: InputDecoration(
                     hintText: '名前、企業、電話番号で検索...',
                     prefixIcon: const Icon(Icons.search),

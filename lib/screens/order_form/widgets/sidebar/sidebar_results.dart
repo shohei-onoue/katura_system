@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_responsive.dart';
+import '../../../../widgets/k_button.dart';
 
 class SidebarSearchResults extends StatelessWidget {
   final List<Map<String, dynamic>> results;
@@ -49,19 +50,12 @@ class SidebarSearchResults extends StatelessWidget {
           ),
           if (onForceApiSearch != null) ...[
             SizedBox(height: rs(context, 24)),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: Icon(Icons.travel_explore, size: rs(context, 18)),
-                label: Text('該当なし？Googleマップで再検索', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
-                  foregroundColor: Colors.deepPurple,
-                  side: const BorderSide(color: Colors.deepPurple),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                ),
-                onPressed: onForceApiSearch,
-              ),
+            KButton(
+              label: '該当なし？Googleマップで再検索',
+              icon: Icons.travel_explore,
+              fontSize: rf(context, 14),
+              isSecondary: true,
+              onPressed: onForceApiSearch,
             ),
           ],
         ],

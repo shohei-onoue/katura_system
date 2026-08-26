@@ -136,6 +136,8 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
                     label: 'ふりがな',
                     controller: widget.furiganaController,
                     hintText: 'ふりがなを書いてください',
+                    height: rs(context, 50),
+                    maxLines: 1,
                   ),
                 ),
                 SizedBox(width: rs(context, 24)),
@@ -144,12 +146,12 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
                     label: '顧客名',
                     controller: widget.nameController,
                     hintText: 'お名前を書いてください',
+                    height: rs(context, 50),
+                    maxLines: 1,
                   ),
                 ),
               ],
             ),
-            Text('※ふりがな・顧客名のいずれか一方は必ず入力してください。',
-              style: TextStyle(fontSize: rf(context, 11), color: Colors.grey)),
 
             SizedBox(height: rs(context, 24)),
 
@@ -195,15 +197,11 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
             children: [
               SizedBox(
                 width: rs(context, 200),
-                height: rs(context, 50),
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.grey, width: rs(context, 2)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                  ),
+                child: KButton(
+                  label: '番号を打ち直す',
+                  isSecondary: true,
+                  color: Colors.blueGrey,
                   onPressed: widget.onBack,
-                  child: Text('番号を打ち直す', 
-                    style: TextStyle(fontSize: rf(context, 16), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
                 ),
               ),
               SizedBox(width: rs(context, 24)),

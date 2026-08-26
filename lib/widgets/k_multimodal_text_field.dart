@@ -99,7 +99,7 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                           hintStyle: TextStyle(fontSize: rf(context, 14), color: Colors.grey.shade400),
                           isDense: true,
                           isCollapsed: false,
-                          contentPadding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+                          contentPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: 0),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(widget.height != null ? 8 : 12)),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(widget.height != null ? 8 : 12),

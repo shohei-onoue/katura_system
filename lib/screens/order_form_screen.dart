@@ -103,8 +103,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _lastPhoneQuery = '';
 
   int _searchTabIndex = 0;
-  String _searchPrefecture = '愛知県';
-  String _searchCity = '岡崎市';
+  String _searchPrefecture = '';
+  String _searchCity = '';
   String _searchTown = '（すべて）';
   String _searchPrefInitial = 'すべて';
   String _searchCityInitial = 'すべて';
@@ -194,7 +194,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final prefs = await _customerService.getAddressService().getPrefecturesByInitial(_searchPrefInitial);
     final cities = await _customerService.getAddressService().getCitiesByInitial(_searchPrefecture, _searchCityInitial);
     final towns = await _customerService.getAddressService().getTownsByInitial(_searchPrefecture, _searchCity, _searchTownInitial);
-    if (mounted) setState(() { _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns]; if (!_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (!_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）'; });
+    if (mounted) setState(() { _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns]; if (_searchPrefecture.isNotEmpty && !_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (_searchCity.isNotEmpty && !_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）'; });
     _syncSearchQuery();
   }
 

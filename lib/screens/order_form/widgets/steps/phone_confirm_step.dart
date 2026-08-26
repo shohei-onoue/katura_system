@@ -41,6 +41,7 @@ class PhoneConfirmStep extends StatelessWidget {
             TextField(
               controller: phoneController,
               textAlign: TextAlign.center,
+              textAlignVertical: TextAlignVertical.center,
               readOnly: true,
               style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: rs(context, 10)),
               decoration: InputDecoration(

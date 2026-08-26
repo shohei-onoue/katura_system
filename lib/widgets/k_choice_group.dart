@@ -38,7 +38,7 @@ class KChoiceGroup<T> extends StatelessWidget {
           ],
           // 固定高さを確保して制約違反を防ぐ
           SizedBox(
-            height: rs(context, 44),
+            height: kFieldHeight(context),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: items.asMap().entries.map((entry) {

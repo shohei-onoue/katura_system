@@ -62,7 +62,16 @@ class KR {
   // --- 共通カラー定義 ---
   static const Color backgroundLight = Color(0xFFF5F5F7);
   static const Color cardBorder = Color(0xFFE0E0E4);
+
+  /// ボタン・選択肢の標準色（主要アクション）
+  static const Color primaryColor = Colors.deepPurple;
+
+  /// 入力フィールド・選択肢グループ・ボタンなど、1行の操作コンポーネントの標準高さ
+  static const double fieldHeight = 50.0;
 }
+
+/// 標準フィールド高さ（レスポンシブ換算済み）
+double kFieldHeight(BuildContext context) => KR.rs(context, KR.fieldHeight);
 
 /// 短縮関数
 double rf(BuildContext context, double baseSize) => KR.rf(context, baseSize);

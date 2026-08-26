@@ -243,9 +243,11 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   border: Border.all(color: Colors.grey.shade300, width: rs(context, 1)),
                 ),
                 child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    SingleChildScrollView(
+                    Center(
                       child: RichText(
+                        textAlign: TextAlign.center,
                         text: TextSpan(
                           style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
                           children: [

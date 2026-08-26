@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_button.dart';
+import '../../../../widgets/k_choice_group.dart';
 import '../../../../widgets/k_tile_selector.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
@@ -98,21 +99,7 @@ class FinalizeStep extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. 梱包
-          _buildFormRow(
-            context: context,
-            label: '梱包方法',
-            buttons: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                _choiceChip(context, '紙袋', packagingType == '紙袋', (v) => onPackagingTypeChanged('紙袋')),
-                _choiceChip(context, '段ボール', packagingType == '段ボール', (v) => onPackagingTypeChanged('段ボール')),
-                _choiceChip(context, '小分け', packagingType == '小分け', (v) => onPackagingTypeChanged('小分け')),
-                _choiceChip(context, 'その他', packagingType == 'その他', (v) => onPackagingTypeChanged('その他')),
-              ],
-            ),
-            details: _buildPackagingDetailArea(context),
-          ),
+          _buildPackagingArea(context),
 
           SizedBox(height: rs(context, 12)),
           Divider(height: rs(context, 1)),
@@ -200,6 +187,42 @@ class FinalizeStep extends StatelessWidget {
     );
   }
 
+  Widget _buildPackagingArea(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('梱包方法', style: _labelStyle(context)),
+        SizedBox(height: rs(context, 12)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 4,
+              child: KChoiceGroup<String>(
+                label: '',
+                selectedValue: packagingType,
+                items: [
+                  KChoiceItem(label: '紙袋', value: '紙袋'),
+                  KChoiceItem(label: '段ボール', value: '段ボール'),
+                  KChoiceItem(label: '小分け', value: '小分け'),
+                  KChoiceItem(label: 'その他', value: 'その他'),
+                ],
+                onSelected: onPackagingTypeChanged,
+                showLabel: false,
+                selectedColor: Colors.deepPurple,
+              ),
+            ),
+            SizedBox(width: rs(context, 12)),
+            Expanded(
+              flex: 6,
+              child: _buildPackagingDetailArea(context),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildPackagingDetailArea(BuildContext context) {
     if (packagingType == '小分け') {
       return Center(
@@ -229,7 +252,8 @@ class FinalizeStep extends StatelessWidget {
           hintText: '梱包方法（詳細）',
           showLabel: false,
           controller: packagingOtherController,
-          height: rs(context, 50),
+          height: kFieldHeight(context),
+          maxLines: 1,
         ),
       );
     }
@@ -618,21 +642,5 @@ class FinalizeStep extends StatelessWidget {
 
   TextStyle _labelStyle(BuildContext context) {
     return TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700);
-  }
-
-  Widget _choiceChip(BuildContext context, String label, bool isSelected, Function(bool) onSelected, {bool enabled = true}) {
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.5,
-      child: ChoiceChip(
-        label: Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
-        selected: isSelected,
-        onSelected: enabled ? onSelected : null,
-        selectedColor: Colors.deepPurple,
-        labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
-        padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: 0),
-        visualDensity: VisualDensity.compact,
-        showCheckmark: false,
-      ),
-    );
   }
 }

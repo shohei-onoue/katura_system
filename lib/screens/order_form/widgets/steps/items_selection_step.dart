@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../models/menu_model.dart';
 import '../../../../widgets/k_responsive.dart';
+import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_item_details_dialog.dart';
 import '../../../../widgets/k_menu_card.dart';
 import '../order_form_parts.dart';
@@ -205,11 +206,11 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
           const Text('メニューマスタで商品を登録するか、下のボタンを押してください。', 
             textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           SizedBox(height: rs(context, 32)),
-          ElevatedButton.icon(
+          KButton(
+            label: 'メニューを読み直す',
+            icon: Icons.refresh,
+            fullWidth: false,
             onPressed: widget.onReloadMenus,
-            icon: const Icon(Icons.refresh),
-            label: const Text('メニューを読み直す'),
-            style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: rs(context, 24), vertical: rs(context, 12))),
           ),
         ],
       ),

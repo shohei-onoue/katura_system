@@ -592,16 +592,11 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 ),
                 if (widget.onReset != null) ...[
                   SizedBox(height: rs(context, 12)),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: widget.onReset,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                      ),
-                      child: const Text('受注をキャンセル', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
+                  KButton(
+                    label: '受注をキャンセル',
+                    onPressed: widget.onReset,
+                    color: Colors.red,
+                    isSecondary: true,
                   ),
                 ],
               ],
