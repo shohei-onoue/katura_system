@@ -11,6 +11,7 @@ import 'customer_list/widgets/customer_data_table.dart';
 import 'order_form/widgets/sidebar/sidebar_analysis.dart';
 import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
+import '../widgets/k_multimodal_text_field.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -30,13 +31,87 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   bool _isLoading = true;
   final _searchController = TextEditingController();
 
+  String _sortKey = 'name'; // 'name' | 'company'
+  bool _sortAscending = true;
+
   Customer? _selectedCustomer;
   List<OrderModel> _selectedCustomerOrders = [];
 
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(() => setState(_applyView));
     _initData();
+  }
+
+  /// 検索フィルタ＋並び替えを適用して _filteredCustomers を更新する（setState 内で呼ぶ）
+  void _applyView() {
+    final query = _searchController.text;
+    final lowerQuery = query.toLowerCase();
+    final numericQuery = query.replaceAll('-', '');
+
+    var list = _customers.where((c) {
+      if (query.isEmpty) return true;
+      final nameMatch = c.name.toLowerCase().contains(lowerQuery);
+      final companyMatch = c.companyName.toLowerCase().contains(lowerQuery);
+      final phoneMatch = c.phoneNumber.contains(lowerQuery) ||
+          c.phoneNumber.replaceAll('-', '').contains(numericQuery);
+      return nameMatch || companyMatch || phoneMatch;
+    }).toList();
+
+    int cmp(Customer a, Customer b) {
+      if (_sortKey == 'company') {
+        return a.companyName.compareTo(b.companyName);
+      }
+      final ka = a.furigana.isNotEmpty ? a.furigana : a.name;
+      final kb = b.furigana.isNotEmpty ? b.furigana : b.name;
+      return ka.compareTo(kb);
+    }
+
+    list.sort((a, b) => _sortAscending ? cmp(a, b) : cmp(b, a));
+    _filteredCustomers = list;
+  }
+
+  void _onSort(String key) {
+    setState(() {
+      if (_sortKey == key) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortKey = key;
+        _sortAscending = true;
+      }
+      _applyView();
+    });
+  }
+
+  void _openSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('名前・企業・電話番号で検索'),
+        content: SizedBox(
+          width: rs(context, 380),
+          child: KMultimodalTextField(
+            label: '',
+            showLabel: false,
+            controller: _searchController,
+            maxLines: 1,
+            height: rs(context, 56),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              _searchController.clear();
+              Navigator.pop(context);
+            },
+            child: const Text('クリア'),
+          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('閉じる')),
+        ],
+      ),
+    );
   }
 
   Future<void> _initData() async {
@@ -55,7 +130,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       if (mounted) {
         setState(() {
           _customers = data;
-          _filteredCustomers = data;
+          _applyView();
           _isLoading = false;
         });
       }
@@ -101,25 +176,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     }
   }
 
-  void _filterCustomers(String query) {
-    setState(() {
-      final lowerQuery = query.toLowerCase();
-      final numericQuery = query.replaceAll('-', '');
-      
-      _filteredCustomers = _customers.where((c) {
-        final nameMatch = c.name.toLowerCase().contains(lowerQuery);
-        final companyMatch = c.companyName.toLowerCase().contains(lowerQuery);
-        final phoneMatch = c.phoneNumber.contains(lowerQuery) || 
-                          c.phoneNumber.replaceAll('-', '').contains(numericQuery);
-        return nameMatch || companyMatch || phoneMatch;
-      }).toList();
-    });
-  }
-
   void _showCustomerDetail(Customer customer) {
     showDialog(
       context: context,
-      builder: (context) => CustomerDetailDialog(customer: customer),
+      builder: (context) => CustomerDetailDialog(
+        customer: customer,
+        customerService: _customerService,
+        onSaved: _loadCustomers,
+      ),
     );
   }
 
@@ -138,6 +202,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text('顧客データの削除'),
         content: Text('${customer.name} 様のデータを削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
@@ -158,34 +223,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
-  void _showDeleteAllConfirmDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('全顧客データの一括削除'),
-        content: const Text('システム内の全顧客データを削除してもよろしいですか？\nこの操作は取り消せません。'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-              await _customerService.deleteAllCustomers();
-              if (!mounted) return;
-              Navigator.pop(context);
-              _loadCustomers();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('全顧客データを削除しました')));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('一括削除する'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final bool hasQuery = _searchController.text.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
         title: const Text('顧客管理システム', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -193,55 +233,46 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
-          ElevatedButton.icon(
-            icon: const Icon(Icons.delete_forever),
-            label: const Text('全削除'),
-            onPressed: _showDeleteAllConfirmDialog,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, elevation: 0),
-          ),
-          SizedBox(width: rs(context, 12)),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('ダミー生成'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade50, foregroundColor: Colors.orange.shade900, elevation: 0),
-            onPressed: () async {
-              showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
-              try {
-                await _customerService.regenerateDummyCustomers();
-                if (!mounted) return;
-                Navigator.pop(context);
-                _loadCustomers();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ダミーデータを生成しました（300件）')));
-              } catch (e) {
-                if (!mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('エラー: $e')));
-              }
-            },
-          ),
-          SizedBox(width: rs(context, 12)),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: rs(context, 300)),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
+          if (hasQuery)
+            InkWell(
+              onTap: _openSearchDialog,
+              borderRadius: BorderRadius.circular(rs(context, 8)),
               child: Container(
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(rs(context, 8))),
-                child: TextField(
-                  controller: _searchController,
-                  textAlignVertical: TextAlignVertical.center,
-                  decoration: InputDecoration(
-                    hintText: '名前、企業、電話番号で検索...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty ? IconButton(icon: Icon(Icons.clear, size: rs(context, 20)), onPressed: () { _searchController.clear(); _filterCustomers(''); }) : null,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-                  ),
-                  onChanged: _filterCustomers,
+                margin: EdgeInsets.symmetric(vertical: rs(context, 8)),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 6)),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.search, size: rs(context, 18), color: Colors.blueGrey),
+                    SizedBox(width: rs(context, 6)),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: rs(context, 180)),
+                      child: Text(
+                        _searchController.text,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(width: rs(context, 4)),
+                    InkWell(
+                      onTap: () => _searchController.clear(),
+                      child: Icon(Icons.close, size: rs(context, 16), color: Colors.blueGrey),
+                    ),
+                  ],
                 ),
               ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: '名前・企業・電話番号で検索',
+              onPressed: _openSearchDialog,
             ),
-          ),
-          SizedBox(width: rs(context, 16)),
+          SizedBox(width: rs(context, 12)),
         ],
       ),
       body: _isLoading
@@ -258,6 +289,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     onShowDetail: _showCustomerDetail,
                     onEdit: _showEditCustomerDialog,
                     onDelete: _showDeleteConfirmDialog,
+                    sortKey: _sortKey,
+                    sortAscending: _sortAscending,
+                    onSort: _onSort,
                   ),
                 ),
                 // 右側: 詳細サイドバー

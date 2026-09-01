@@ -117,6 +117,42 @@ class PhoneConfirmStep extends StatelessWidget {
     );
   }
 
+  Widget _buildLastOrderBadge(BuildContext context, Customer customer) {
+    final dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
+    DateTime? latest;
+    for (final h in customer.orderHistory) {
+      final m = dateRe.firstMatch(h);
+      if (m == null) continue;
+      final d = DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+      if (latest == null || d.isAfter(latest)) latest = d;
+    }
+    if (latest == null) return const SizedBox.shrink();
+    final int days = DateTime.now().difference(latest).inDays;
+    final Color c = days >= 365
+        ? Colors.grey
+        : days >= 180
+            ? Colors.red
+            : days > 90
+                ? Colors.orange
+                : Colors.blue;
+    return SizedBox(
+      height: rs(context, 40),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text.rich(
+          TextSpan(
+            style: TextStyle(color: c, fontWeight: FontWeight.bold, fontSize: rf(context, 10), height: 1.0),
+            children: [
+              const TextSpan(text: '前回から'),
+              TextSpan(text: '$days', style: TextStyle(fontSize: rf(context, 33))),
+              const TextSpan(text: '日'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCandidateList(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: rs(context, 20)),
@@ -147,7 +183,7 @@ class PhoneConfirmStep extends StatelessWidget {
                 child: ListTile(
                   title: Text(customer.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
                   subtitle: Text('${customer.companyName} / ${customer.phoneNumber}', style: TextStyle(fontSize: rf(context, 12))),
-                  trailing: Icon(Icons.check_circle_outline, color: Colors.deepPurple, size: rs(context, 24)),
+                  trailing: _buildLastOrderBadge(context, customer),
                   onTap: () => onSelectCustomer(customer),
                 ),
               );

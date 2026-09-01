@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
-import 'k_numeric_dial_pad.dart';
+import 'k_numeric_input_dialog.dart';
 
 class KSharedQuantityInput extends StatelessWidget {
   final int value;
@@ -9,6 +9,8 @@ class KSharedQuantityInput extends StatelessWidget {
   final double? width;
   final double? height;
   final Color themeColor;
+  /// true の場合、直接入力ダイヤログは現在値をプリセットせず 0（空）から開始する
+  final bool clearOnDirectInput;
 
   const KSharedQuantityInput({
     super.key,
@@ -18,6 +20,7 @@ class KSharedQuantityInput extends StatelessWidget {
     this.width,
     this.height,
     this.themeColor = Colors.deepPurple,
+    this.clearOnDirectInput = false,
   });
 
   @override
@@ -79,119 +82,15 @@ class KSharedQuantityInput extends StatelessWidget {
   void _showDialDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => _QuantityDialDialog(
-        initialValue: value,
+      builder: (context) => KNumericInputDialog(
         title: title ?? '数量入力',
+        initialValue: (clearOnDirectInput || value == 0) ? '' : value.toString(),
+        maxLength: 4,
+        emptyHint: '0',
         themeColor: themeColor,
-        onConfirmed: onChanged,
+        onConfirmed: (text) => onChanged(int.tryParse(text) ?? 0),
       ),
     );
   }
 }
 
-class _QuantityDialDialog extends StatefulWidget {
-  final int initialValue;
-  final String title;
-  final Color themeColor;
-  final ValueChanged<int> onConfirmed;
-
-  const _QuantityDialDialog({
-    required this.initialValue,
-    required this.title,
-    required this.themeColor,
-    required this.onConfirmed,
-  });
-
-  @override
-  State<_QuantityDialDialog> createState() => _QuantityDialDialogState();
-}
-
-class _QuantityDialDialogState extends State<_QuantityDialDialog> {
-  late String _currentText;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentText = widget.initialValue == 0 ? "" : widget.initialValue.toString();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
-      child: Container(
-        width: rs(context, 400),
-        padding: EdgeInsets.all(rs(context, 24)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(widget.title, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
-            SizedBox(height: rs(context, 20)),
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(rs(context, 12)),
-                border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
-              ),
-              child: Text(
-                _currentText.isEmpty ? "0" : _currentText,
-                style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: widget.themeColor),
-              ),
-            ),
-            SizedBox(height: rs(context, 24)),
-            KNumericDialPad(
-              buttonColor: Colors.blueGrey.shade800,
-              onInput: (digit) {
-                if (_currentText.length < 4) {
-                  setState(() => _currentText += digit);
-                }
-              },
-              onClear: () => setState(() => _currentText = ""),
-              onBackspace: () {
-                if (_currentText.isNotEmpty) {
-                  setState(() => _currentText = _currentText.substring(0, _currentText.length - 1));
-                }
-              },
-            ),
-            SizedBox(height: rs(context, 24)),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                    ),
-                    child: const Text('キャンセル', style: TextStyle(color: Colors.grey)),
-                  ),
-                ),
-                SizedBox(width: rs(context, 12)),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final val = int.tryParse(_currentText) ?? 0;
-                      widget.onConfirmed(val);
-                      Navigator.pop(context);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.themeColor,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
-                    ),
-                    child: const Text('確定', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

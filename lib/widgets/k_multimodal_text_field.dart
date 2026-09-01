@@ -47,17 +47,13 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
       context: context,
       barrierDismissible: false,
       builder: (context) => KPenInputDialog(
+        initialText: widget.controller.text,
         onTextRecognized: (text) {
+          // ダイヤログ側で既存テキスト＋新規判定を結合済みのため、そのまま反映する
           setState(() {
-            final String currentText = widget.controller.text;
-            if (currentText.isEmpty) {
-              widget.controller.text = text;
-            } else {
-              widget.controller.text = "$currentText $text";
-            }
-            // カーソルを末尾へ移動
+            widget.controller.text = text;
             widget.controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: widget.controller.text.length)
+              TextPosition(offset: text.length),
             );
           });
         },
@@ -67,8 +63,9 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final bool fixedHeight = widget.height != null;
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: widget.height != null ? 0 : 8.0),
+      padding: EdgeInsets.symmetric(vertical: fixedHeight ? 0 : 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -90,7 +87,9 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                       final bool isPenMode = mode == KInputMode.pen;
                       return TextField(
                         controller: widget.controller,
-                        maxLines: widget.maxLines,
+                        maxLines: fixedHeight ? null : widget.maxLines,
+                        minLines: null,
+                        expands: fixedHeight,
                         textAlignVertical: TextAlignVertical.center,
                         readOnly: isPenMode,
                         onTap: isPenMode ? _openPenInput : null,
@@ -118,17 +117,21 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                 ),
               ),
               SizedBox(width: rs(context, 8)),
-              IconButton(
-                padding: widget.height != null ? EdgeInsets.zero : EdgeInsets.all(rs(context, 8)),
-                constraints: widget.height != null ? const BoxConstraints() : BoxConstraints(minWidth: rs(context, 48), minHeight: rs(context, 48)),
-                icon: Icon(Icons.delete_outline,
-                  color: widget.controller.text.isNotEmpty ? Colors.red.shade400 : Colors.grey.shade300,
-                  size: widget.height != null ? 22 : 24),
-                onPressed: widget.controller.text.isNotEmpty ? () {
-                  widget.controller.clear();
-                  setState(() {});
-                } : null,
-                tooltip: '入力をクリア',
+              SizedBox(
+                height: widget.height,
+                width: widget.height,
+                child: IconButton(
+                  padding: widget.height != null ? EdgeInsets.zero : EdgeInsets.all(rs(context, 8)),
+                  constraints: widget.height != null ? const BoxConstraints() : BoxConstraints(minWidth: rs(context, 48), minHeight: rs(context, 48)),
+                  icon: Icon(Icons.delete_outline,
+                    color: widget.controller.text.isNotEmpty ? Colors.red.shade400 : Colors.grey.shade300,
+                    size: widget.height != null ? 22 : 24),
+                  onPressed: widget.controller.text.isNotEmpty ? () {
+                    widget.controller.clear();
+                    setState(() {});
+                  } : null,
+                  tooltip: '入力をクリア',
+                ),
               ),
             ],
           ),

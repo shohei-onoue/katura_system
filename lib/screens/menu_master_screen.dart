@@ -2,7 +2,9 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/menu_model.dart';
+import '../models/ingredient_model.dart';
 import '../services/menu_service.dart';
+import '../services/ingredient_service.dart';
 import '../../widgets/k_responsive.dart';
 
 class MenuMasterScreen extends StatefulWidget {
@@ -14,8 +16,10 @@ class MenuMasterScreen extends StatefulWidget {
 
 class _MenuMasterScreenState extends State<MenuMasterScreen> {
   final _menuService = MenuService();
+  final _ingredientService = IngredientService();
   final _imagePicker = ImagePicker();
   List<MenuModel> _menus = [];
+  List<IngredientModel> _ingredients = [];
   bool _isLoading = true;
   String _selectedCategory = 'すべて';
   MenuModel? _selectedMenu;
@@ -32,9 +36,11 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     try {
       await _menuService.migrateCategories();
       final data = await _menuService.getAllMenus();
+      final ingredients = await _ingredientService.getAll();
       if (!mounted) return;
       setState(() {
         _menus = data;
+        _ingredients = ingredients;
         _isLoading = false;
         if (_menus.isNotEmpty && _selectedMenu == null) {
           _selectedMenu = _menus.first;
@@ -71,8 +77,15 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     String currentImageUrl = menu?.imageUrl ?? '';
     Uint8List? pendingImageBytes;
     
-    final ingredientsController = TextEditingController(
-        text: menu?.ingredients.entries.map((e) => '${e.key}:${e.value}').join(', ') ?? '');
+    final List<_MenuIngredientRow> ingredientRows = [];
+    menu?.ingredients.forEach((name, value) {
+      final master = _findIngredient(name);
+      final numMatch = RegExp(r'^\d+(?:\.\d+)?').firstMatch(value.trim());
+      final amount = numMatch?.group(0) ?? '';
+      final unit = master?.unit ??
+          value.trim().replaceFirst(RegExp(r'^\d+(?:\.\d+)?\s*'), '');
+      ingredientRows.add(_MenuIngredientRow(name: name, unit: unit, amount: amount));
+    });
 
     showDialog(
       context: context,
@@ -142,7 +155,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   ),
                   SizedBox(height: rs(context, 16)),
                   TextField(controller: priceController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '価格 (税込)', hintText: '例：1800'), keyboardType: TextInputType.number),
-                  TextField(controller: ingredientsController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '材料:分量 (カンマ区切り)', hintText: '例：牛ステーキ肉:150g, 白米:250g')),
+                  _buildIngredientEditor(context, setDialogState, ingredientRows),
                   TextField(controller: descriptionController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '説明', hintText: '商品の詳細説明を入力してください'), maxLines: 2),
                 ],
               ),
@@ -159,11 +172,10 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                 showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
                 try {
                   final Map<String, String> ingredientsMap = {};
-                  if (ingredientsController.text.isNotEmpty) {
-                    for (var pair in ingredientsController.text.split(',')) {
-                      final parts = pair.split(':');
-                      if (parts.length == 2) ingredientsMap[parts[0].trim()] = parts[1].trim();
-                    }
+                  for (final row in ingredientRows) {
+                    final amount = row.amountController.text.trim();
+                    final value = amount.isEmpty ? row.unit : '$amount${row.unit}';
+                    if (value.isNotEmpty) ingredientsMap[row.name] = value;
                   }
                   final newMenu = MenuModel(
                     id: menu?.id ?? '',
@@ -202,6 +214,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text('メニューの削除'),
         content: Text('${menu.name} を削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
@@ -301,7 +314,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                             children: [
                                               Icon(Icons.delete_outline, size: rs(context, 20), color: Colors.red),
                                               SizedBox(width: rs(context, 12)),
-                                              Text('削除', style: TextStyle(fontWeight: FontWeight.w500)),
+                                              Text('削除', style: TextStyle(fontWeight: FontWeight.w500, color: Colors.red)),
                                             ],
                                           ),
                                         ),
@@ -454,4 +467,103 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       ],
     );
   }
+
+  IngredientModel? _findIngredient(String name) {
+    for (final i in _ingredients) {
+      if (i.name == name) return i;
+    }
+    return null;
+  }
+
+  Future<IngredientModel?> _pickIngredient(Set<String> exclude) {
+    final available = _ingredients.where((i) => !exclude.contains(i.name)).toList();
+    return showDialog<IngredientModel>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        backgroundColor: Colors.white,
+        title: const Text('材料を選択'),
+        children: available.isEmpty
+            ? [
+                Padding(
+                  padding: EdgeInsets.all(rs(context, 16)),
+                  child: const Text('選択できる材料がありません。\n材料マスタに登録してください。'),
+                )
+              ]
+            : available
+                .map((i) => SimpleDialogOption(
+                      onPressed: () => Navigator.pop(context, i),
+                      child: Text('${i.name}（${i.unit}）'),
+                    ))
+                .toList(),
+      ),
+    );
+  }
+
+  Widget _buildIngredientEditor(
+      BuildContext context, StateSetter setDialogState, List<_MenuIngredientRow> rows) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: rs(context, 16)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text('材料・使用量',
+              style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade600)),
+        ),
+        ...rows.map((row) => Padding(
+              padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(row.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                  ),
+                  SizedBox(width: rs(context, 8)),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: row.amountController,
+                      textAlignVertical: TextAlignVertical.center,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(isDense: true, hintText: '使用量'),
+                    ),
+                  ),
+                  SizedBox(width: rs(context, 6)),
+                  SizedBox(
+                    width: rs(context, 36),
+                    child: Text(row.unit, style: TextStyle(color: Colors.grey.shade600)),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, size: rs(context, 18), color: Colors.grey),
+                    onPressed: () => setDialogState(() => rows.remove(row)),
+                  ),
+                ],
+              ),
+            )),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () async {
+              final selected = await _pickIngredient(rows.map((r) => r.name).toSet());
+              if (selected != null) {
+                setDialogState(() => rows.add(
+                    _MenuIngredientRow(name: selected.name, unit: selected.unit, amount: '')));
+              }
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('材料を追加'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MenuIngredientRow {
+  final String name;
+  final String unit;
+  final TextEditingController amountController;
+
+  _MenuIngredientRow({required this.name, required this.unit, required String amount})
+      : amountController = TextEditingController(text: amount);
 }

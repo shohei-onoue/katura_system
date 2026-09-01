@@ -9,6 +9,9 @@ class KDateTimeDisplay extends StatelessWidget {
   final Color themeColor;
   final bool isActive;
   final bool isCompact; // コンパクトモード
+  final double? height; // 指定時は固定高さ（可変式の値を渡す）
+  final Color? fillColor; // 指定時は背景色を上書き
+  final String emptyText; // 未選択時のヘルプテキスト
 
   const KDateTimeDisplay({
     super.key,
@@ -18,24 +21,33 @@ class KDateTimeDisplay extends StatelessWidget {
     this.themeColor = Colors.deepPurple,
     this.isActive = false,
     this.isCompact = false,
+    this.height,
+    this.fillColor,
+    this.emptyText = '未設定',
   });
 
   @override
   Widget build(BuildContext context) {
     final bool isSelected = dateTime != null;
-    final double baseFontSize = isCompact ? 18 : 32;
-    final double subFontSize = isCompact ? 12 : 18;
+    final bool fixedHeight = height != null;
+    final double baseFontSize = fixedHeight ? 15 : (isCompact ? 18 : 32);
+    final double subFontSize = fixedHeight ? 11 : (isCompact ? 12 : 18);
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(rs(context, 12)),
       child: Container(
-        constraints: BoxConstraints(minHeight: rs(context, isCompact ? 50 : 80)),
-        padding: EdgeInsets.all(rs(context, isCompact ? 8 : 16)),
+        height: height,
+        constraints: fixedHeight ? null : BoxConstraints(minHeight: rs(context, isCompact ? 50 : 80)),
+        padding: EdgeInsets.symmetric(
+          horizontal: rs(context, isCompact ? 8 : 16),
+          vertical: fixedHeight ? 0 : rs(context, isCompact ? 8 : 16),
+        ),
         decoration: BoxDecoration(
-          color: isActive 
-              ? themeColor.withValues(alpha: 0.08) 
-              : (isSelected ? themeColor.withValues(alpha: 0.03) : Colors.grey.shade50),
+          color: fillColor
+              ?? (isActive
+                  ? themeColor.withValues(alpha: 0.08)
+                  : (isSelected ? themeColor.withValues(alpha: 0.03) : Colors.grey.shade50)),
           border: Border.all(
             color: isActive 
                 ? themeColor 
@@ -107,15 +119,29 @@ class KDateTimeDisplay extends StatelessWidget {
                       color: themeColor
                     ),
                   ),
+                ] else if (fixedHeight) ...[
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      emptyText,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: rf(context, 11),
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ),
                 ] else ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '未設定',
+                        emptyText,
                         style: TextStyle(
-                          fontSize: rf(context, isCompact ? 18 : 24), 
-                          fontWeight: FontWeight.bold, 
+                          fontSize: rf(context, isCompact ? 18 : 24),
+                          fontWeight: FontWeight.bold,
                           color: Colors.grey.shade400
                         ),
                       ),

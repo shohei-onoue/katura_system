@@ -46,6 +46,8 @@ class DeliveryTimeStep extends StatefulWidget {
   final Function(TimeOfDay, TimeOfDay, int) onTimeSettingsChanged;
   final Function(TimeOfDay, TimeOfDay, int) onTrashTimeSettingsChanged;
   final VoidCallback onNext;
+  final VoidCallback onCancelOrder;
+  final String phoneNumberText;
 
   const DeliveryTimeStep({
     super.key,
@@ -81,6 +83,8 @@ class DeliveryTimeStep extends StatefulWidget {
     required this.onTimeSettingsChanged,
     required this.onTrashTimeSettingsChanged,
     required this.onNext,
+    required this.onCancelOrder,
+    this.phoneNumberText = '',
   });
 
   @override
@@ -119,6 +123,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
     return OrderFormCard(
       title: '配達日時・受取人の詳細設定',
       icon: Icons.timer,
+      trailing: PhoneReceivedBadge(phoneNumber: widget.phoneNumberText),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,12 +213,20 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             _buildReceiverArea(context),
 
             SizedBox(height: rs(context, 20)),
-            Center(
-              child: KButton(
-                label: '注文商品の選択へ', 
-                onPressed: _isAllValid ? widget.onNext : () {},
-                color: _isAllValid ? Colors.deepPurple : Colors.grey,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: KButton(label: '注文キャンセル', isSecondary: true, color: Colors.redAccent, onPressed: widget.onCancelOrder),
+                ),
+                SizedBox(width: rs(context, 12)),
+                Expanded(
+                  child: KButton(
+                    label: '注文商品の選択へ',
+                    onPressed: _isAllValid ? widget.onNext : () {},
+                    color: _isAllValid ? Colors.deepPurple : Colors.grey,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -308,7 +321,8 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         maxTime: isTrash ? widget.trashTimeMax : widget.timeMax,
         interval: isTrash ? widget.trashTimeInterval : widget.timeInterval,
         title: isTrash ? 'ゴミ回収日時の設定' : '配達日時の設定',
-        themeColor: isTrash ? Colors.orange : Colors.deepPurple,
+        themeColor: isTrash ? Colors.orange : const Color(0xFF000038),
+        highlightDate: isTrash ? widget.deliveryDate : null,
       ),
     );
 
@@ -324,6 +338,9 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
 
   Widget _buildTrashLocationArea(BuildContext context) {
     final bool enabled = widget.trashPickupRequested;
+    // 「指定場所」ボタン（KChoiceGroup）と入力フィールドの高さを揃えるための共通値。
+    // ここを変更すると両者の高さが同時に調整される。
+    final double locationFieldHeight = kFieldHeight(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -343,31 +360,37 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
           children: [
             Expanded(
               flex: 4,
-              child: KChoiceGroup<String>(
-                label: '',
-                selectedValue: widget.trashPickupLocation,
-                items: [
-                  KChoiceItem(label: '引渡し場所', value: '引渡し場所'),
-                  KChoiceItem(label: '指定場所', value: '指定場所'),
-                ],
-                onSelected: widget.onTrashPickupLocationChanged,
-                showLabel: false,
-                selectedColor: Colors.orange,
-                enabled: enabled,
+              child: SizedBox(
+                height: locationFieldHeight,
+                child: KChoiceGroup<String>(
+                  label: '',
+                  selectedValue: widget.trashPickupLocation,
+                  items: [
+                    KChoiceItem(label: '引渡し場所', value: '引渡し場所'),
+                    KChoiceItem(label: '指定場所', value: '指定場所'),
+                  ],
+                  onSelected: widget.onTrashPickupLocationChanged,
+                  showLabel: false,
+                  selectedColor: Colors.orange,
+                  enabled: enabled,
+                ),
               ),
             ),
             SizedBox(width: rs(context, 12)),
             Expanded(
               flex: 6,
-              child: (widget.trashPickupLocation == '指定場所' && enabled)
-                  ? KMultimodalTextField(
-                      label: '詳細',
-                      controller: widget.trashPickupLocationController,
-                      maxLines: 1,
-                      height: kFieldHeight(context),
-                      showLabel: false,
-                    )
-                  : SizedBox(height: kFieldHeight(context)), // No label, so just field height
+              child: SizedBox(
+                height: locationFieldHeight,
+                child: (widget.trashPickupLocation == '指定場所' && enabled)
+                    ? KMultimodalTextField(
+                        label: '詳細',
+                        controller: widget.trashPickupLocationController,
+                        maxLines: 1,
+                        height: locationFieldHeight,
+                        showLabel: false,
+                      )
+                    : null,
+              ),
             ),
           ],
         ),
@@ -448,7 +471,8 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         spacing: 8,
         runSpacing: 8,
         children: filteredReceivers.map((name) => ActionChip(
-          label: Text(name, style: TextStyle(fontSize: KR.fontTiny(context), fontWeight: FontWeight.bold)),
+          label: Text(name, style: TextStyle(fontSize: KR.fontLarge(context), fontWeight: FontWeight.bold)),
+          labelPadding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 4)),
           onPressed: () {
             widget.receiverController.text = name;
           },
@@ -463,6 +487,8 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
         label: '',
         controller: widget.receiverController,
         maxLines: 1,
+        height: kFieldHeight(context),
+        showLabel: false,
       );
     }
 

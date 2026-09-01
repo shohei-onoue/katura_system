@@ -39,6 +39,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
 
   void _initWebViewController() {
     final apiKey = DefaultFirebaseOptions.currentPlatform.apiKey;
+    final escapedAddress = widget.initialAddress.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
     final html = '''
 <!DOCTYPE html>
 <html>
@@ -47,6 +48,17 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
     <script src="https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=places&language=ja"></script>
     <style>
       html, body, #map { height: 100%; margin: 0; padding: 0; }
+      #searchBox {
+        box-sizing: border-box;
+        width: 80%;
+        max-width: 420px;
+        padding: 10px 12px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        margin-top: 10px;
+      }
     </style>
   </head>
   <body>
@@ -67,7 +79,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
         });
 
         panorama = map.getStreetView();
-        
+
         marker = new google.maps.Marker({
           position: pos,
           map: map,
@@ -103,12 +115,43 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
             updateFlutter(p.lat(), p.lng(), pov.heading, pov.pitch);
           }
         });
+
+        const input = document.createElement("input");
+        input.id = "searchBox";
+        input.type = "text";
+        input.placeholder = "住所・施設名で検索";
+        input.value = '$escapedAddress';
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(input);
+
+        const searchBox = new google.maps.places.SearchBox(input);
+        searchBox.addListener("places_changed", () => {
+          const places = searchBox.getPlaces();
+          if (!places || places.length === 0 || !places[0].geometry) return;
+          moveTo(places[0].geometry.location);
+        });
+
+        function moveTo(loc) {
+          map.setCenter(loc);
+          map.setZoom(18);
+          marker.setPosition(loc);
+          updateFlutter(loc.lat(), loc.lng(), 0, 0);
+        }
+
+        // 入力欄に住所が既に反映された状態で、その地点までマップを展開しておく
+        if (input.value) {
+          const service = new google.maps.places.PlacesService(map);
+          service.findPlaceFromQuery({ query: input.value, fields: ["geometry"] }, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0] && results[0].geometry) {
+              moveTo(results[0].geometry.location);
+            }
+          });
+        }
       }
 
       function updateFlutter(lat, lng, heading, pitch) {
         if (window.ToFlutter) {
           window.ToFlutter.postMessage(JSON.stringify({
-            lat: lat, 
+            lat: lat,
             lng: lng,
             heading: heading,
             pitch: pitch

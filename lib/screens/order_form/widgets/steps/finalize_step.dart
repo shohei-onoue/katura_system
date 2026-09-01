@@ -7,10 +7,7 @@ import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_shared_quantity_input.dart';
 import '../../../../widgets/k_date_time_display.dart';
 import '../../../../widgets/k_date_time_selection_dialog.dart';
-import '../../../../widgets/k_time_selection_dialog.dart';
-import '../../../../widgets/k_numeric_dial_pad.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../../../../widgets/k_numeric_input_dialog.dart';
 import '../order_form_parts.dart';
 
 class FinalizeStep extends StatelessWidget {
@@ -37,18 +34,21 @@ class FinalizeStep extends StatelessWidget {
   final int totalPrice;
   final DateTime? trashPickupDateTime;
   final String trashPickupLocationDetail;
+  // 事前連絡の宛先（受取人と同じUIで選択、独立した値）
+  final TextEditingController preConfirmationRecipientController;
+  final List<String> recipientHistory;
 
   final Function(String) onPackagingTypeChanged;
   final Function(int) onPackagingSmallQtyChanged;
-  final Function(String) onBranchChanged;
   final Function(String) onPaymentChanged;
   final Function(String) onPreConfirmationMethodChanged;
   final Function(String) onPreConfirmationPhoneTypeChanged;
   final Function(String) onPreConfirmationPhoneNumberChanged;
   final Function(DateTime) onPreConfirmationDateTimeChanged;
-  final Function(String) onPreConfirmationSmsTimeChanged;
   final Function(DateTime) onScheduledSmsDateTimeChanged; // 追加
   final VoidCallback onSave;
+  final VoidCallback onCancelOrder;
+  final VoidCallback onShowReceipt; // 領収書確認
 
   const FinalizeStep({
     super.key,
@@ -75,17 +75,19 @@ class FinalizeStep extends StatelessWidget {
     required this.totalPrice,
     this.trashPickupDateTime,
     required this.trashPickupLocationDetail,
+    required this.preConfirmationRecipientController,
+    this.recipientHistory = const [],
     required this.onPackagingTypeChanged,
     required this.onPackagingSmallQtyChanged,
-    required this.onBranchChanged,
     required this.onPaymentChanged,
     required this.onPreConfirmationMethodChanged,
     required this.onPreConfirmationPhoneTypeChanged,
     required this.onPreConfirmationPhoneNumberChanged,
     required this.onPreConfirmationDateTimeChanged,
-    required this.onPreConfirmationSmsTimeChanged,
     required this.onScheduledSmsDateTimeChanged, // 追加
     required this.onSave,
+    required this.onCancelOrder,
+    required this.onShowReceipt,
   });
 
   @override
@@ -93,8 +95,7 @@ class FinalizeStep extends StatelessWidget {
     return OrderFormCard(
       title: '梱包・支払・確認設定',
       icon: Icons.check_circle,
-      trailing: Text('受電: $phoneDisplay',
-        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.white)),
+      trailing: PhoneReceivedBadge(phoneNumber: phoneDisplay),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -112,44 +113,57 @@ class FinalizeStep extends StatelessWidget {
           Divider(height: rs(context, 1)),
           SizedBox(height: rs(context, 12)),
 
-          // 3. 店舗
-          _buildFormRow(
-            context: context, 
-            label: '担当店舗', 
-            buttons: KTileSelector(
-              label: '', 
-              selectedValue: branchName, 
-              items: [
-                KTileItem(label: '岡崎本店', value: '岡崎本店'), 
-                KTileItem(label: '名古屋店', value: '名古屋店'), 
-                KTileItem(label: '岐阜店', value: '岐阜店')
-              ], 
-              onSelected: onBranchChanged
-            ),
-          ),
-
-          SizedBox(height: rs(context, 12)),
-          Divider(height: rs(context, 1)),
-          SizedBox(height: rs(context, 12)),
-
           // 4. 支払
           _buildFormRow(
-            context: context, 
-            label: '支払方法', 
+            context: context,
+            label: '支払方法',
             buttons: KTileSelector(
-              label: '', 
-              selectedValue: paymentMethod, 
+              label: '',
+              selectedValue: paymentMethod,
               items: [
-                KTileItem(label: '現金', value: '現金'), 
-                KTileItem(label: 'カード', value: 'カード'), 
-                KTileItem(label: '請求書', value: '請求')
-              ], 
+                KTileItem(label: '現金', value: '現金'),
+                KTileItem(label: 'カード', value: 'カード')
+              ],
               onSelected: onPaymentChanged
+            ),
+            details: LayoutBuilder(
+              builder: (context, c) {
+                // 支払方法ボタン（KTileSelector: 3列・childAspectRatio 2.5）と同寸
+                final tileW = (c.maxWidth - rs(context, 16)) / 3;
+                final tileH = tileW / 2.5;
+                return Row(
+                  children: [
+                    const Spacer(),
+                    SizedBox(
+                      width: tileW,
+                      height: tileH,
+                      child: KButton(
+                        label: '領収書',
+                        isSecondary: true,
+                        color: Colors.blueGrey,
+                        height: tileH,
+                        fontSize: rf(context, 15),
+                        onPressed: onShowReceipt,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           
           SizedBox(height: rs(context, 24)),
-          KButton(label: '受注を確定して保存する', color: Colors.deepOrange, onPressed: onSave),
+          Row(
+            children: [
+              Expanded(
+                child: KButton(label: '注文キャンセル', isSecondary: true, color: Colors.redAccent, onPressed: onCancelOrder),
+              ),
+              SizedBox(width: rs(context, 12)),
+              Expanded(
+                child: KButton(label: '受注を確定して保存する', color: Colors.deepOrange, onPressed: onSave),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -165,7 +179,7 @@ class FinalizeStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: _labelStyle(context)),
-        SizedBox(height: rs(context, 12)),
+        SizedBox(height: rs(context, 6)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -197,7 +211,7 @@ class FinalizeStep extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 4,
+              flex: 1,
               child: KChoiceGroup<String>(
                 label: '',
                 selectedValue: packagingType,
@@ -214,8 +228,11 @@ class FinalizeStep extends StatelessWidget {
             ),
             SizedBox(width: rs(context, 12)),
             Expanded(
-              flex: 6,
-              child: _buildPackagingDetailArea(context),
+              flex: 1,
+              child: SizedBox(
+                height: kFieldHeight(context),
+                child: _buildPackagingDetailArea(context),
+              ),
             ),
           ],
         ),
@@ -236,7 +253,7 @@ class FinalizeStep extends StatelessWidget {
               onChanged: onPackagingSmallQtyChanged,
               title: '小分け数量',
               width: rs(context, 60),
-              height: rs(context, 36),
+              height: kFieldHeight(context),
             ),
             SizedBox(width: rs(context, 4)),
             Text('個ずつ', style: TextStyle(fontSize: rf(context, 12))),
@@ -262,171 +279,169 @@ class FinalizeStep extends StatelessWidget {
 
   Widget _buildAdvanceNotificationSection(BuildContext context) {
     final bool isSms = preConfirmationMethod == 'SMS';
-    final bool isPhoneSelf = preConfirmationMethod == '電話' && preConfirmationPhoneType == 'この電話番号';
-    final bool isPhoneOther = preConfirmationMethod == '電話' && preConfirmationPhoneType == '指定番号へ連絡';
+    final bool isPhone = preConfirmationMethod == '電話';
+    final bool isNumberSelf = preConfirmationPhoneType == 'この電話番号';
+    final bool isNumberOther = preConfirmationPhoneType == '指定番号へ連絡';
+    final String selfName = receiverName.isNotEmpty ? receiverName : customerName;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('事前連絡', style: _labelStyle(context)),
+        SizedBox(height: rs(context, 10)),
+
+        // ① 連絡先番号：受電番号 / 指定番号 / 番号フィールド を同じROWに
+        Text('連絡先番号', style: _subLabelStyle(context)),
+        SizedBox(height: rs(context, 6)),
+        Row(
+          children: [
+            Expanded(flex: 3, child: _choiceCard(context, selected: isNumberSelf, label: '受電番号', onTap: () => onPreConfirmationPhoneTypeChanged('この電話番号'))),
+            SizedBox(width: rs(context, 8)),
+            Expanded(flex: 3, child: _choiceCard(context, selected: isNumberOther, label: '指定番号', onTap: () => onPreConfirmationPhoneTypeChanged('指定番号へ連絡'))),
+            SizedBox(width: rs(context, 8)),
+            Expanded(
+              flex: 5,
+              child: isNumberSelf
+                  ? _numberField(context, phoneDisplay.isEmpty ? '受電番号なし' : phoneDisplay, phoneDisplay.isNotEmpty)
+                  : InkWell(
+                      onTap: () => _showPhoneDialDialog(context),
+                      child: _numberField(context, preConfirmationPhoneNumber.isEmpty ? '電話番号を入力' : preConfirmationPhoneNumber, preConfirmationPhoneNumber.isNotEmpty),
+                    ),
+            ),
+          ],
+        ),
+
         SizedBox(height: rs(context, 12)),
-        _notificationCard(
-          context: context,
-          isSelected: isSms,
-          title: 'SMS送信',
-          onTap: () => onPreConfirmationMethodChanged('SMS'),
+
+        // ② 連絡方法：SMS / 電話連絡 / テキスト（送信予約 or 連絡希望日時）を同じROWに
+        Text('連絡方法', style: _subLabelStyle(context)),
+        SizedBox(height: rs(context, 6)),
+        SizedBox(
+          height: rs(context, 44),
           child: Row(
             children: [
-              Icon(Icons.info_outline, size: rs(context, 16), color: Colors.blue),
+              Expanded(flex: 3, child: _choiceCard(context, selected: isSms, label: 'SMS', onTap: () => onPreConfirmationMethodChanged('SMS'))),
               SizedBox(width: rs(context, 8)),
-              Expanded(
-                child: Text(
-                  scheduledSmsDateTime != null 
-                    ? '${scheduledSmsDateTime!.month}月${scheduledSmsDateTime!.day}日 ${scheduledSmsDateTime!.hour}:${scheduledSmsDateTime!.minute.toString().padLeft(2, '0')} に送信予約'
-                    : '前日 $preConfirmationSmsTime に自動送信されます', 
-                  style: TextStyle(fontSize: rf(context, 12), color: Colors.blue.shade800, fontWeight: FontWeight.bold)),
-              ),
+              Expanded(flex: 3, child: _choiceCard(context, selected: isPhone, label: '電話連絡', onTap: () => onPreConfirmationMethodChanged('電話'))),
               SizedBox(width: rs(context, 8)),
-              ElevatedButton.icon(
-                icon: Icon(Icons.send, size: rs(context, 14)),
-                label: Text('今すぐ送信', style: TextStyle(fontSize: rf(context, 11))),
-                onPressed: () {
-                  _sendActualSms(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: 0),
-                  backgroundColor: Colors.blue.shade600,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                ),
-              ),
-              SizedBox(width: rs(context, 8)),
-              IconButton(
-                icon: Icon(Icons.settings, size: rs(context, 20), color: Colors.blue),
-                onPressed: () => _showSmsScheduleDialog(context),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
+              Expanded(flex: 5, child: isSms ? _smsScheduleRow(context) : _buildDateTimeRow(context)),
             ],
           ),
         ),
-        SizedBox(height: rs(context, 8)),
-        _notificationCard(
-          context: context,
-          isSelected: isPhoneSelf,
-          title: '受電番号へ連絡',
-          onTap: () {
-            onPreConfirmationMethodChanged('電話');
-            onPreConfirmationPhoneTypeChanged('この電話番号');
-          },
-          child: _buildDateTimeRow(context),
+
+        SizedBox(height: rs(context, 12)),
+
+        // ③ 連絡の宛先（受取人と同じUI）：ご本人 / 履歴 / 新規 / テキスト・履歴カード を同じROWに
+        Text('連絡の宛先', style: _subLabelStyle(context)),
+        SizedBox(height: rs(context, 6)),
+        _RecipientSelector(
+          controller: preConfirmationRecipientController,
+          selfName: selfName,
+          history: recipientHistory,
         ),
-        SizedBox(height: rs(context, 8)),
-        _notificationCard(
-          context: context,
-          isSelected: isPhoneOther,
-          title: '指定番号へ連絡',
-          onTap: () {
-            onPreConfirmationMethodChanged('電話');
-            onPreConfirmationPhoneTypeChanged('指定番号へ連絡');
-          },
-          child: Row(
-            children: [
-              Expanded(
-                flex: 4,
-                child: InkWell(
-                  onTap: () => _showPhoneDialDialog(context),
-                  child: Container(
-                    height: rs(context, 36),
-                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(rs(context, 8)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          preConfirmationPhoneNumber.isEmpty ? '電話番号を入力' : preConfirmationPhoneNumber,
-                          style: TextStyle(
-                            fontSize: rf(context, 13), 
-                            color: preConfirmationPhoneNumber.isEmpty ? Colors.grey.shade400 : Colors.black87,
-                            fontWeight: preConfirmationPhoneNumber.isEmpty ? FontWeight.normal : FontWeight.bold,
-                          ),
-                        ),
-                        Icon(Icons.phone_android, size: rs(context, 16), color: Colors.blueGrey),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: rs(context, 12)),
-              Expanded(
-                flex: 6,
-                child: _buildDateTimeRow(context),
-              ),
-            ],
+      ],
+    );
+  }
+
+  Widget _smsScheduleRow(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.info_outline, size: rs(context, 14), color: Colors.blue),
+        SizedBox(width: rs(context, 4)),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(fontSize: rf(context, 13), color: Colors.blue.shade800, fontWeight: FontWeight.bold),
+              children: scheduledSmsDateTime != null
+                  ? [
+                      TextSpan(
+                        text: '${scheduledSmsDateTime!.month}月${scheduledSmsDateTime!.day}日 ${scheduledSmsDateTime!.hour}:${scheduledSmsDateTime!.minute.toString().padLeft(2, '0')}',
+                        style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' 送信予約'),
+                    ]
+                  : [
+                      TextSpan(
+                        text: '前日 $preConfirmationSmsTime',
+                        style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                      ),
+                      const TextSpan(text: ' 自動送信'),
+                    ],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
   }
 
-  Widget _notificationCard({
-    required BuildContext context,
-    required bool isSelected,
-    required String title,
-    required VoidCallback onTap,
-    required Widget child,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(rs(context, 12)),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
-          borderRadius: BorderRadius.circular(rs(context, 12)),
-          border: Border.all(
-            color: isSelected ? Colors.deepPurple : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
+  Widget _numberField(BuildContext context, String text, bool filled) {
+    return Container(
+      height: rs(context, 44),
+      width: double.infinity,
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
+      ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          text,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: filled ? rf(context, 24) : rf(context, 13),
+            color: filled ? Colors.black87 : Colors.grey.shade400,
+            fontWeight: filled ? FontWeight.bold : FontWeight.normal,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _choiceCard(BuildContext context, {required bool selected, required String label, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(rs(context, 10)),
+      child: Container(
+        height: rs(context, 44),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? Colors.deepPurple.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(rs(context, 10)),
+          border: Border.all(color: selected ? Colors.deepPurple : Colors.grey.shade300, width: selected ? 2 : 1),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-              size: rs(context, 20),
-              color: isSelected ? Colors.deepPurple : Colors.grey,
-            ),
-            SizedBox(width: rs(context, 8)),
-            SizedBox(
-              width: rs(context, 130),
-              child: Text(title, 
-                style: TextStyle(
-                  fontSize: rf(context, 14), 
-                  fontWeight: FontWeight.bold, 
-                  color: isSelected ? Colors.deepPurple.shade900 : Colors.black87
-                )),
-            ),
-            SizedBox(width: rs(context, 12)),
-            Expanded(child: child),
+            Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: rs(context, 18), color: selected ? Colors.deepPurple : Colors.grey),
+            SizedBox(width: rs(context, 6)),
+            Text(label,
+                style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? Colors.deepPurple.shade900 : Colors.black87)),
           ],
         ),
       ),
     );
   }
 
+  TextStyle _subLabelStyle(BuildContext context) =>
+      TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600);
+
   Widget _buildDateTimeRow(BuildContext context) {
     return Row(
       children: [
-        Text('連絡希望日時:', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
-        SizedBox(width: rs(context, 12)),
+        Icon(Icons.event, size: rs(context, 18), color: Colors.blueGrey),
+        SizedBox(width: rs(context, 8)),
         Expanded(
           child: KDateTimeDisplay(
             label: '',
             dateTime: preConfirmationDateTime,
+            emptyText: '連絡希望日時を設定',
             onTap: () async {
               final result = await showDialog<DateTime>(
                 context: context,
@@ -440,207 +455,184 @@ class FinalizeStep extends StatelessWidget {
               }
             },
             isCompact: true,
+            height: rs(context, 40),
+            fillColor: Colors.white,
           ),
         ),
       ],
     );
   }
 
-  String _buildSmsMessage() {
-    final String dateStr = "${deliveryDate.month}月${deliveryDate.day}日";
-    final List<String> weekDays = ["日", "月", "火", "水", "木", "金", "土"];
-    final String weekDay = weekDays[deliveryDate.weekday % 7];
-    
-    String itemsText = "";
-    for (int i = 0; i < items.length; i++) {
-      itemsText += "${i + 1}.${items[i]['name']} x${items[i]['quantity']}\n";
-    }
-
-    String trashInfo = "なし";
-    if (trashPickupDateTime != null) {
-      trashInfo = "${trashPickupDateTime!.hour}:${trashPickupDateTime!.minute.toString().padLeft(2, '0')}";
-    }
-
-    final isPickup = deliveryType == '引取' || deliveryType == '店頭引取';
-    final actionText = isPickup ? "お待ちしております" : "お届けいたします";
-
-    final Map<String, String> branchPhones = {
-      '岡崎本店': '0564-23-8861',
-      '名古屋店': '050-1748-2670',
-      '岐阜店': '050-1748-2670',
-    };
-    final storePhone = branchPhones[branchName] ?? '';
-
-    return "「肉弁当専門店かつらです」\n"
-        "$customerName様\n"
-        "この度はご注文ありがとうございます。\n"
-        "下記内容にて明日$dateStr$weekDay曜日 $deliveryTimeに$actionText。\n\n"
-        "受取人：$receiverName様\n"
-        "${isPickup ? '引取店舗' : '配達先住所'}：$address\n"
-        "連絡先：$phoneDisplay\n\n"
-        "ー注文内容ー\n"
-        "$itemsText\n"
-        "ーお支払い金額ー\n"
-        "$totalPrice円（税込）\n\n"
-        "容器回収日時：$trashInfo\n"
-        "回収場所：${trashPickupLocationDetail.isEmpty ? '配達場所と同じ' : trashPickupLocationDetail}\n\n"
-        "内容に不備がある場合お気軽にお電話ください\n"
-        "$storePhone";
-  }
-
-  Future<void> _sendActualSms(BuildContext context) async {
-    const String apiKey = '14caff28';
-    const String apiSecret = 'FumC5ojafuwOcWXK';
-    const String senderId = 'Katura';
-
-    if (phoneDisplay.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('送信先の電話番号が見つかりません'), backgroundColor: Colors.orange),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('SMS自動送信を開始します...'), duration: Duration(seconds: 1)),
-    );
-
-    String cleanPhone = phoneDisplay.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cleanPhone.startsWith('0')) {
-      cleanPhone = '81${cleanPhone.substring(1)}';
-    }
-
-    final String message = _buildSmsMessage();
-
-    try {
-      final Uri url = Uri.parse('https://rest.nexmo.com/sms/json');
-
-      final response = await http.post(
-        url,
-        body: {
-          'api_key': apiKey,
-          'api_secret': apiSecret,
-          'from': senderId,
-          'to': cleanPhone,
-          'text': message,
-          'type': 'unicode',
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (context.mounted) {
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = jsonDecode(response.body);
-          final status = data['messages'][0]['status'];
-          
-          if (status == '0') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                backgroundColor: Colors.green.shade600,
-                content: Text('$phoneDisplay への送信に成功しました！'),
-              ),
-            );
-          } else {
-            final errorText = data['messages'][0]['error-text'] ?? 'Unknown error';
-            throw 'Vonageエラー: $errorText (code: $status)';
-          }
-        } else {
-          throw '通信エラー: ステータスコード ${response.statusCode}';
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.red.shade800,
-            content: Text('送信失敗: $e'),
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
-  }
-
-  void _showSmsScheduleDialog(BuildContext context) async {
-    // 現在の送信時間（例: "09:00"）を DateTime に変換して初期値にする
-    final timeParts = preConfirmationSmsTime.split(':');
-    final initial = DateTime(2024, 1, 1, int.parse(timeParts[0]), int.parse(timeParts[1]));
-
-    final result = await showDialog<DateTime>(
-      context: context,
-      builder: (context) => KTimeSelectionDialog(
-        initialDateTime: initial,
-        title: '店舗全体のSMS送信時間設定',
-      ),
-    );
-
-    if (result != null) {
-      final newTime = "${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}";
-      onPreConfirmationSmsTimeChanged(newTime);
-    }
-  }
-
   void _showPhoneDialDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
-        child: Container(
-          width: rs(context, 400),
-          padding: EdgeInsets.all(rs(context, 24)),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('電話番号の入力', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
-              SizedBox(height: rs(context, 20)),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(rs(context, 12)),
-                  border: Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
-                ),
-                child: Text(
-                  preConfirmationPhoneController.text.isEmpty ? "番号を入力してください" : preConfirmationPhoneController.text,
-                  style: TextStyle(
-                    fontSize: rf(context, 24), 
-                    fontWeight: FontWeight.bold, 
-                    color: preConfirmationPhoneController.text.isEmpty ? Colors.grey : Colors.black87
-                  ),
-                ),
-              ),
-              SizedBox(height: rs(context, 24)),
-              KNumericDialPad(
-                onInput: (digit) {
-                  onPreConfirmationPhoneNumberChanged(preConfirmationPhoneController.text + digit);
-                },
-                onClear: () => onPreConfirmationPhoneNumberChanged(""),
-                onBackspace: () {
-                  if (preConfirmationPhoneController.text.isNotEmpty) {
-                    onPreConfirmationPhoneNumberChanged(
-                      preConfirmationPhoneController.text.substring(0, preConfirmationPhoneController.text.length - 1)
-                    );
-                  }
-                },
-              ),
-              SizedBox(height: rs(context, 24)),
-              SizedBox(
-                width: double.infinity,
-                child: KButton(
-                  label: '確定', 
-                  onPressed: () => Navigator.pop(context),
-                  color: Colors.deepPurple,
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => KNumericInputDialog(
+        title: '電話番号の入力',
+        initialValue: preConfirmationPhoneController.text,
+        emptyHint: '番号を入力してください',
+        themeColor: Colors.deepPurple,
+        onConfirmed: onPreConfirmationPhoneNumberChanged,
       ),
     );
   }
 
   TextStyle _labelStyle(BuildContext context) {
     return TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700);
+  }
+}
+
+/// 事前連絡の宛先セレクタ。受取人の選択UI（ご本人様／履歴から選択／新規追加）と同じ。
+class _RecipientSelector extends StatefulWidget {
+  final TextEditingController controller;
+  final String selfName;
+  final List<String> history;
+
+  const _RecipientSelector({
+    required this.controller,
+    required this.selfName,
+    required this.history,
+  });
+
+  @override
+  State<_RecipientSelector> createState() => _RecipientSelectorState();
+}
+
+class _RecipientSelectorState extends State<_RecipientSelector> {
+  late String _mode;
+
+  @override
+  void initState() {
+    super.initState();
+    // デフォルトは受取人（selfName）と同じ
+    if (widget.controller.text.isEmpty && widget.selfName.isNotEmpty) {
+      widget.controller.text = widget.selfName;
+      _mode = 'ご本人様';
+    } else if (widget.controller.text == widget.selfName) {
+      _mode = 'ご本人様';
+    } else if (widget.history.contains(widget.controller.text)) {
+      _mode = '履歴から選択';
+    } else if (widget.controller.text.isNotEmpty) {
+      _mode = '新規追加';
+    } else {
+      _mode = 'ご本人様';
+    }
+  }
+
+  void _selectMode(String mode) {
+    setState(() => _mode = mode);
+    if (mode == 'ご本人様') {
+      widget.controller.text = widget.selfName;
+    } else if (mode == '新規追加') {
+      widget.controller.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ご本人 / 履歴 / 新規 / 入力欄 をすべて同じROWに配置
+    return Row(
+      children: [
+        Expanded(flex: 2, child: _modeBtn(context, 'ご本人様', 'ご本人')),
+        SizedBox(width: rs(context, 6)),
+        Expanded(flex: 2, child: _modeBtn(context, '履歴から選択', '履歴')),
+        SizedBox(width: rs(context, 6)),
+        Expanded(flex: 2, child: _modeBtn(context, '新規追加', '新規')),
+        SizedBox(width: rs(context, 6)),
+        Expanded(flex: 5, child: _buildInput(context)),
+      ],
+    );
+  }
+
+  Widget _modeBtn(BuildContext context, String mode, String label) {
+    final sel = _mode == mode;
+    return InkWell(
+      onTap: () => _selectMode(mode),
+      borderRadius: BorderRadius.circular(rs(context, 10)),
+      child: Container(
+        height: rs(context, 44),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: sel ? Colors.deepPurple.shade50 : Colors.white,
+          borderRadius: BorderRadius.circular(rs(context, 10)),
+          border: Border.all(color: sel ? Colors.deepPurple : Colors.grey.shade300, width: sel ? 2 : 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(sel ? Icons.check_circle : Icons.radio_button_unchecked,
+                size: rs(context, 15), color: sel ? Colors.deepPurple : Colors.grey),
+            SizedBox(width: rs(context, 3)),
+            Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: sel ? Colors.deepPurple.shade900 : Colors.black87)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput(BuildContext context) {
+    if (_mode == '履歴から選択') {
+      final list = widget.history.where((n) => n.isNotEmpty && n != widget.selfName).toList();
+      return SizedBox(
+        height: rs(context, 44),
+        child: list.isEmpty
+            ? Align(
+                alignment: Alignment.centerLeft,
+                child: Text('履歴なし', style: TextStyle(color: Colors.grey, fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
+              )
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: list.map((name) {
+                    final sel = widget.controller.text == name;
+                    return Padding(
+                      padding: EdgeInsets.only(right: rs(context, 6)),
+                      child: ActionChip(
+                        label: Text(name, style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+                        labelPadding: EdgeInsets.symmetric(horizontal: rs(context, 6)),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => setState(() => widget.controller.text = name),
+                        backgroundColor: sel ? Colors.deepPurple.shade100 : Colors.deepPurple.shade50,
+                        side: BorderSide(color: sel ? Colors.deepPurple : Colors.deepPurple.shade100),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+      );
+    }
+
+    if (_mode == '新規追加') {
+      return KMultimodalTextField(
+        label: '',
+        controller: widget.controller,
+        maxLines: 1,
+        height: rs(context, 44),
+        showLabel: false,
+      );
+    }
+
+    // ご本人様
+    return Container(
+      width: double.infinity,
+      height: rs(context, 44),
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
+      ),
+      child: Text(
+        widget.selfName.isEmpty ? '未設定' : widget.selfName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
+    );
   }
 }

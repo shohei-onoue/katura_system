@@ -10,6 +10,11 @@ class CustomerDataTable extends StatelessWidget {
   final Function(Customer) onEdit;
   final Function(Customer) onDelete;
 
+  /// 並び替えキー: 'name' | 'company' | null
+  final String? sortKey;
+  final bool sortAscending;
+  final Function(String key) onSort;
+
   const CustomerDataTable({
     super.key,
     required this.customers,
@@ -18,13 +23,39 @@ class CustomerDataTable extends StatelessWidget {
     required this.onShowDetail,
     required this.onEdit,
     required this.onDelete,
+    this.sortKey,
+    this.sortAscending = true,
+    required this.onSort,
   });
+
+  static final _dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
+
+  int? _elapsedDays(Customer c) {
+    DateTime? latest;
+    for (final h in c.orderHistory) {
+      final m = _dateRe.firstMatch(h);
+      if (m == null) continue;
+      final d = DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+      if (latest == null || d.isAfter(latest)) latest = d;
+    }
+    if (latest == null) return null;
+    return DateTime.now().difference(latest).inDays;
+  }
+
+  Color? _elapsedColor(int? days) {
+    if (days == null) return null;
+    if (days >= 365) return Colors.grey;
+    if (days >= 180) return Colors.red;
+    if (days > 90) return Colors.orange;
+    return Colors.blue;
+  }
 
   @override
   Widget build(BuildContext context) {
     // 列幅の定義 (レスポンスシブ)
     final double nameWidth = rs(context, 120);
     final double companyWidth = rs(context, 180);
+    final double elapsedWidth = rs(context, 96);
     final double actionWidth = rs(context, 50);
 
     return Padding(
@@ -40,23 +71,19 @@ class CustomerDataTable extends StatelessWidget {
           children: [
             // 固定ヘッダー
             Container(
-              padding: EdgeInsets.symmetric(vertical: rs(context, 12), horizontal: rs(context, 16)),
+              padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 16)),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
               ),
               child: Row(
                 children: [
+                  SizedBox(width: nameWidth, child: _sortableHeader(context, '氏名', 'name')),
+                  SizedBox(width: companyWidth, child: _sortableHeader(context, '企業名', 'company')),
+                  Expanded(child: Text('電話番号', style: _headerStyle(context))),
                   SizedBox(
-                    width: nameWidth,
-                    child: Text('氏名', style: _headerStyle(context)),
-                  ),
-                  SizedBox(
-                    width: companyWidth,
-                    child: Text('企業名', style: _headerStyle(context)),
-                  ),
-                  Expanded(
-                    child: Text('電話番号', style: _headerStyle(context)),
+                    width: elapsedWidth,
+                    child: Text('前回経過日', style: _headerStyle(context)),
                   ),
                   SizedBox(
                     width: actionWidth,
@@ -73,12 +100,16 @@ class CustomerDataTable extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final customer = customers[index];
                   final isSelected = customer.id == selectedCustomerId;
+                  final days = _elapsedDays(customer);
+                  final elapsedColor = _elapsedColor(days);
 
                   return InkWell(
                     onTap: () => onSelect(customer),
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: rs(context, 10), horizontal: rs(context, 16)),
-                      color: isSelected ? Colors.deepPurple.withValues(alpha: 0.05) : null,
+                      color: isSelected
+                          ? Colors.deepPurple.withValues(alpha: 0.05)
+                          : (elapsedColor?.withValues(alpha: 0.07)),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -108,6 +139,18 @@ class CustomerDataTable extends StatelessWidget {
                             child: Text(
                               customer.phoneNumber,
                               style: TextStyle(fontSize: rf(context, 13)),
+                            ),
+                          ),
+                          // 前回注文経過日
+                          SizedBox(
+                            width: elapsedWidth,
+                            child: Text(
+                              days == null ? '—' : '$days日',
+                              style: TextStyle(
+                                fontSize: rf(context, 13),
+                                fontWeight: FontWeight.bold,
+                                color: elapsedColor ?? Colors.grey,
+                              ),
                             ),
                           ),
                           // 操作 (PopupMenu)
@@ -144,6 +187,24 @@ class CustomerDataTable extends StatelessWidget {
     );
   }
 
+  Widget _sortableHeader(BuildContext context, String label, String key) {
+    final active = sortKey == key;
+    return InkWell(
+      onTap: () => onSort(key),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(child: Text(label, style: _headerStyle(context), overflow: TextOverflow.ellipsis)),
+          Icon(
+            active ? (sortAscending ? Icons.arrow_drop_down : Icons.arrow_drop_up) : Icons.arrow_drop_down,
+            size: rs(context, 20),
+            color: active ? Colors.deepPurple : Colors.grey,
+          ),
+        ],
+      ),
+    );
+  }
+
   TextStyle _headerStyle(BuildContext context) {
     return TextStyle(
       fontWeight: FontWeight.bold,
@@ -160,7 +221,12 @@ class CustomerDataTable extends StatelessWidget {
         children: [
           Icon(icon, size: rs(context, 16), color: color),
           SizedBox(width: rs(context, 8)),
-          Text(label, style: TextStyle(fontWeight: FontWeight.w500, fontSize: rf(context, 13))),
+          Text(label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: rf(context, 13),
+                color: value == 'delete' ? Colors.red : null,
+              )),
         ],
       ),
     );

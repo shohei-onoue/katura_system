@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_phone_input_pad.dart';
 import '../../../../widgets/k_responsive.dart';
+import '../order_form_parts.dart';
 
 class SidebarPhonePad extends StatelessWidget {
   final TextEditingController controller;
@@ -20,8 +21,7 @@ class SidebarPhonePad extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(height: rs(context, 40)),
-        Text('入力ダイヤル', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
+        const SidebarSectionTitle(title: '入力ダイヤル', icon: Icons.phone_callback),
         SizedBox(height: rs(context, 20)),
         KPhoneInputPad(
           controller: controller,

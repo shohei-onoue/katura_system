@@ -40,6 +40,7 @@ class DeliveryDestinationStep extends StatelessWidget {
   final TextEditingController remarksController;
   final ValueNotifier<List<Map<String, dynamic>>> facilityResultsListenable;
   final ValueNotifier<bool> isLoadingListenable;
+  final String phoneNumberText;
 
   final VoidCallback onNext;
   final Function(bool) onModeToggle;
@@ -58,6 +59,11 @@ class DeliveryDestinationStep extends StatelessWidget {
   final Future<void> Function() onSearchSubmit;
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
+  /// 履歴カードは手動タップされるまで未選択にする
+  final bool historyManuallySelected;
+  /// 履歴カードタップ時、右端チェックアイコンのグローバル座標を親へ渡す（配達元メニューの展開起点）
+  final void Function(Offset globalAnchor)? onBranchMenuAnchor;
+  final VoidCallback onCancelOrder;
 
   const DeliveryDestinationStep({
     super.key,
@@ -90,6 +96,7 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.remarksController,
     required this.facilityResultsListenable,
     required this.isLoadingListenable,
+    this.phoneNumberText = '',
     required this.onNext,
     required this.onModeToggle,
     required this.onHistoryCategoryChanged,
@@ -107,6 +114,9 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.onSearchSubmit,
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
+    this.historyManuallySelected = false,
+    this.onBranchMenuAnchor,
+    required this.onCancelOrder,
   });
 
   @override
@@ -116,6 +126,7 @@ class DeliveryDestinationStep extends StatelessWidget {
         OrderFormCard(
           title: '配達先の確定',
           icon: Icons.location_on,
+          trailing: PhoneReceivedBadge(phoneNumber: phoneNumberText),
           child: Column(
             children: [
               Row(
@@ -128,10 +139,20 @@ class DeliveryDestinationStep extends StatelessWidget {
               SizedBox(height: rs(context, 32)),
               if (isHistoryMode) _buildHistoryList(context) else _buildNewForm(context),
               SizedBox(height: rs(context, 40)),
-              KButton(
-                label: '配達日時の選択へ', 
-                onPressed: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? onNext : () {},
-                color: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? Colors.deepPurple : Colors.grey,
+              Row(
+                children: [
+                  Expanded(
+                    child: KButton(label: '注文キャンセル', isSecondary: true, color: Colors.redAccent, onPressed: onCancelOrder),
+                  ),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(
+                    child: KButton(
+                      label: '配達日時の選択へ',
+                      onPressed: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? onNext : () {},
+                      color: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? Colors.deepPurple : Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -168,70 +189,79 @@ class DeliveryDestinationStep extends StatelessWidget {
       return Center(child: Text('配達実績がありません。新規登録を行ってください。', style: TextStyle(color: Colors.grey, fontSize: rf(context, 14))));
     }
 
-    final categories = {'すべて'};
-    for (var addr in currentCustomer!.deliveryAddresses) {
-      categories.add(_extractCategory(addr));
-    }
-    final categoryList = categories.toList()..sort();
-
-    final filteredAddresses = selectedHistoryCategory == 'すべて'
-        ? currentCustomer!.deliveryAddresses
-        : currentCustomer!.deliveryAddresses.where((addr) => _extractCategory(addr) == selectedHistoryCategory).toList();
+    final filteredAddresses = currentCustomer!.deliveryAddresses;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: categoryList.map((cat) {
-              final isSelected = selectedHistoryCategory == cat;
-              return Padding(
-                padding: EdgeInsets.only(right: rs(context, 8), bottom: rs(context, 16)),
-                child: ChoiceChip(
-                  label: Text(cat, style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.blueGrey, fontSize: rf(context, 13))),
-                  selected: isSelected,
-                  onSelected: (val) => onHistoryCategoryChanged(cat),
-                  selectedColor: Colors.deepPurple,
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
-                  showCheckmark: false,
-                ),
-              );
-            }).toList(),
-          ),
-        ),
         ...filteredAddresses.map((fullAddr) {
           final parts = fullAddr.split(': ');
           final fName = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
           final aOnly = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
-          final isSelected = addressControllerText == aOnly && facilityControllerText == fName;
+          // デフォルト未選択：手動タップされて初めて選択状態にする
+          final isSelected = historyManuallySelected && addressControllerText == aOnly && facilityControllerText == fName;
+          final GlobalKey checkKey = GlobalKey();
 
-          return Card(
-            margin: EdgeInsets.only(bottom: rs(context, 8)),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(rs(context, 8)), 
-              side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1)
-            ),
-            child: InkWell(
-              onTap: () => onAddressSelected(fullAddr),
-              borderRadius: BorderRadius.circular(rs(context, 8)),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 12)),
-                child: Row(
-                  children: [
-                    Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
-                    SizedBox(width: rs(context, 12)),
-                    SizedBox(width: rs(context, 90), child: Text('【${_extractGenre(fName)}】', style: TextStyle(fontSize: rf(context, 13), color: Colors.deepPurple, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                    SizedBox(width: rs(context, 8)),
-                    SizedBox(width: rs(context, 220), child: Text(fName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                    SizedBox(width: rs(context, 16)),
-                    Expanded(child: Text(aOnly, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
-                    if (isSelected) Icon(Icons.check_circle, color: Colors.orange, size: rs(context, 20)),
-                  ],
+          return Padding(
+            padding: EdgeInsets.only(bottom: rs(context, 8)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                      side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1)
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        // 右端チェックアイコン位置を配達元メニューの展開起点として親へ通知
+                        final box = checkKey.currentContext?.findRenderObject() as RenderBox?;
+                        if (box != null && box.hasSize) {
+                          onBranchMenuAnchor?.call(box.localToGlobal(box.size.center(Offset.zero)));
+                        }
+                        onAddressSelected(fullAddr);
+                      },
+                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                      child: Container(
+                        height: rs(context, 50),
+                        alignment: Alignment.centerLeft,
+                        padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+                        child: Row(
+                          children: [
+                            Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
+                            SizedBox(width: rs(context, 12)),
+                            SizedBox(width: rs(context, 220), child: Text(fName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+                            SizedBox(width: rs(context, 16)),
+                            Expanded(child: Text(aOnly, style: TextStyle(fontSize: rf(context, 14), color: Colors.blueGrey), overflow: TextOverflow.ellipsis)),
+                            SizedBox(
+                              key: checkKey,
+                              width: rs(context, 20),
+                              height: rs(context, 20),
+                              child: isSelected ? Icon(Icons.check_circle, color: Colors.orange, size: rs(context, 20)) : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                SizedBox(width: rs(context, 12)),
+                SizedBox(
+                  height: rs(context, 50),
+                  child: ElevatedButton.icon(
+                    onPressed: onAdjustTap,
+                    icon: Icon(Icons.map, size: rs(context, 20)),
+                    label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         }),
@@ -239,59 +269,10 @@ class DeliveryDestinationStep extends StatelessWidget {
     );
   }
 
-  String _extractGenre(String name) {
-    if (name.contains('歯科')) {
-      return '歯科医院';
-    }
-    if (name.contains('病院')) {
-      return '総合病院';
-    }
-    if (name.contains('医院') || name.contains('クリニック')) {
-      return 'クリニック';
-    }
-    if (name.contains('介護') || name.contains('ホーム') || name.contains('デイサービス')) {
-      return '介護施設';
-    }
-    if (name.contains('役所') || name.contains('センター')) {
-      return '公共施設';
-    }
-    if (name.contains('消防')) {
-      return '消防署';
-    }
-    if (name.contains('警察')) {
-      return '警察署';
-    }
-    if (name.contains('神社')) {
-      return '神社';
-    }
-    if (name.contains('寺')) {
-      return '寺院';
-    }
-    if (name.contains('工場') || name.contains('製作所')) {
-      return '工場・工業';
-    }
-    if (name.contains('自宅') || name.contains('個人')) {
-      return '個人宅';
-    }
-    return '一般施設';
-  }
-
-  String _extractCategory(String fullAddr) {
-    if (fullAddr.startsWith('[') && fullAddr.contains(']')) {
-      return fullAddr.substring(1, fullAddr.indexOf(']'));
-    }
-    if (fullAddr.contains('病院') || fullAddr.contains('医院') || fullAddr.contains('介護')) {
-      return '医療・介護';
-    }
-    if (fullAddr.contains('役所') || fullAddr.contains('消防')) {
-      return '公共施設';
-    }
-    return '一般';
-  }
-
   Widget _buildNewForm(BuildContext context) {
     return FacilitySearchForm(
       facilityControllerText: facilityControllerText,
+      facilityController: facilityController,
       addressControllerText: addressControllerText,
       prefList: prefList,
       searchPrefecture: searchPrefecture,
@@ -327,6 +308,7 @@ class DeliveryDestinationStep extends StatelessWidget {
 /// 「配達先の確定」ステップと「新規顧客の登録」ステップの双方から共通利用する。
 class FacilitySearchForm extends StatelessWidget {
   final String facilityControllerText;
+  final TextEditingController facilityController;
   final String addressControllerText;
   final List<String> prefList;
   final String searchPrefecture;
@@ -360,6 +342,7 @@ class FacilitySearchForm extends StatelessWidget {
   const FacilitySearchForm({
     super.key,
     required this.facilityControllerText,
+    required this.facilityController,
     required this.addressControllerText,
     required this.prefList,
     required this.searchPrefecture,
@@ -413,6 +396,8 @@ class FacilitySearchForm extends StatelessWidget {
           KMultimodalTextField(
             label: '備考 (地図上の目印、搬入口情報など)',
             controller: remarksController!,
+            maxLines: 1,
+            height: rs(context, 50),
           ),
         ],
       ],
@@ -482,6 +467,7 @@ class FacilitySearchForm extends StatelessWidget {
 
   Widget _buildDirectSearchUI(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -511,6 +497,13 @@ class FacilitySearchForm extends StatelessWidget {
             ),
           ],
         ),
+        SizedBox(height: rs(context, 12)),
+        KMultimodalTextField(
+          label: '施設名（未入力の場合は「個人宅」）',
+          controller: facilityController,
+          maxLines: 1,
+          height: rs(context, 50),
+        ),
       ],
     );
   }
@@ -524,7 +517,9 @@ class FacilitySearchForm extends StatelessWidget {
         initialCity: searchCity,
         initialTown: searchTown,
         onAddressConfirmed: (fullAddr) {
-          onAddressSelected("配送先: $fullAddr (0, 0)");
+          final String facilityName =
+              facilityController.text.trim().isEmpty ? '個人宅' : facilityController.text.trim();
+          onAddressSelected("$facilityName: $fullAddr (0, 0)");
         },
       ),
     );
@@ -539,7 +534,7 @@ class FacilitySearchForm extends StatelessWidget {
           children: [
             Expanded(
               child: _AddressDialField(
-                label: '1. 地域を選択',
+                label: '地域・キーワードを設定',
                 value: _buildJoinedAddress(),
                 onTap: () => _showIntegratedAddressPicker(context, isKeywordMode: true),
                 isWarning: isApproximateLocation,
@@ -570,7 +565,7 @@ class FacilitySearchForm extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _IntegratedAddressPickerDialog(
+      builder: (dialogContext) => _IntegratedAddressPickerDialog(
         initialPrefList: prefList,
         initialPref: searchPrefecture,
         initialCity: searchCity,
@@ -589,7 +584,7 @@ class FacilitySearchForm extends StatelessWidget {
         onCategoryChanged: onCategoryChanged,
         onGenreChanged: onGenreChanged,
         onSearchSubmit: () {
-          Navigator.pop(context);
+          Navigator.of(dialogContext).pop();
           _showSearchResultsDialog(context);
           onSearchSubmit();
         },
@@ -602,7 +597,7 @@ class FacilitySearchForm extends StatelessWidget {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
@@ -626,7 +621,7 @@ class FacilitySearchForm extends StatelessWidget {
                             Text('施設検索結果', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
                             const Spacer(),
                             if (!isLoading)
-                              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(dialogContext).pop()),
                           ],
                         ),
                         Divider(height: rs(context, 32)),
@@ -663,7 +658,7 @@ class FacilitySearchForm extends StatelessWidget {
                                 return Card(
                                   margin: EdgeInsets.only(bottom: rs(context, 8)),
                                   elevation: 0,
-                                  color: isNearby ? Colors.deepOrange.shade50 : Colors.blue.shade50,
+                                  color: isNearby ? Colors.grey.shade300 : Colors.blue.shade50,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(rs(context, 8)),
                                     side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1),
@@ -675,8 +670,10 @@ class FacilitySearchForm extends StatelessWidget {
                                     trailing: isSelected ? Icon(Icons.check_circle, color: Colors.orange) : Icon(Icons.chevron_right),
                                     onTap: () {
                                       final cleanAddress = _cleanResultAddress(item['address'] ?? '');
-                                      onAddressSelected("${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})");
-                                      Navigator.pop(context);
+                                      final payload = "${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})";
+                                      // 1タップで確実に閉じてから選択を伝搬する
+                                      Navigator.of(dialogContext).pop();
+                                      onAddressSelected(payload);
                                     },
                                   ),
                                 );
@@ -845,6 +842,7 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
             Divider(height: rs(context, 32)),
             Expanded(
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 左側: 状況表示またはリスト
                   Expanded(
@@ -1107,7 +1105,16 @@ class _DirectAddressPickerDialogState extends State<_DirectAddressPickerDialog> 
       label: label,
       onTap: () => _handleNumericInput(label),
     )).toList();
-    return KDialPad(keys: keys);
+    // 利用可能な高さに収まらない場合も全ボタンが見えるよう縮小表示する
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: SizedBox(
+          width: rs(context, 300),
+          child: KDialPad(keys: keys),
+        ),
+      ),
+    );
   }
 
   void _handleNumericInput(String val) {
@@ -1287,6 +1294,8 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   final _categoryService = CategoryService();
 
   String _recognizedKeyword = "";
+  // 複数キーワード（最大3件）。Google Maps検索へはスペース区切りで渡す。
+  final List<String> _keywords = ["", "", ""];
 
   final Map<String, List<String>> kanaMap = {
     'あ': ['あ', 'い', 'う', 'え', 'お'],
@@ -1310,7 +1319,14 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     tempCategory = widget.initialCategory;
     tempGenre = widget.initialGenre;
     if (widget.isKeywordMode) {
-      _recognizedKeyword = widget.keywordController?.text ?? "";
+      final parts = (widget.keywordController?.text ?? "")
+          .split(RegExp(r'\s+'))
+          .where((e) => e.isNotEmpty)
+          .toList();
+      for (int i = 0; i < _keywords.length && i < parts.length; i++) {
+        _keywords[i] = parts[i];
+      }
+      _recognizedKeyword = _keywords.where((k) => k.trim().isNotEmpty).join(' ');
     }
 
     if (tempPref.isNotEmpty && tempCity.isNotEmpty) {
@@ -1565,17 +1581,28 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     return KDialPad(keys: keys);
   }
 
-  void _openKeywordPenInput() {
+  void _openKeywordPenInput(int index) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => KPenInputDialog(
+        initialText: _keywords[index],
         onTextRecognized: (text) {
-          setState(() => _recognizedKeyword = text);
-          widget.keywordController?.text = text;
+          setState(() => _keywords[index] = text.trim());
+          _syncKeywords();
         },
       ),
     );
+  }
+
+  /// 各キーワードをスペース区切りで結合し、検索用コントローラへ反映する。
+  void _syncKeywords() {
+    final joined = _keywords
+        .map((k) => k.trim())
+        .where((k) => k.isNotEmpty)
+        .join(' ');
+    setState(() => _recognizedKeyword = joined);
+    widget.keywordController?.text = joined;
   }
 
   Widget _buildKeywordHandwritingUI(BuildContext context) {
@@ -1584,46 +1611,54 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       children: [
         Text('判定されたキーワード', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
         SizedBox(height: rs(context, 8)),
-        InkWell(
-          onTap: _openKeywordPenInput,
-          borderRadius: BorderRadius.circular(rs(context, 12)),
-          child: Container(
-            height: rs(context, 80),
-            width: double.infinity,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.deepPurple.shade50,
-              borderRadius: BorderRadius.circular(rs(context, 12)),
-              border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
-            ),
-            child: Text(
-              _recognizedKeyword.isEmpty ? "タップしてペン入力で書いてください" : _recognizedKeyword,
-              style: TextStyle(
-                fontSize: rf(context, 32),
-                fontWeight: FontWeight.bold,
-                color: _recognizedKeyword.isEmpty ? Colors.grey : Colors.deepPurple.shade900,
+        for (int i = 0; i < _keywords.length; i++) ...[
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => _openKeywordPenInput(i),
+                  borderRadius: BorderRadius.circular(rs(context, 12)),
+                  child: Container(
+                    height: rs(context, 56),
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.shade50,
+                      borderRadius: BorderRadius.circular(rs(context, 12)),
+                      border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _keywords[i].isEmpty ? "タップしてペン入力で書いてください" : _keywords[i],
+                        style: TextStyle(
+                          fontSize: rf(context, 24),
+                          fontWeight: FontWeight.bold,
+                          color: _keywords[i].isEmpty ? Colors.grey : Colors.deepPurple.shade900,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
+              SizedBox(width: rs(context, 8)),
+              IconButton(
+                onPressed: _keywords[i].isEmpty
+                    ? null
+                    : () {
+                        setState(() => _keywords[i] = "");
+                        _syncKeywords();
+                      },
+                icon: const Icon(Icons.delete_outline),
+                color: Colors.red,
+                tooltip: 'このキーワードを削除',
+              ),
+            ],
           ),
-        ),
-        SizedBox(height: rs(context, 16)),
-        SizedBox(
-          height: rs(context, 50),
-          child: OutlinedButton.icon(
-            onPressed: _recognizedKeyword.isNotEmpty ? () {
-              setState(() => _recognizedKeyword = "");
-              widget.keywordController?.clear();
-            } : null,
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('内容をクリア', style: TextStyle(fontWeight: FontWeight.bold)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              side: const BorderSide(color: Colors.red),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
-            ),
-          ),
-        ),
+          SizedBox(height: rs(context, 12)),
+        ],
       ],
     );
   }

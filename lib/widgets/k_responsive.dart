@@ -60,7 +60,7 @@ class KR {
   static double fontHuge(BuildContext context) => rf(context, 48);
 
   // --- 共通カラー定義 ---
-  static const Color backgroundLight = Color(0xFFF5F5F7);
+  static const Color backgroundLight = Color(0xFFF3F7F6);
   static const Color cardBorder = Color(0xFFE0E0E4);
 
   /// ボタン・選択肢の標準色（主要アクション）

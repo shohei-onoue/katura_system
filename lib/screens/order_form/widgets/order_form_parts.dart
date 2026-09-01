@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../../widgets/k_responsive.dart';
+import '../../../../widgets/k_button.dart';
 
 /// 受注フォーム全ステップで共通の色・高さトークン
 class OrderFormTokens {
@@ -9,11 +10,93 @@ class OrderFormTokens {
   static double fieldHeight(BuildContext context) => rs(context, 50);
 }
 
+/// メイン画面のOrderFormCardタイトル行の右側に表示する受電番号バッジ
+class PhoneReceivedBadge extends StatelessWidget {
+  final String phoneNumber;
+
+  const PhoneReceivedBadge({super.key, required this.phoneNumber});
+
+  @override
+  Widget build(BuildContext context) {
+    if (phoneNumber.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.phone_callback, color: Colors.orange, size: rav(context, 26)),
+        SizedBox(width: rav(context, 6)),
+        Text(phoneNumber, style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
+      ],
+    );
+  }
+}
+
+/// 右サイドバー共通：上部のキャンセル帯。①〜⑥ステップタイトルバー(KStepper)と同じ高さ
+class SidebarCancelStrip extends StatelessWidget {
+  final VoidCallback? onReset;
+
+  const SidebarCancelStrip({super.key, required this.onReset});
+
+  @override
+  Widget build(BuildContext context) {
+    final height = rav(context, 50);
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: Center(
+        child: KButton(
+          label: '受注をキャンセル',
+          onPressed: onReset,
+          color: Colors.red,
+          isSecondary: true,
+          fullWidth: false,
+          height: height - rs(context, 8),
+          fontSize: rf(context, 13),
+        ),
+      ),
+    );
+  }
+}
+
+/// 右サイドバー共通：セクションタイトルバー。メイン画面のOrderFormCardタイトルと同じ配色・高さ・角丸
+class SidebarSectionTitle extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Widget? trailing;
+
+  const SidebarSectionTitle({super.key, required this.title, required this.icon, this.trailing});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: OrderFormTokens.titleBarColor,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(rav(context, 16)),
+          topRight: Radius.circular(rav(context, 16)),
+        ),
+      ),
+      padding: EdgeInsets.all(rav(context, 16)),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white, size: rav(context, 20)),
+          SizedBox(width: rav(context, 8)),
+          Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.white)),
+          if (trailing != null) ...[const Spacer(), trailing!],
+        ],
+      ),
+    );
+  }
+}
+
 class OrderFormCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Widget child;
   final Widget? trailing;
+  /// true の場合、カードが親の高さいっぱいに広がり、child を Expanded で内包する。
+  /// （タイトルバーを固定し、child 側で内部スクロールさせたいステップ用）
+  final bool fill;
 
   const OrderFormCard({
     super.key,
@@ -21,6 +104,7 @@ class OrderFormCard extends StatelessWidget {
     required this.icon,
     required this.child,
     this.trailing,
+    this.fill = false,
   });
 
   @override
@@ -40,7 +124,7 @@ class OrderFormCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: fill ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Container(
             decoration: BoxDecoration(
@@ -62,7 +146,10 @@ class OrderFormCard extends StatelessWidget {
               ),
             ),
           ),
-          Padding(padding: EdgeInsets.all(rav(context, 16)), child: child),
+          if (fill)
+            Expanded(child: Padding(padding: EdgeInsets.all(rav(context, 16)), child: child))
+          else
+            Padding(padding: EdgeInsets.all(rav(context, 16)), child: child),
         ],
       ),
     );

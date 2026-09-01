@@ -46,6 +46,7 @@ class CustomerConfirmationStep extends StatefulWidget {
   final Future<void> Function() onSearchSubmit;
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
+  final VoidCallback onCancelOrder;
 
   const CustomerConfirmationStep({
     super.key,
@@ -84,6 +85,7 @@ class CustomerConfirmationStep extends StatefulWidget {
     required this.onSearchSubmit,
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
+    required this.onCancelOrder,
   });
 
   @override
@@ -160,6 +162,7 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
             SizedBox(height: rs(context, 8)),
             FacilitySearchForm(
               facilityControllerText: widget.facilityControllerText,
+              facilityController: widget.companyController,
               addressControllerText: widget.addressControllerText,
               prefList: widget.prefList,
               searchPrefecture: widget.searchPrefecture,
@@ -191,25 +194,36 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
 
           SizedBox(height: rs(context, 64)),
 
-          // 右手で押しやすい操作ボタン（大きく、整列）
+          // 操作ボタン：注文キャンセル : 番号の打ち直し : 登録して注文へ進む = 1 : 1 : 2
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              SizedBox(
-                width: rs(context, 200),
+              Expanded(
+                flex: 1,
                 child: KButton(
-                  label: '番号を打ち直す',
+                  label: '注文キャンセル',
+                  isSecondary: true,
+                  color: Colors.redAccent,
+                  height: rs(context, 50),
+                  onPressed: widget.onCancelOrder,
+                ),
+              ),
+              SizedBox(width: rs(context, 12)),
+              Expanded(
+                flex: 1,
+                child: KButton(
+                  label: '番号の打ち直し',
                   isSecondary: true,
                   color: Colors.blueGrey,
+                  height: rs(context, 50),
                   onPressed: widget.onBack,
                 ),
               ),
-              SizedBox(width: rs(context, 24)),
-              SizedBox(
-                width: rs(context, 320),
-                height: rs(context, 50),
+              SizedBox(width: rs(context, 12)),
+              Expanded(
+                flex: 1,
                 child: KButton(
-                  label: isNewCustomer ? '新規登録して次へ進む' : 'この顧客で受注する', 
+                  label: isNewCustomer ? '登録して注文へ進む' : 'この顧客で受注する',
+                  height: rs(context, 50),
                   onPressed: () {
                     if (isNewCustomer && widget.nameController.text.isEmpty && widget.furiganaController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(

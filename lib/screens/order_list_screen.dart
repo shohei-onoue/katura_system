@@ -4,7 +4,6 @@ import '../models/order_model.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
-import 'order_list/widgets/order_summary_panel.dart';
 
 class OrderListScreen extends StatefulWidget {
   final Function(OrderModel)? onEditOrder;
@@ -23,6 +22,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
   
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  String _selectedBranch = '全店舗';
+
+  static const List<String> _branchTabs = ['全店舗', '岡崎店', '名古屋店', '岐阜店'];
 
   @override
   void initState() {
@@ -51,6 +53,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text('受注のキャンセル'),
           content: Text('${order.customerName} 様の受注をキャンセルしますか？'),
           actions: [
@@ -113,6 +116,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
             child: Column(
               children: [
                 TableCalendar(
+                  locale: 'ja_JP',
                   firstDay: DateTime.utc(2020, 1, 1),
                   lastDay: DateTime.utc(2030, 12, 31),
                   focusedDay: _focusedDay,
@@ -154,36 +158,91 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     },
                   ),
                 ),
-                Divider(height: rs(context, 32)),
-                if (_selectedDay != null)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: OrderSummaryPanel(selectedDay: _selectedDay!, orders: _filteredOrders),
-                    ),
-                  ),
               ],
             ),
           ),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _buildOrderList(),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildBranchTabs(),
+                      const Divider(height: 1),
+                      Expanded(child: _buildOrderList()),
+                    ],
+                  ),
           ),
         ],
       ),
     );
   }
 
+  Color _branchTabColor(String tab) {
+    switch (tab) {
+      case '岡崎店':
+        return Colors.blue;
+      case '名古屋店':
+        return Colors.green;
+      case '岐阜店':
+        return Colors.purple;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  Widget _buildBranchTabs() {
+    return Container(
+      color: Colors.white,
+      padding: EdgeInsets.symmetric(horizontal: rav(context, 12), vertical: rs(context, 6)),
+      child: Row(
+        children: _branchTabs.map((tab) {
+          final bool selected = _selectedBranch == tab;
+          final Color color = _branchTabColor(tab);
+          return Padding(
+            padding: EdgeInsets.only(right: rs(context, 6)),
+            child: InkWell(
+              onTap: () => setState(() => _selectedBranch = tab),
+              borderRadius: BorderRadius.circular(rs(context, 8)),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 14), vertical: rs(context, 8)),
+                decoration: BoxDecoration(
+                  color: selected ? color : color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                ),
+                child: Text(
+                  tab,
+                  style: TextStyle(
+                    fontSize: rf(context, 13),
+                    fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                    color: selected ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  List<OrderModel> get _visibleOrders {
+    if (_selectedBranch == '全店舗') return _filteredOrders;
+    final key = _selectedBranch.replaceAll('店', '');
+    return _filteredOrders.where((o) => o.branchName.contains(key)).toList();
+  }
+
   Widget _buildOrderList() {
-    if (_filteredOrders.isEmpty) {
+    final orders = _visibleOrders;
+    if (orders.isEmpty) {
       return Center(child: Text('この日の受注はありません', style: TextStyle(fontSize: rf(context, 16))));
     }
     return ListView.builder(
       padding: EdgeInsets.all(rav(context, 24)),
-      itemCount: _filteredOrders.length,
+      itemCount: orders.length,
       itemBuilder: (context, index) {
         return OrderListCard(
-          order: _filteredOrders[index],
+          order: orders[index],
           onEdit: (order) {
             widget.onEditOrder?.call(order);
           },

@@ -6,10 +6,13 @@ import 'k_pen_canvas.dart';
 
 class KPenInputDialog extends StatefulWidget {
   final Function(String) onTextRecognized;
+  /// すでにフィールドへ反映済みのテキスト。AI判定表示エリアの先頭に表示する。
+  final String initialText;
 
   const KPenInputDialog({
     super.key,
     required this.onTextRecognized,
+    this.initialText = '',
   });
 
   @override
@@ -29,6 +32,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   bool _isRecognizing = false;
   bool _isModelReady = false;
   String _statusMessage = "";
+
+  /// すでに判定済み（フィールド反映済み）のテキスト。ここでも削除できるようにする。
+  late String _baseText;
   
   late final mlkit.DigitalInkRecognizer _recognizer;
   final _modelManager = mlkit.DigitalInkRecognizerModelManager();
@@ -36,6 +42,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   @override
   void initState() {
     super.initState();
+    _baseText = widget.initialText;
     _recognizer = mlkit.DigitalInkRecognizer(languageCode: 'ja');
     _checkModel();
   }
@@ -173,6 +180,18 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     });
   }
 
+  /// 判定済みテキスト（フィールド反映済み分）を1文字削除する。
+  void _backspaceBaseText() {
+    if (_baseText.isEmpty) return;
+    setState(() => _baseText = _baseText.substring(0, _baseText.length - 1));
+  }
+
+  /// 判定済みテキストをすべて削除する。
+  void _clearBaseText() {
+    if (_baseText.isEmpty) return;
+    setState(() => _baseText = "");
+  }
+
   void _goToNextPage() {
     setState(() {
       if (_currentPageIndex == _pagesInks.length - 1) {
@@ -196,7 +215,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final fullText = _pagesTexts.join("");
+    final newText = _pagesTexts.join("");
+    final combinedText = _baseText + newText;
+    final bool hasStrokes = _pagesInks[_currentPageIndex].strokes.isNotEmpty;
     final double sideBtnWidth = rav(context, 60);
 
     return Dialog(
@@ -251,6 +272,11 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                         text: TextSpan(
                           style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
                           children: [
+                            if (_baseText.isNotEmpty)
+                              TextSpan(
+                                text: _baseText,
+                                style: const TextStyle(color: Colors.black54),
+                              ),
                             for (int i = 0; i < _pagesTexts.length; i++)
                               TextSpan(
                                 text: _pagesTexts[i],
@@ -260,7 +286,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                                   backgroundColor: i == _currentPageIndex ? Colors.deepPurple.withValues(alpha: 0.1) : null,
                                 ),
                               ),
-                            if (fullText.isEmpty && _statusMessage.isEmpty)
+                            if (_baseText.isEmpty && newText.isEmpty && _statusMessage.isEmpty)
                               TextSpan(
                                 text: 'ここにAIにより判定された文字が表示されます',
                                 style: TextStyle(color: Colors.grey.shade400, fontSize: rf(context, 18)),
@@ -326,9 +352,11 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   Expanded(
                     flex: 1,
                     child: KButton(
-                      label: '戻る',
+                      label: hasStrokes ? '戻る' : '1字削除',
                       color: Colors.orange,
-                      onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _undoStroke : null,
+                      onPressed: hasStrokes
+                          ? _undoStroke
+                          : (_baseText.isNotEmpty ? _backspaceBaseText : null),
                     ),
                   ),
                   SizedBox(width: rs(context, 12)),
@@ -337,7 +365,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                     child: KButton(
                       label: '削除',
                       color: Colors.grey,
-                      onPressed: _pagesInks[_currentPageIndex].strokes.isNotEmpty ? _clearCanvas : null,
+                      onPressed: hasStrokes
+                          ? _clearCanvas
+                          : (_baseText.isNotEmpty ? _clearBaseText : null),
                     ),
                   ),
                   SizedBox(width: rs(context, 12)),
@@ -346,8 +376,8 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                     child: KButton(
                       label: '完了',
                       color: Colors.deepPurple,
-                      onPressed: fullText.isNotEmpty ? () {
-                        widget.onTextRecognized(fullText);
+                      onPressed: combinedText != widget.initialText ? () {
+                        widget.onTextRecognized(combinedText);
                         Navigator.pop(context);
                       } : null,
                     ),

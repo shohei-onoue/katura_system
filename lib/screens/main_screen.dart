@@ -4,6 +4,7 @@ import '../models/order_model.dart';
 import 'order_form_screen.dart';
 import 'customer_list_screen.dart';
 import 'menu_master_screen.dart';
+import 'ingredient_master_screen.dart';
 import 'staff_management_screen.dart';
 import 'order_list_screen.dart';
 import 'planning_screen.dart';
@@ -68,6 +69,8 @@ class _MainScreenState extends State<MainScreen> {
         return const CustomerListScreen();
       case 7: // メニューマスタ
         return const MenuMasterScreen();
+      case 10: // 材料マスタ
+        return const IngredientMasterScreen();
       case 8: // スタッフ管理
         return const StaffManagementScreen();
       case 9: // 設定

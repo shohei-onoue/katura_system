@@ -29,8 +29,9 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
   @override
   void initState() {
     super.initState();
+    // メニューカードで入力済みの数量を同期。特注数量はデフォルト0のまま
     _quantity = widget.initialQuantity > 0 ? widget.initialQuantity : 1;
-    _specialOrderQuantity = _quantity; 
+    _specialOrderQuantity = 0;
   }
 
   @override
@@ -109,6 +110,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
                     title: '注文数量',
                     width: qInputWidth,
                     height: rs(context, 44),
+                    clearOnDirectInput: true,
                   ),
                 ],
               ),

@@ -91,6 +91,31 @@ class GoogleMapsService {
     return null;
   }
 
+  /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（表示用文字列。例："25分"）を取得する
+  Future<String?> getEstimatedDuration(LatLng origin, LatLng destination) async {
+    final urlStr = 'https://maps.googleapis.com/maps/api/distancematrix/json'
+        '?origins=${origin.latitude},${origin.longitude}'
+        '&destinations=${destination.latitude},${destination.longitude}'
+        '&mode=driving&language=ja&key=$_apiKey';
+    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'OK') {
+          final element = data['rows'][0]['elements'][0];
+          if (element['status'] == 'OK') {
+            return element['duration']['text'] as String;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Distance Matrix Error: $e');
+    }
+    return null;
+  }
+
   Future<List<Map<String, dynamic>>> searchPlacesByText(String query, {LatLng? location}) async {
     String urlStr = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
       '?query=${Uri.encodeComponent(query)}'

@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/customer_model.dart';
 import '../models/menu_model.dart';
@@ -7,8 +9,12 @@ import '../services/customer_service.dart';
 import '../services/menu_service.dart';
 import '../services/staff_service.dart';
 import '../services/order_service.dart';
+import '../services/branch_service.dart';
+import '../services/sms_service.dart';
 import '../widgets/k_stepper.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
+import '../widgets/k_branch_select_dialog.dart';
+import '../widgets/k_receipt_preview_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -33,6 +39,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _menuService = MenuService();
   final _staffService = StaffService();
   final _orderService = OrderService();
+  final _branchService = BranchService();
   
   final _phoneController = TextEditingController();
   final _phonePrefixController = TextEditingController();
@@ -85,8 +92,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
   String _preConfirmationSmsTime = '09:00';
+  String _preConfirmationCallbackPhone = ''; // 設定画面で登録する事前連絡（電話）用の折り返し番号
   DateTime? _scheduledSmsDateTime; // 追加
   final _preConfirmationPhoneController = TextEditingController();
+  final _preConfirmationRecipientController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
   List<OrderModel> _customerOrderHistory = [];
@@ -99,6 +108,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _facilityResultsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool _isSearchResultsDialogOpen = false;
   bool _isHistoryMode = true;
+  // 履歴カードは手動タップされるまで未選択。タップ時に右端チェックアイコン座標を保持し配達元メニューの展開起点にする
+  bool _historyManuallySelected = false;
+  Offset? _pendingBranchAnchor;
   String _selectedHistoryCategory = 'すべて';
   String _lastPhoneQuery = '';
 
@@ -113,14 +125,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String? _searchGenre;
   bool _isApproximateLocation = false;
   String? _pendingStreetViewImageUrl;
+  // 直近に選択した検索結果／履歴の施設名・住所・座標（座標調整ダイヤログへ正確に渡すため保持）
+  String _selectedFacilityName = '';
+  String _selectedFacilityAddress = '';
+  LatLng? _selectedDestPos;
   List<String> _prefList = [];
   List<String> _cityList = [];
   List<String> _townList = [];
 
   GoogleMapController? _mapController;
   Set<Marker> _markers = {};
+  String? _estimatedDeliveryDuration;
   static const LatLng _initialCenter = LatLng(34.9563, 137.1685);
-  final Map<String, LatLng> _branchCoordinates = {'岡崎本店': const LatLng(34.97596915388157, 137.16160761838935), '名古屋店': const LatLng(35.1815, 136.9066), '岐阜店': const LatLng(35.399434, 136.756889)};
+  Map<String, LatLng> _branchCoordinates = {};
   final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '配達日時', '注文内容', '支払・完了'];
 
   bool _isDeliveryDateSelected = true;
@@ -133,7 +150,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _keywordQueryController.addListener(_syncSearchQuery);
     _receiverController.addListener(() => setState(() {}));
     _trashPickupLocationController.addListener(() => setState(() {}));
-    _loadData().then((_) { 
+    _preConfirmationRecipientController.addListener(() {
+      if (!mounted) return;
+      if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      } else {
+        setState(() {});
+      }
+    });
+    _loadData().then((_) {
       if (widget.initialOrder != null) {
         _populateForm(widget.initialOrder!);
       } else {
@@ -153,24 +180,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (doc.exists) {
         setState(() {
           _preConfirmationSmsTime = doc.data()?['sendingTime'] ?? '09:00';
+          _preConfirmationCallbackPhone = doc.data()?['preConfirmationCallbackPhone'] ?? '';
         });
       }
     } catch (e) {
       debugPrint('Error loading SMS settings: $e');
-    }
-  }
-
-  Future<void> _saveGlobalSmsSettings(String time) async {
-    try {
-      await FirebaseFirestore.instanceFor(
-        app: Firebase.app(), 
-        databaseId: 'katura-system-database'
-      ).collection('settings').doc('sms_config').set({'sendingTime': time});
-      setState(() {
-        _preConfirmationSmsTime = time;
-      });
-    } catch (e) {
-      debugPrint('Error saving SMS settings: $e');
     }
   }
 
@@ -179,8 +193,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     setState(() {
       _markers = {
         Marker(
-          markerId: const MarkerId('start'), 
-          position: start, 
+          markerId: const MarkerId('start'),
+          position: start,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
           infoWindow: InfoWindow(title: _branchName)
         )
@@ -191,10 +205,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _loadData() async {
     final menus = await _menuService.getAllMenus();
     await _staffService.getAllStaff();
+    final branches = await _branchService.getAllBranches();
     final prefs = await _customerService.getAddressService().getPrefecturesByInitial(_searchPrefInitial);
     final cities = await _customerService.getAddressService().getCitiesByInitial(_searchPrefecture, _searchCityInitial);
     final towns = await _customerService.getAddressService().getTownsByInitial(_searchPrefecture, _searchCity, _searchTownInitial);
-    if (mounted) setState(() { _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns]; if (_searchPrefecture.isNotEmpty && !_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (_searchCity.isNotEmpty && !_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）'; });
+    if (mounted) {
+      setState(() {
+        _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns];
+        if (branches.isNotEmpty) {
+          _branchCoordinates = {for (final b in branches) b.name: LatLng(b.latitude, b.longitude)};
+          if (!_branchCoordinates.containsKey(_branchName)) _branchName = _branchCoordinates.keys.first;
+        }
+        if (_searchPrefecture.isNotEmpty && !_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (_searchCity.isNotEmpty && !_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）';
+      });
+    }
     _syncSearchQuery();
   }
 
@@ -254,10 +278,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     setState(() {
       _phoneController.text = order.phoneNumber; 
       _nameController.text = order.customerName; 
-      _receiverController.text = order.receiverName; 
-      _facilityController.text = order.facilityName; 
-      _addressController.text = order.address; 
-      _deliveryLocationController.text = order.deliveryLocation; 
+      _receiverController.text = order.receiverName;
+      _facilityController.text = order.facilityName;
+      _addressController.text = order.address;
+      _selectedFacilityName = order.facilityName;
+      _selectedFacilityAddress = order.address;
+      _selectedDestPos = null;
+      _deliveryLocationController.text = order.deliveryLocation;
       _deliveryDate = order.deliveryDate; 
       _receptionDate = order.receptionDate; 
       _deliveryType = order.deliveryType; 
@@ -288,12 +315,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryDateSelected = true;
       _isDeliveryTimeSelected = true;
       _isDeliveryTypeSelected = true;
+      // 受注一覧からの編集は「配達日時」ステップから開始
+      _currentStep = 3;
+      _maxStepReached = _stepLabels.length - 1;
     });
     final coords = _parseCoordsFromAddress(order.address);
     if (coords != null && coords.latitude != 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName);
+        _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName, promptBranch: false);
       });
     }
   }
@@ -308,12 +338,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _receiverController.clear();
       _facilityController.clear();
       _addressController.clear();
+      _selectedFacilityName = '';
+      _selectedFacilityAddress = '';
+      _selectedDestPos = null;
+      _historyManuallySelected = false;
+      _pendingBranchAnchor = null;
       _deliveryLocationController.clear();
       _remarksController.clear();
       _trashPickupLocationController.clear();
       _orderSourceOtherController.clear();
       _packagingOtherController.clear();
       _preConfirmationPhoneController.clear();
+      _preConfirmationRecipientController.clear();
       _currentStep = 0;
       _maxStepReached = 0;
       _currentCustomer = null;
@@ -456,20 +492,40 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       return o.facilityName == customer.companyName && !isSelf;
     }).toList();
 
-    setState(() { 
-      _isLoadingNotifier.value = false; 
-      _currentCustomer = customer; 
+    setState(() {
+      _isLoadingNotifier.value = false;
+      _currentCustomer = customer;
       _isCompletingPhone = false;
-      _customerOrderHistory = myHistory; 
-      _companyOrderHistory = companyHistory; 
+      _customerOrderHistory = myHistory;
+      _companyOrderHistory = companyHistory;
       _phoneController.text = _formatPhone(customer.phoneNumber);
       _nameController.text = customer.name;
       _furiganaController.text = customer.furigana;
       _facilityController.clear();
       _addressController.clear();
+      _selectedFacilityName = '';
+      _selectedFacilityAddress = '';
+      _selectedDestPos = null;
       _deliveryLocationController.clear();
-      _receiverController.text = customer.name; 
-      _updateStep(1); 
+      _receiverController.text = customer.name;
+      // 所属企業の所在地のみにピンを表示する（配達元店舗のピンはこの段階では表示しない）
+      if (customer.latitude != null && customer.longitude != null) {
+        _markers = {
+          Marker(
+            markerId: const MarkerId('dest'),
+            position: LatLng(customer.latitude!, customer.longitude!),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+            infoWindow: InfoWindow(title: customer.companyName.isNotEmpty ? customer.companyName : customer.name),
+          ),
+        };
+      } else {
+        _markers = {};
+      }
+      _updateStep(1);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fitMapToMarkers();
     });
   }
 
@@ -516,16 +572,33 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Future<void> _showLocationAdjustmentDialog() async {
-    final destMarker = _markers.any((m) => m.markerId.value == 'dest') 
+    // Googleマップの検索フィールド／ピンには、選択した検索結果カードの施設名・住所・座標を優先して使う。
+    final String namePart = _selectedFacilityName.trim().isNotEmpty
+        ? _selectedFacilityName.trim()
+        : _facilityController.text.trim();
+    final String addrPart = _selectedFacilityAddress.trim().isNotEmpty
+        ? _selectedFacilityAddress.trim()
+        : _addressController.text.trim();
+    String query = [namePart, addrPart].where((s) => s.isNotEmpty).join(' ').trim();
+    if (query.isEmpty) query = _combinedSearchController.text.trim();
+
+    final destMarker = _markers.any((m) => m.markerId.value == 'dest')
         ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
-    final initialPos = destMarker?.position ?? _initialCenter;
+    // カードが保持する座標 → destマーカー → （最後の手段）住所のみのジオコード。
+    LatLng initialPos = _selectedDestPos ?? destMarker?.position ?? _initialCenter;
+    if (_selectedDestPos == null && destMarker == null && addrPart.isNotEmpty) {
+      final geo = await _customerService.getGoogleMapsService().getLatLngFromAddress(addrPart);
+      if (geo != null) initialPos = LatLng(geo['lat'] as double, geo['lng'] as double);
+    }
+
+    if (!mounted) return;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       barrierDismissible: false,
       builder: (context) => KLocationAdjustmentDialog(
         initialPosition: initialPos,
-        initialAddress: _addressController.text,
+        initialAddress: query.isNotEmpty ? query : addrPart,
         getAddressFromLatLng: (pos) => _customerService.getGoogleMapsService().getAddressFromLatLng(pos),
       ),
     );
@@ -553,10 +626,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _deliveryLocationController.clear();
         _receiverController.clear();
         _selectedHistoryItem = null;
+        _selectedFacilityName = '';
+        _selectedFacilityAddress = '';
+        _selectedDestPos = null;
+        _pendingStreetViewImageUrl = null;
         _markers = {
           Marker(
-            markerId: const MarkerId('start'), 
-            position: _branchCoordinates[_branchName] ?? _initialCenter, 
+            markerId: const MarkerId('start'),
+            position: _branchCoordinates[_branchName] ?? _initialCenter,
             icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue)
           )
         };
@@ -564,10 +641,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       return;
     }
 
+    // 選択直後に施設名・住所を確定保持（座標調整ダイヤログへ正確に渡すため）
+    _selectedFacilityName = facilityNamePart;
+    _selectedFacilityAddress = addressOnlyPart;
+
+    // 履歴エントリに保存されたストリートビュー画像URL（[IMG:...]）があれば復元する
+    final imgMatch = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(fullAddr);
+    _pendingStreetViewImageUrl = imgMatch?.group(1);
+
     final matchingOrder = _customerOrderHistory.followedBy(_companyOrderHistory).firstWhere((o) => o.facilityName == facilityNamePart || fullAddr.contains(o.address), orElse: () => OrderModel.empty());
     LatLng? pos = _parseCoordsFromAddress(fullAddr);
     if (pos == null || (pos.latitude == 0 && pos.longitude == 0)) {
-      final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("$facilityNamePart $addressOnlyPart");
+      // 施設名を含めると誤マッチしやすいため住所のみでジオコードする
+      final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress(addressOnlyPart);
       if (latLng != null) {
         pos = LatLng(latLng['lat']!, latLng['lng']!);
         setState(() {
@@ -579,8 +665,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _isApproximateLocation = false;
       });
     }
+    _selectedDestPos = pos;
 
-    setState(() { if (matchingOrder.id.isNotEmpty) _selectedHistoryItem = matchingOrder; if (pos != null) _updateMap(pos, facilityNamePart); _addressController.text = addressOnlyPart; _facilityController.text = facilityNamePart; if (matchingOrder.id.isNotEmpty) { _receiverController.text = matchingOrder.receiverName; _deliveryLocationController.text = matchingOrder.deliveryLocation; } });
+    final Offset? branchAnchor = _pendingBranchAnchor;
+    _pendingBranchAnchor = null;
+    setState(() { if (matchingOrder.id.isNotEmpty) _selectedHistoryItem = matchingOrder; if (pos != null) _updateMap(pos, facilityNamePart, branchAnchor: branchAnchor); _addressController.text = addressOnlyPart; _facilityController.text = facilityNamePart; if (matchingOrder.id.isNotEmpty) { _receiverController.text = matchingOrder.receiverName; _deliveryLocationController.text = matchingOrder.deliveryLocation; } });
   }
 
   LatLng? _parseCoordsFromAddress(String fullAddr) {
@@ -591,6 +680,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   Future<void> _onMapPositionAdjusted(LatLng position) async {
     final newAddress = await _customerService.getGoogleMapsService().getAddressFromLatLng(position);
+    _selectedDestPos = position;
+    if (newAddress != null) _selectedFacilityAddress = newAddress;
     setState(() {
       _isApproximateLocation = false;
       if (newAddress != null) _addressController.text = newAddress;
@@ -604,20 +695,88 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       );
       _markers = _markers.where((m) => m.markerId.value != 'dest').toSet()..add(destMarker);
     });
+    _updateEstimatedDuration();
   }
 
-  void _updateMap(LatLng position, String title) {
+  void _updateMap(LatLng position, String title, {bool promptBranch = true, Offset? branchAnchor}) {
     final start = _branchCoordinates[_branchName] ?? _initialCenter;
-    setState(() { 
-      _markers = { 
-        Marker(markerId: const MarkerId('start'), position: start, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue), infoWindow: InfoWindow(title: _branchName)), 
-        Marker(markerId: const MarkerId('dest'), position: position, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: InfoWindow(title: title)) 
-      }; 
+    setState(() {
+      _markers = {
+        Marker(markerId: const MarkerId('start'), position: start, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue), infoWindow: InfoWindow(title: _branchName)),
+        Marker(markerId: const MarkerId('dest'), position: position, icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed), infoWindow: InfoWindow(title: title))
+      };
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _fitMapToMarkers();
     });
+    _updateEstimatedDuration();
+    // 新規顧客の登録ステップ（step 1）では配達元店舗の選択メニューは使用しない
+    if (promptBranch && _currentStep != 1) _promptNearestBranchDialog(position, anchor: branchAnchor);
+  }
+
+  /// 配達先の座標に最も近い店舗をデフォルト選択したダイアログで配達元店舗を確定する
+  Future<void> _promptNearestBranchDialog(LatLng destination, {Offset? anchor}) async {
+    String nearest = _branchName;
+    double minDist = double.infinity;
+    _branchCoordinates.forEach((name, coord) {
+      final d = _distanceMeters(coord, destination);
+      if (d < minDist) {
+        minDist = d;
+        nearest = name;
+      }
+    });
+
+    final selected = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black26,
+      builder: (context) => KBranchSelectDialog(
+        branches: _branchCoordinates.keys.toList(),
+        initialSelected: nearest,
+        anchor: anchor,
+      ),
+    );
+    if (selected == null || !mounted || selected == _branchName) return;
+
+    setState(() {
+      _branchName = selected;
+      _markers = _markers.where((m) => m.markerId.value != 'start').toSet()
+        ..add(Marker(
+          markerId: const MarkerId('start'),
+          position: _branchCoordinates[selected] ?? _initialCenter,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: InfoWindow(title: selected),
+        ));
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fitMapToMarkers();
+    });
+    _updateEstimatedDuration();
+  }
+
+  double _distanceMeters(LatLng a, LatLng b) {
+    const earthRadius = 6371000.0;
+    final dLat = (b.latitude - a.latitude) * (pi / 180);
+    final dLng = (b.longitude - a.longitude) * (pi / 180);
+    final lat1 = a.latitude * (pi / 180);
+    final lat2 = b.latitude * (pi / 180);
+    final h = sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLng / 2) * sin(dLng / 2);
+    return 2 * earthRadius * asin(sqrt(h));
+  }
+
+  /// 配達元店舗から配達先までのナビ経路の予想所要時間を取得する
+  Future<void> _updateEstimatedDuration() async {
+    final start = _markers.any((m) => m.markerId.value == 'start') ? _markers.firstWhere((m) => m.markerId.value == 'start') : null;
+    final dest = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
+    if (start == null || dest == null) {
+      if (mounted) setState(() => _estimatedDeliveryDuration = null);
+      return;
+    }
+    final duration = await _customerService.getGoogleMapsService().getEstimatedDuration(start.position, dest.position);
+    if (!mounted) return;
+    setState(() => _estimatedDeliveryDuration = duration);
   }
 
   void _fitMapToMarkers() {
@@ -646,20 +805,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     List<Map<String, dynamic>> results = [];
     
     if (_searchTabIndex == 0 || _searchTabIndex == 1) {
-      if (!forceApi && !ignoreFilter) {
-        results = _searchTabIndex == 0 
-          ? await _customerService.getAddressService().searchByLocationAndCategory(prefecture: _searchPrefecture, city: _searchCity, town: _searchTown, category: _searchCategory!, genre: _searchGenre!) 
-          : await _customerService.getAddressService().searchByLocationAndKeyword(prefecture: _searchPrefecture, city: _searchCity, town: _searchTown, keyword: _keywordQueryController.text);
-      }
-      if (results.isEmpty || forceApi || ignoreFilter) {
+      // 地域（都道府県・市区町村・町名）を住所、カテゴリ／キーワードを施設名・カテゴリとして
+      // Google Maps テキスト検索を行う。ローカルDBの住所部分一致
+      // （例: キーワード「寺」で住所に「寺」を含む企業がヒットする）は使用しない。
+      {
         final hierarchy = await _customerService.getAddressService().getCategoryHierarchy();
-        final List<String> genreKeywords = (_searchTabIndex == 0 && _searchCategory != null && _searchGenre != null) 
+        final List<String> genreKeywords = (_searchTabIndex == 0 && _searchCategory != null && _searchGenre != null)
           ? (hierarchy[_searchCategory]?[_searchGenre] ?? []) : [];
-        
+
         final town = (_searchTown == '（すべて）' || _searchTown.isEmpty) ? '' : _searchTown;
-        final kw = '$_searchPrefecture$_searchCity$town ${_searchTabIndex == 0 ? (_searchGenre ?? "") : _keywordQueryController.text}'.trim();
-        
-        if (kw.isEmpty) { _isLoadingNotifier.value = false; return; }
+        final String areaPart = '$_searchPrefecture$_searchCity$town'.trim();
+        final String facilityTerm = (_searchTabIndex == 0 ? (_searchGenre ?? '') : _keywordQueryController.text).trim();
+        final kw = '$areaPart $facilityTerm'.trim();
+
+        if (areaPart.isEmpty || facilityTerm.isEmpty) { _isLoadingNotifier.value = false; return; }
         
         final raw = await _customerService.getGoogleMapsService().searchPlacesByText(kw, location: _branchCoordinates[_branchName]);
         
@@ -768,14 +927,22 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (_addressController.text.isNotEmpty) {
         final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
         if (destMarker != null) {
-          String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
-          if (imageUrl != null) displayEntry += " [IMG:$imageUrl]";
-          final exists = updatedCustomer.deliveryAddresses.any((a) => a.contains(_addressController.text));
-          if (!exists) {
-            final newList = List<String>.from(updatedCustomer.deliveryAddresses)..add(displayEntry);
-            updatedCustomer = updatedCustomer.copyWith(deliveryAddresses: newList);
-            customerUpdated = true;
+          final idx = updatedCustomer.deliveryAddresses.indexWhere((a) => a.contains(_addressController.text));
+          // 今回調整していなければ既存エントリのストリートビュー画像を引き継ぐ
+          String? keepImg = imageUrl;
+          if (keepImg == null && idx != -1) {
+            keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
           }
+          String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
+          if (keepImg != null) displayEntry += " [IMG:$keepImg]";
+          final newList = List<String>.from(updatedCustomer.deliveryAddresses);
+          if (idx == -1) {
+            newList.add(displayEntry);
+          } else {
+            newList[idx] = displayEntry; // 座標・画像を最新へ更新
+          }
+          updatedCustomer = updatedCustomer.copyWith(deliveryAddresses: newList);
+          customerUpdated = true;
         }
       }
       if (_receiverController.text.isNotEmpty && _facilityController.text.isNotEmpty) {
@@ -809,10 +976,41 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       await _customerService.createCustomer(newCustomer);
     }
 
-    await _orderService.saveOrder(order); 
+    await _orderService.saveOrder(order);
+
+    // 事前連絡が「電話」の場合、設定画面で登録した折り返し番号あてにSMSを送信する
+    if (_preConfirmationMethod == '電話' && _preConfirmationCallbackPhone.trim().isNotEmpty) {
+      await _sendPreConfirmationCallSms(order);
+    }
+
     if (mounted) {
       setState(() => _isLoadingNotifier.value = false);
       widget.onSaveSuccess?.call();
+    }
+  }
+
+  Future<void> _sendPreConfirmationCallSms(OrderModel order) async {
+    final when = order.preConfirmationDateTime ?? order.deliveryDate;
+    final target = _preConfirmationRecipientController.text.trim().isNotEmpty
+        ? _preConfirmationRecipientController.text.trim()
+        : (order.receiverName.isNotEmpty ? order.receiverName : order.customerName);
+    final itemsText = order.items.map((i) => '・${i['name']} ${i['quantity']}個').join('\n');
+    // リマインドSMSの送信先＝事前電話連絡を行う担当者の番号
+    final staffPhone = _preConfirmationCallbackPhone.trim();
+    // 本文に載せる「連絡すべき相手の番号」＝顧客の事前連絡先番号
+    final callTo = order.preConfirmationPhoneType == '指定番号へ連絡'
+        ? (order.preConfirmationPhoneNumber.isNotEmpty ? order.preConfirmationPhoneNumber : order.phoneNumber)
+        : order.phoneNumber;
+    final body = '${when.month}月${when.day}日${when.hour.toString().padLeft(2, '0')}時までに'
+        '$targetさまへ事前電話連絡をしてください。\n'
+        '連絡先電話番号：\n'
+        '$callTo\n\n'
+        '【ご注文内容】\n$itemsText\n'
+        '【配達先情報】\n${order.facilityName} ${order.address}';
+    try {
+      await SmsService().sendPreConfirmationCall(to: staffPhone, body: body, orderId: order.id);
+    } catch (e) {
+      debugPrint('Pre-confirmation SMS enqueue error: $e');
     }
   }
 
@@ -848,11 +1046,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               child: Column(
                 children: [
                 KStepper(
-                  currentStep: _currentStep, 
+                  currentStep: _currentStep,
                   maxReachedStep: _maxStepReached,
                   isFinalStepAvailable: _confirmedItems.isNotEmpty,
-                  steps: _stepLabels, 
-                  onStepTapped: (s) { 
+                  steps: _stepLabels,
+                  onStepTapped: (s) {
                     // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
                     bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 5;
                     if (s <= _maxStepReached || isJumpableToFinal) {
@@ -865,7 +1063,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     }
                   }
                 ),
-                  Expanded(child: SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())),
+                  Expanded(
+                    child: _currentStep == 4
+                        // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
+                        ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
+                        : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
+                  ),
                 ],
               ),
             ),
@@ -922,7 +1125,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 trashPickupDateTime: _trashPickupDateTime,
                 trashPickupLocation: _trashPickupLocation,
                 trashPickupLocationDetail: _trashPickupLocationController.text,
-                customerName: _nameController.text, 
+                packagingType: _packagingType,
+                packagingSmallQty: _packagingSmallQty,
+                packagingOther: _packagingOtherController.text,
+                preConfirmationMethod: _preConfirmationMethod,
+                preConfirmationPhoneType: _preConfirmationPhoneType,
+                preConfirmationPhoneNumber: _preConfirmationPhoneNumber,
+                preConfirmationDateTime: _preConfirmationDateTime,
+                preConfirmationSmsTime: _preConfirmationSmsTime,
+                scheduledSmsDateTime: _scheduledSmsDateTime,
+                phoneDisplay: _phoneController.text,
+                paymentMethod: _paymentMethod,
+                preConfirmationRecipient: _preConfirmationRecipientController.text,
+                onShowInvoice: _showInvoicePreviewDialog,
+                customerName: _nameController.text,
                 facilityName: _facilityController.text,
                 address: _addressController.text,
                 deliveryLocation: _deliveryLocationController.text,
@@ -939,23 +1155,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   _fitMapToMarkers();
                 }, 
                 onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
-                onFacilitySelect: (f) async { 
-                  setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
-                  LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
-                  if (pos == null) { 
-                    final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
-                    if (latLng != null) { 
-                      pos = LatLng(latLng['lat']!, latLng['lng']!); 
-                      await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
+                onFacilitySelect: (f) async {
+                  setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; });
+                  _selectedFacilityName = f['name'];
+                  _selectedFacilityAddress = f['address'];
+                  LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null;
+                  if (pos == null) {
+                    final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress(f['address']);
+                    if (latLng != null) {
+                      pos = LatLng(latLng['lat']!, latLng['lng']!);
+                      await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude);
                       if (mounted) setState(() { _isApproximateLocation = latLng['location_type'] != 'ROOFTOP'; });
-                    } 
-                  } 
-                  if (pos != null) _updateMap(pos, f['name']); 
-                }, 
+                    }
+                  }
+                  _selectedDestPos = pos;
+                  if (pos != null) _updateMap(pos, f['name']);
+                },
                 onForceApiSearch: () => _onSearchSubmit(forceApi: true),
                 onMapTap: _onMapPositionAdjusted,
                 onMarkerDragEnd: _onMapPositionAdjusted,
                 deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+                estimatedDeliveryDuration: _estimatedDeliveryDuration,
+                branchName: _branchName,
                 isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
               ),
           ],
@@ -1017,7 +1238,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       trashPickupDateTime: _trashPickupDateTime,
       trashPickupLocation: _trashPickupLocation,
       trashPickupLocationDetail: _trashPickupLocationController.text,
-      customerName: _nameController.text, 
+      packagingType: _packagingType,
+      packagingSmallQty: _packagingSmallQty,
+      packagingOther: _packagingOtherController.text,
+      preConfirmationMethod: _preConfirmationMethod,
+      preConfirmationPhoneType: _preConfirmationPhoneType,
+      preConfirmationPhoneNumber: _preConfirmationPhoneNumber,
+      preConfirmationDateTime: _preConfirmationDateTime,
+      preConfirmationSmsTime: _preConfirmationSmsTime,
+      scheduledSmsDateTime: _scheduledSmsDateTime,
+      phoneDisplay: _phoneController.text,
+      paymentMethod: _paymentMethod,
+      preConfirmationRecipient: _preConfirmationRecipientController.text,
+      onShowInvoice: _showInvoicePreviewDialog,
+      customerName: _nameController.text,
       facilityName: _facilityController.text,
       address: _addressController.text,
       deliveryLocation: _deliveryLocationController.text,
@@ -1034,23 +1268,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _fitMapToMarkers();
       }, 
       onSidebarResultsClose: () => _facilityResultsNotifier.value = [], 
-      onFacilitySelect: (f) async { 
-        setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; }); 
-        LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null; 
-        if (pos == null) { 
-          final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress("${f['name']} ${f['address']}"); 
-          if (latLng != null) { 
-            pos = LatLng(latLng['lat']!, latLng['lng']!); 
-            await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude); 
+      onFacilitySelect: (f) async {
+        setState(() { _facilityController.text = f['name']; _addressController.text = f['address']; _facilityResultsNotifier.value = []; });
+        _selectedFacilityName = f['name'];
+        _selectedFacilityAddress = f['address'];
+        LatLng? pos = (f['lat'] != null && f['lat'] != 0.0) ? LatLng(f['lat'], f['lng']) : null;
+        if (pos == null) {
+          final latLng = await _customerService.getGoogleMapsService().getLatLngFromAddress(f['address']);
+          if (latLng != null) {
+            pos = LatLng(latLng['lat']!, latLng['lng']!);
+            await _customerService.getAddressService().upsertKigyouEntity(name: f['name'], address: f['address'], lat: pos.latitude, lng: pos.longitude);
             if (mounted) setState(() { _isApproximateLocation = latLng['location_type'] != 'ROOFTOP'; });
-          } 
-        } 
-        if (pos != null) _updateMap(pos, f['name']); 
-      }, 
+          }
+        }
+        _selectedDestPos = pos;
+        if (pos != null) _updateMap(pos, f['name']);
+      },
       onForceApiSearch: () => _onSearchSubmit(forceApi: true),
       onMapTap: _onMapPositionAdjusted,
       onMarkerDragEnd: _onMapPositionAdjusted,
       deliveryDestinationImageUrl: _pendingStreetViewImageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
+      estimatedDeliveryDuration: _estimatedDeliveryDuration,
+      branchName: _branchName,
       isSearchResultsDialogOpen: _isSearchResultsDialogOpen,
     );
   }
@@ -1126,10 +1365,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onSearchSubmit: _onSearchSubmit,
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog,
+          onCancelOrder: _resetForm,
       );
       case 2: return DeliveryDestinationStep(
-          currentCustomer: _currentCustomer, 
-          isHistoryMode: _isHistoryMode, 
+          phoneNumberText: _phoneController.text,
+          currentCustomer: _currentCustomer,
+          isHistoryMode: _isHistoryMode,
           selectedHistoryCategory: _selectedHistoryCategory, 
           facilityControllerText: _facilityController.text, 
           addressControllerText: _addressController.text, 
@@ -1157,10 +1398,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
-          onNext: () => _updateStep(3), 
-          onModeToggle: (v) => setState(() => _isHistoryMode = v), 
-          onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v), 
-          onAddressSelected: _onAddressSelectedFromList, 
+          onNext: () => _updateStep(3),
+          onCancelOrder: _resetForm,
+          onModeToggle: (v) => setState(() { _isHistoryMode = v; _historyManuallySelected = false; }),
+          onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v),
+          onAddressSelected: _onAddressSelectedFromList,
+          historyManuallySelected: _historyManuallySelected,
+          onBranchMenuAnchor: (o) => setState(() { _pendingBranchAnchor = o; _historyManuallySelected = true; }),
           onSearchTabChanged: (v) { setState(() => _searchTabIndex = v); _syncSearchQuery(); }, 
           onPrefChanged: (v) => _updateCityList(v, 'すべて'), 
           onCityChanged: (v) => _updateTownList(_searchPrefecture, v, 'すべて'), 
@@ -1176,7 +1420,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onAdjustTap: _showLocationAdjustmentDialog
       );
       case 3: return DeliveryTimeStep(
-          deliveryDate: _deliveryDate, 
+          phoneNumberText: _phoneController.text,
+          deliveryDate: _deliveryDate,
           deliveryType: _deliveryType, 
           selectedTime: _selectedTime, 
           timeMin: _timePickerMin,
@@ -1207,10 +1452,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onTimeSelected: (v) => setState(() { _selectedTime = v; _isDeliveryTimeSelected = true; }),
           onTimeSettingsChanged: (min, max, interval) { setState(() { _timePickerMin = min; _timePickerMax = max; _timePickerInterval = interval; }); },
           onTrashTimeSettingsChanged: (min, max, interval) { setState(() { _trashTimePickerMin = min; _trashTimePickerMax = max; _trashTimePickerInterval = interval; }); },
-          onNext: () => _updateStep(4)
+          onNext: () => _updateStep(4),
+          onCancelOrder: _resetForm
       );
       case 4: return ItemsSelectionStep(
-          menus: _menus, 
+          phoneNumberText: _phoneController.text,
+          menus: _menus,
           confirmedItems: _confirmedItems, 
           selectedQuantities: _selectedQuantities, 
           riceAmount: _calculateRiceAmount(), 
@@ -1249,8 +1496,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onNext: () => _updateStep(5)
       );
       case 5: return FinalizeStep(
-          branchName: _branchName, 
-          paymentMethod: _paymentMethod, 
+          branchName: _branchName,
+          paymentMethod: _paymentMethod,
+          preConfirmationRecipientController: _preConfirmationRecipientController,
+          recipientHistory: _currentCustomer?.facilityReceivers[_facilityController.text] ?? const [],
           packagingType: _packagingType,
           packagingSmallQty: _packagingSmallQty,
           packagingOtherController: _packagingOtherController,
@@ -1274,16 +1523,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           trashPickupLocationDetail: _trashPickupLocationController.text,
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
-          onBranchChanged: (v) { 
-            setState(() => _branchName = v); 
-            final m = _markers.where((x) => x.markerId.value == 'dest'); 
-            if (m.isNotEmpty) {
-              _updateMap(m.first.position, _facilityController.text);
-            } else {
-              _setInitialBranchMarker();
-            }
-          }, 
-          onPaymentChanged: (v) => setState(() => _paymentMethod = v), 
+          onPaymentChanged: (v) => setState(() => _paymentMethod = v),
           onPreConfirmationMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
           onPreConfirmationPhoneTypeChanged: (v) => setState(() => _preConfirmationPhoneType = v),
           onPreConfirmationPhoneNumberChanged: (v) => setState(() {
@@ -1291,12 +1531,110 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _preConfirmationPhoneController.text = v;
           }),
           onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
-          onPreConfirmationSmsTimeChanged: (v) => _saveGlobalSmsSettings(v),
           onScheduledSmsDateTimeChanged: (v) => setState(() => _scheduledSmsDateTime = v),
-          onSave: _handleSave
+          onSave: _handleSave,
+          onCancelOrder: _resetForm,
+          onShowReceipt: _showReceiptPreviewDialog,
       );
       default: return Container();
     }
+  }
+
+  /// 領収書のプレビュー（受注内容から自動生成、WebView表示・印刷）
+  void _showReceiptPreviewDialog() {
+    final hasFacility = _facilityController.text.trim().isNotEmpty;
+    final recipient = hasFacility
+        ? _facilityController.text.trim()
+        : (_receiverController.text.trim().isNotEmpty
+            ? _receiverController.text.trim()
+            : _nameController.text.trim());
+    showDialog(
+      context: context,
+      builder: (context) => KReceiptPreviewDialog(
+        branchName: _branchName,
+        recipientName: recipient,
+        recipientHonorific: hasFacility ? '御中' : '様',
+        totalPrice: _totalPrice,
+        items: _confirmedItems,
+        paymentMethod: _paymentMethod,
+        issueDate: DateTime.now(),
+      ),
+    );
+  }
+
+  /// 請求書の印刷プレビュー（暫定表示。今後プレビュー内容を拡充予定）
+  void _showInvoicePreviewDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
+        child: Container(
+          width: rs(context, 560),
+          constraints: BoxConstraints(maxHeight: rs(context, 720)),
+          padding: EdgeInsets.all(rs(context, 24)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.description_outlined, color: const Color(0xFF000038), size: rs(context, 24)),
+                  SizedBox(width: rs(context, 12)),
+                  Text('請求書 印刷プレビュー', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+              Divider(height: rs(context, 24)),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('宛名：${_facilityController.text.isEmpty ? _nameController.text : _facilityController.text}',
+                          style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
+                      SizedBox(height: rs(context, 4)),
+                      Text('住所：${_addressController.text}', style: TextStyle(fontSize: rf(context, 13))),
+                      SizedBox(height: rs(context, 12)),
+                      ..._confirmedItems.map((i) => Padding(
+                            padding: EdgeInsets.only(bottom: rs(context, 4)),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('${i['name']} × ${i['quantity']}', style: TextStyle(fontSize: rf(context, 13))),
+                                Text('¥${(i['price'] as int) * (i['quantity'] as int)}', style: TextStyle(fontSize: rf(context, 13))),
+                              ],
+                            ),
+                          )),
+                      Divider(height: rs(context, 24)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('合計金額', style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold)),
+                          Text('¥$_totalPrice',
+                              style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                        ],
+                      ),
+                      Text('支払方法：$_paymentMethod', style: TextStyle(fontSize: rf(context, 13))),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: rs(context, 16)),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('閉じる'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   DateTime? _calculateScheduledSmsDateTime() {
@@ -1337,6 +1675,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _orderSourceOtherController.dispose();
     _packagingOtherController.dispose();
     _preConfirmationPhoneController.dispose();
+    _preConfirmationRecipientController.dispose();
     super.dispose();
   }
 }

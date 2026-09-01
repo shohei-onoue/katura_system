@@ -22,11 +22,13 @@ class KTileSelector<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
-        ),
-        SizedBox(height: rs(context, 8)),
+        if (label.isNotEmpty) ...[
+          Text(
+            label,
+            style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: Colors.black54),
+          ),
+          SizedBox(height: rs(context, 8)),
+        ],
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

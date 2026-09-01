@@ -17,6 +17,7 @@ class ItemsSelectionStep extends StatefulWidget {
   final Function(String, int) onQuantityChanged;
   final VoidCallback onNext;
   final VoidCallback? onReloadMenus; // 再読み込み用
+  final String phoneNumberText;
 
   const ItemsSelectionStep({
     super.key,
@@ -30,6 +31,7 @@ class ItemsSelectionStep extends StatefulWidget {
     required this.onQuantityChanged,
     required this.onNext,
     this.onReloadMenus,
+    this.phoneNumberText = '',
   });
 
   @override
@@ -94,96 +96,100 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
     
     final displayMenus = widget.menus.where((m) => m.category == selectedCategory).toList();
 
-    return Column(
-      children: [
-        OrderFormCard(
-          title: '商品を選択してください',
-          icon: Icons.restaurant_menu,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.confirmedItems.isNotEmpty) ...[
-                Text('生米換算: ${widget.riceAmount.toStringAsFixed(2)}kg',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
-                SizedBox(width: rs(context, 24)),
-              ],
-            ],
+    return OrderFormCard(
+      title: '商品を選択してください',
+      icon: Icons.restaurant_menu,
+      trailing: PhoneReceivedBadge(phoneNumber: widget.phoneNumberText),
+      fill: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // カテゴリタブ（タブ以上は固定）
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: categories.map((cat) {
+                final isSelected = selectedCategory == cat;
+                return Padding(
+                  padding: EdgeInsets.only(right: rs(context, 8)),
+                  child: ChoiceChip(
+                    label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    selected: isSelected,
+                    onSelected: (val) {
+                      if (val) setState(() => selectedCategory = cat);
+                    },
+                    selectedColor: Colors.deepPurple,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontSize: rf(context, 13),
+                    ),
+                    showCheckmark: false,
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // カテゴリタブ
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: categories.map((cat) {
-                    final isSelected = selectedCategory == cat;
-                    return Padding(
-                      padding: EdgeInsets.only(right: rs(context, 8)),
-                      child: ChoiceChip(
-                        label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          if (val) setState(() => selectedCategory = cat);
+          SizedBox(height: rs(context, 24)),
+
+          // メニューリスト（タブより下のみスクロール可）
+          Expanded(
+            child: displayMenus.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(rs(context, 48.0)),
+                      child: Text('このカテゴリに商品はありません', style: TextStyle(color: Colors.grey)),
+                    ),
+                  )
+                : GridView.builder(
+                    padding: EdgeInsets.zero,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: rs(context, 16),
+                      mainAxisSpacing: rs(context, 16),
+                      childAspectRatio: 0.65,
+                    ),
+                    itemCount: displayMenus.length,
+                    itemBuilder: (context, i) {
+                      final menu = displayMenus[i];
+                      return KMenuCard(
+                        key: ValueKey(menu.id),
+                        menu: menu,
+                        onAddToCart: (qty) {
+                          if (qty <= 0) return;
+                          widget.onAddItem([
+                            {
+                              'id': menu.id,
+                              'name': menu.name,
+                              'price': menu.price,
+                              'quantity': qty,
+                              'specialOrder': '',
+                              'specialOrderQuantity': 0,
+                              'topping': '',
+                              'teaOption': 'なし',
+                              'teaQuantity': 0,
+                            }
+                          ]);
                         },
-                        selectedColor: Colors.deepPurple,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontSize: rf(context, 13),
-                        ),
-                        showCheckmark: false,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              SizedBox(height: rs(context, 24)),
-              
-              // メニューリスト
-              if (displayMenus.isEmpty)
-                Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(rs(context, 48.0)),
-                    child: Text('このカテゴリに商品はありません', style: TextStyle(color: Colors.grey)),
+                        onOpenDetails: (qty) async {
+                          final result = await showDialog<List<Map<String, dynamic>>>(
+                            context: context,
+                            builder: (context) => KItemDetailsDialog(
+                              menu: menu,
+                              initialQuantity: qty > 0 ? qty : 1,
+                            ),
+                          );
+                          if (result != null) {
+                            widget.onAddItem(result);
+                            return true;
+                          }
+                          return false;
+                        },
+                      );
+                    },
                   ),
-                )
-              else
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: rs(context, 16),
-                    mainAxisSpacing: rs(context, 16),
-                    childAspectRatio: 0.65,
-                  ),
-                  itemCount: displayMenus.length,
-                  itemBuilder: (context, i) {
-                    final menu = displayMenus[i];
-                    final qty = widget.selectedQuantities[menu.id] ?? 0;
-                    return KMenuCard(
-                      menu: menu,
-                      quantity: qty,
-                      onQuantityChanged: (v) => widget.onQuantityChanged(menu.id, v),
-                      onDetailsPressed: () async {
-                        final result = await showDialog<List<Map<String, dynamic>>>(
-                          context: context,
-                          builder: (context) => KItemDetailsDialog(
-                            menu: menu, 
-                            initialQuantity: qty > 0 ? qty : 1,
-                          ),
-                        );
-                        if (result != null) {
-                          widget.onAddItem(result);
-                        }
-                      },
-                    );
-                  },
-                ),
-            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

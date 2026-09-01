@@ -35,6 +35,7 @@ class KStepper extends StatelessWidget {
           return Expanded(
             flex: isActive ? 16 : 10, // 現在地を大幅に強調
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: isClickable ? () => onStepTapped(index) : null,
               child: AnimatedScale(
                 scale: isActive ? 1.05 : 1.0,
