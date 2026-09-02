@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/customer_model.dart';
 import '../models/menu_model.dart';
@@ -147,22 +146,25 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   // 受注一覧の受注カード「編集」から遷移してきた場合 true
   bool get _isEditingOrder => widget.initialOrder != null;
 
+  // 入力欄のリスナーからの再描画要求を1フレームに1回へまとめる。
+  // （文字入力のたびに画面全体を再ビルドしていたのを抑制）
+  bool _rebuildScheduled = false;
+  void _scheduleRebuild() {
+    if (!mounted || _rebuildScheduled) return;
+    _rebuildScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _rebuildScheduled = false;
+      if (mounted) setState(() {});
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     _keywordQueryController.addListener(_syncSearchQuery);
-    _receiverController.addListener(() => setState(() {}));
-    _trashPickupLocationController.addListener(() => setState(() {}));
-    _preConfirmationRecipientController.addListener(() {
-      if (!mounted) return;
-      if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) setState(() {});
-        });
-      } else {
-        setState(() {});
-      }
-    });
+    _receiverController.addListener(_scheduleRebuild);
+    _trashPickupLocationController.addListener(_scheduleRebuild);
+    _preConfirmationRecipientController.addListener(_scheduleRebuild);
     _loadData().then((_) {
       if (widget.initialOrder != null) {
         _populateForm(widget.initialOrder!);
@@ -322,12 +324,55 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _currentStep = 3;
       _maxStepReached = _stepLabels.length - 1;
     });
+    // 受注一覧からの編集では顧客が未ロードのため、電話番号から引き当てて
+    // 配達先履歴カードの表示・保存時の顧客更新（新規顧客の重複作成防止）を有効にする
+    _hydrateCustomerForEdit(order);
     final coords = _parseCoordsFromAddress(order.address);
     if (coords != null && coords.latitude != 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName, promptBranch: false);
       });
+    }
+  }
+
+  /// 受注一覧からの編集時に、電話番号から既存顧客を引き当てて [_currentCustomer] に設定する。
+  /// 併せて、編集中の受注の配達先を履歴（deliveryAddresses）へ即時反映し、
+  /// 配達実績の有無に関わらず配達先の確定ステップにカードが表示されるようにする。
+  Future<void> _hydrateCustomerForEdit(OrderModel order) async {
+    final targetPhone = order.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (targetPhone.length < 4) return;
+    final normName = order.customerName.replaceAll(RegExp(r'\s+'), '');
+    try {
+      // searchByPhoneSuffix は保存済み番号のハイフンで一致しないことがあるため、
+      // 全件（ローカルDBキャッシュ）から数字正規化で突き合わせる（_selectCustomer と同方式）
+      final all = await _customerService.getAllCustomers();
+      if (!mounted) return;
+      final phoneMatches = all
+          .where((c) => c.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') == targetPhone)
+          .toList();
+      if (phoneMatches.isEmpty) return;
+      final matched = phoneMatches.firstWhere(
+        (c) => c.name.replaceAll(RegExp(r'\s+'), '') == normName,
+        orElse: () => phoneMatches.first,
+      );
+
+      // 編集中の受注の配達先が履歴に無ければ、その場で1件合成して表示する
+      // （保存時に _handleSave が正式に永続化する）
+      final entry = order.latitude != null && order.latitude != 0
+          ? '${order.facilityName}: ${order.address} (${order.latitude}, ${order.longitude})'
+          : '${order.facilityName}: ${order.address}';
+      final hasEntry = order.address.isNotEmpty &&
+          matched.deliveryAddresses.any((a) => a.contains(order.address));
+      final addresses = hasEntry || order.address.isEmpty
+          ? matched.deliveryAddresses
+          : [...matched.deliveryAddresses, entry];
+
+      setState(() {
+        _currentCustomer = matched.copyWith(deliveryAddresses: addresses);
+      });
+    } catch (e) {
+      debugPrint('_hydrateCustomerForEdit error: $e');
     }
   }
 
@@ -557,7 +602,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   /// 新規顧客の場合はこの時点で即座にCustomerを登録し、以降のステップ
   /// （配達先の確定「履歴から選択」等）に反映されるようにする。
   Future<void> _completeCustomerConfirmation() async {
-    if (_currentCustomer == null && (_nameController.text.isNotEmpty || _furiganaController.text.isNotEmpty)) {
+    // 受注一覧からの編集では顧客は既存。ここで新規作成すると重複するため作らない
+    // （_hydrateCustomerForEdit が電話番号から _currentCustomer を設定する）
+    if (!_isEditingOrder &&
+        _currentCustomer == null &&
+        (_nameController.text.isNotEmpty || _furiganaController.text.isNotEmpty)) {
       _isLoadingNotifier.value = true;
       final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
       final facility = _facilityController.text;
@@ -1071,7 +1120,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               flex: isMobile ? 100 : 62,
               child: Column(
                 children: [
-                KStepper(
+                RepaintBoundary(
+                  child: KStepper(
                   currentStep: _currentStep,
                   maxReachedStep: _maxStepReached,
                   isFinalStepAvailable: _confirmedItems.isNotEmpty,
@@ -1088,12 +1138,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       }
                     }
                   }
-                ),
+                )),
                   Expanded(
-                    child: _currentStep == 4
-                        // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
-                        ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
-                        : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
+                    child: RepaintBoundary(
+                      child: _currentStep == 4
+                          // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
+                          ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
+                          : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
+                    ),
                   ),
                 ],
               ),

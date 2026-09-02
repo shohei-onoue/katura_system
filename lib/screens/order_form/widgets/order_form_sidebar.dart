@@ -167,6 +167,20 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
     return _renderMarkers!;
   }
 
+  // 地図(プラットフォームビュー)の生成は重く画面遷移直後のフレームを止めるため、
+  // 初回描画後に少し遅らせてマウントする。
+  bool _mapMounted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _mapMounted = true);
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
@@ -219,14 +233,9 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
   // メイン画面の①〜⑥ステップタイトルバー(KStepper)と同じ高さの帯にする
   // (受電情報がないステップでも高さを空けておき、下のタイトルバーのY位置を全ステップで揃える)
   Widget _buildPhoneHeader() {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      height: rav(context, 50),
-      decoration: BoxDecoration(
-        color: widget.currentStep >= 2 ? Colors.deepOrange.shade50 : Colors.transparent,
-        border: widget.currentStep >= 2 ? Border(bottom: BorderSide(color: Colors.deepOrange.shade100)) : null,
-      ),
-      child: null,
+      height: kStepBarHeight(context),
     );
   }
 
@@ -393,7 +402,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         SizedBox(height: rav(context, 24)),
         const SidebarSectionTitle(title: '最終確認', icon: Icons.receipt_long),
         Expanded(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: EdgeInsets.all(rs(context, 12)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,6 +464,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   Widget _buildMap() {
+    if (!_mapMounted) {
+      return const ColoredBox(
+        color: Color(0xFFE8EAED),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
     return widget.isSearchResultsDialogOpen
         ? Container(
             color: Colors.grey.shade100,

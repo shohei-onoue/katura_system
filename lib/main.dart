@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,12 +16,14 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Firestoreの設定（Web版の接続安定化）
+  // Firestoreの設定
+  // Web版は接続安定性のため従来どおり永続化を無効化。
+  // モバイル(実機)はオフラインキャッシュを有効化し、画面再訪時の再取得を高速化する。
   FirebaseFirestore.instanceFor(
     app: Firebase.app(),
     databaseId: 'katura-system-database',
-  ).settings = const Settings(
-    persistenceEnabled: false,
+  ).settings = Settings(
+    persistenceEnabled: !kIsWeb,
     sslEnabled: true,
   );
 

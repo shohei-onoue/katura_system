@@ -37,8 +37,8 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
   Future<void> _loadMenus() async {
     try {
       await _menuService.migrateCategories();
-      final data = await _menuService.getAllMenus();
-      final ingredients = await _ingredientService.getAll();
+      final data = await _menuService.getAllMenus(forceRefresh: true);
+      final ingredients = await _ingredientService.getAll(forceRefresh: true);
       if (!mounted) return;
       setState(() {
         _menus = data;

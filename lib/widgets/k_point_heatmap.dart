@@ -42,6 +42,20 @@ class _KPointHeatmapState extends State<KPointHeatmap> {
   int _builtZoomBucket = -999; // 直近クラスタ計算時のズーム段階
   Timer? _idleDebounce;
 
+  // 地図(プラットフォームビュー)の生成は重く初回フレームを止めるため、
+  // 画面描画後に少し遅らせてマウントする。
+  bool _mapMounted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) setState(() => _mapMounted = true);
+      });
+    });
+  }
+
   @override
   void dispose() {
     _idleDebounce?.cancel();
@@ -244,21 +258,24 @@ class _KPointHeatmapState extends State<KPointHeatmap> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        RepaintBoundary(
-          child: GoogleMap(
-            initialCameraPosition: widget.initialPosition,
-            onMapCreated: (c) {
-              if (widget.onMapCreated != null) widget.onMapCreated!(c);
-              _rebuildHeatmap();
-            },
-            circles: _circles,
-            onCameraMove: (pos) => _currentZoom = pos.zoom,
-            onCameraIdle: _onCameraIdle,
-            myLocationEnabled: false,
-            zoomControlsEnabled: false,
-          ),
-        ),
-        if (widget.isLoading)
+        if (_mapMounted)
+          RepaintBoundary(
+            child: GoogleMap(
+              initialCameraPosition: widget.initialPosition,
+              onMapCreated: (c) {
+                if (widget.onMapCreated != null) widget.onMapCreated!(c);
+                _rebuildHeatmap();
+              },
+              circles: _circles,
+              onCameraMove: (pos) => _currentZoom = pos.zoom,
+              onCameraIdle: _onCameraIdle,
+              myLocationEnabled: false,
+              zoomControlsEnabled: false,
+            ),
+          )
+        else
+          const ColoredBox(color: Color(0xFFE8EAED)),
+        if (widget.isLoading || !_mapMounted)
           const Center(child: CircularProgressIndicator()),
       ],
     );

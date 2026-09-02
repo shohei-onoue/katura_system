@@ -9,11 +9,19 @@ class IngredientService {
 
   static const List<String> categoryPresets = ['肉類', '米', '野菜', 'ソース', '揚げ物', 'その他'];
 
-  Future<List<IngredientModel>> getAll() async {
+  // 食材は変更頻度が低く、複数画面で開くたびに全件取得していたためプロセス内でキャッシュする。
+  static List<IngredientModel>? _cache;
+
+  static void invalidateCache() => _cache = null;
+
+  Future<List<IngredientModel>> getAll({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cache != null) return _cache!;
     final snapshot = await _col.orderBy('name').get();
-    return snapshot.docs
+    final list = snapshot.docs
         .map((doc) => IngredientModel.fromMap(doc.id, doc.data() as Map<String, dynamic>))
         .toList();
+    _cache = list;
+    return list;
   }
 
   Future<IngredientModel> add({
@@ -26,15 +34,18 @@ class IngredientService {
     final ingredient =
         IngredientModel(id: doc.id, name: name, unit: unit, category: category, note: note);
     await doc.set(ingredient.toMap());
+    invalidateCache();
     return ingredient;
   }
 
   Future<void> update(IngredientModel ingredient) async {
     await _col.doc(ingredient.id).set(ingredient.toMap(), SetOptions(merge: true));
+    invalidateCache();
   }
 
   Future<void> delete(String id) async {
     await _col.doc(id).delete();
+    invalidateCache();
   }
 
 }

@@ -27,7 +27,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await _ingredientService.getAll();
+      final data = await _ingredientService.getAll(forceRefresh: true);
       if (!mounted) return;
       setState(() {
         _ingredients = data;

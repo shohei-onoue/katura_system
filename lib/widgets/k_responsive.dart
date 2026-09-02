@@ -73,6 +73,12 @@ class KR {
 /// 標準フィールド高さ（レスポンシブ換算済み）
 double kFieldHeight(BuildContext context) => KR.rs(context, KR.fieldHeight);
 
+/// ステップタイトルバー(KStepper)とサイドバー見出し帯の共通高さ。
+/// rav はスマホ幅だと極端に縮みタップ領域が不足するため 48 を下限にクランプする。
+/// 両者でこの関数を使うことで、下のコンテンツのY位置が揃う。
+double kStepBarHeight(BuildContext context) =>
+    KR.rav(context, 56).clamp(48.0, 160.0);
+
 /// 短縮関数
 double rf(BuildContext context, double baseSize) => KR.rf(context, baseSize);
 double rs(BuildContext context, double baseSize) => KR.rs(context, baseSize);

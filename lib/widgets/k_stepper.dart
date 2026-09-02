@@ -20,11 +20,17 @@ class KStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: rav(context, 4), horizontal: rav(context, 12)),
+      padding: EdgeInsets.symmetric(horizontal: rav(context, 12)),
       decoration: const BoxDecoration(
         color: Colors.transparent, // 背景を透明にしてカードの影を際立たせる
       ),
-      child: Row(
+      // タップ領域の高さを確保する（サイドバー見出し帯と共通の kStepBarHeight）。
+      // 各セルをストレッチして GestureDetector がカード周囲の余白まで覆うようにし、
+      // 見た目のカードは Center で従来サイズのまま中央に配置（デザインは不変）。
+      child: SizedBox(
+        height: kStepBarHeight(context),
+        child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: List.generate(steps.length, (index) {
           final isLast = index == steps.length - 1;
           final isClickable = index <= maxReachedStep || (isLast && isFinalStepAvailable);
@@ -37,7 +43,8 @@ class KStepper extends StatelessWidget {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: isClickable ? () => onStepTapped(index) : null,
-              child: AnimatedScale(
+              child: Center(
+                child: AnimatedScale(
                 scale: isActive ? 1.05 : 1.0,
                 duration: const Duration(milliseconds: 200),
                 child: Container(
@@ -110,10 +117,11 @@ class KStepper extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
+              )),
             ),
           );
         }),
+        ),
       ),
     );
   }

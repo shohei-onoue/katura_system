@@ -284,7 +284,8 @@ class FinalizeStep extends StatelessWidget {
     final bool isPhone = preConfirmationMethod == '電話';
     final bool isNumberSelf = preConfirmationPhoneType == 'この電話番号';
     final bool isNumberOther = preConfirmationPhoneType == '指定番号へ連絡';
-    final String selfName = receiverName.isNotEmpty ? receiverName : customerName;
+    // 事前連絡の「ご本人」は受取人ではなく顧客本人（注文者）を指す
+    final String selfName = customerName.isNotEmpty ? customerName : receiverName;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,12 +334,13 @@ class FinalizeStep extends StatelessWidget {
 
         SizedBox(height: rs(context, 12)),
 
-        // ③ 連絡の宛先（受取人と同じUI）：ご本人 / 履歴 / 新規 / テキスト・履歴カード を同じROWに
+        // ③ 連絡の宛先：ご本人（顧客名）/ 履歴 / 受取人（受取人名）
         Text('連絡の宛先', style: _subLabelStyle(context)),
         SizedBox(height: rs(context, 6)),
         _RecipientSelector(
           controller: preConfirmationRecipientController,
           selfName: selfName,
+          receiverName: receiverName,
           history: recipientHistory,
         ),
       ],
@@ -487,11 +489,13 @@ class FinalizeStep extends StatelessWidget {
 class _RecipientSelector extends StatefulWidget {
   final TextEditingController controller;
   final String selfName;
+  final String receiverName;
   final List<String> history;
 
   const _RecipientSelector({
     required this.controller,
     required this.selfName,
+    required this.receiverName,
     required this.history,
   });
 
@@ -505,16 +509,16 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
   @override
   void initState() {
     super.initState();
-    // デフォルトは受取人（selfName）と同じ
+    // デフォルトはご本人（顧客名）
     if (widget.controller.text.isEmpty && widget.selfName.isNotEmpty) {
       widget.controller.text = widget.selfName;
       _mode = 'ご本人様';
     } else if (widget.controller.text == widget.selfName) {
       _mode = 'ご本人様';
+    } else if (widget.receiverName.isNotEmpty && widget.controller.text == widget.receiverName) {
+      _mode = '受取人';
     } else if (widget.history.contains(widget.controller.text)) {
       _mode = '履歴から選択';
-    } else if (widget.controller.text.isNotEmpty) {
-      _mode = '新規追加';
     } else {
       _mode = 'ご本人様';
     }
@@ -524,21 +528,21 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
     setState(() => _mode = mode);
     if (mode == 'ご本人様') {
       widget.controller.text = widget.selfName;
-    } else if (mode == '新規追加') {
-      widget.controller.clear();
+    } else if (mode == '受取人') {
+      widget.controller.text = widget.receiverName;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ご本人 / 履歴 / 新規 / 入力欄 をすべて同じROWに配置
+    // ご本人 / 履歴 / 受取人 / 表示欄 をすべて同じROWに配置
     return Row(
       children: [
         Expanded(flex: 2, child: _modeBtn(context, 'ご本人様', 'ご本人')),
         SizedBox(width: rs(context, 6)),
         Expanded(flex: 2, child: _modeBtn(context, '履歴から選択', '履歴')),
         SizedBox(width: rs(context, 6)),
-        Expanded(flex: 2, child: _modeBtn(context, '新規追加', '新規')),
+        Expanded(flex: 2, child: _modeBtn(context, '受取人', '受取人')),
         SizedBox(width: rs(context, 6)),
         Expanded(flex: 5, child: _buildInput(context)),
       ],
@@ -608,17 +612,10 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
       );
     }
 
-    if (_mode == '新規追加') {
-      return KMultimodalTextField(
-        label: '',
-        controller: widget.controller,
-        maxLines: 1,
-        height: rs(context, 44),
-        showLabel: false,
-      );
-    }
-
-    // ご本人様
+    // ご本人様（顧客名）／受取人（受取人名）はともに読み取り専用表示
+    final String shown = _mode == '受取人'
+        ? (widget.receiverName.isEmpty ? '未設定' : widget.receiverName)
+        : (widget.selfName.isEmpty ? '未設定' : widget.selfName);
     return Container(
       width: double.infinity,
       height: rs(context, 44),
@@ -630,7 +627,7 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
         borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
       child: Text(
-        widget.selfName.isEmpty ? '未設定' : widget.selfName,
+        shown,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.black87),

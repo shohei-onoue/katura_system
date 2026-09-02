@@ -9,12 +9,21 @@ class MenuService {
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('menu');
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  Future<List<MenuModel>> getAllMenus() async {
+  // メニューは変更頻度が低く、複数画面（受注入力・分析・顧客管理）が開くたびに
+  // 全件取得していたためプロセス内でキャッシュする。更新系メソッドで無効化する。
+  static List<MenuModel>? _cache;
+
+  static void invalidateCache() => _cache = null;
+
+  Future<List<MenuModel>> getAllMenus({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cache != null) return _cache!;
     try {
       final snapshot = await _menuCollection.orderBy('category').get();
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => MenuModel.fromMap(doc.data() as Map<String, dynamic>))
           .toList();
+      _cache = list;
+      return list;
     } catch (e) {
       debugPrint('MenuService Error: $e');
       rethrow;
@@ -86,6 +95,7 @@ class MenuService {
         batch.set(docRef, menu.toMap());
       }
       await batch.commit();
+      invalidateCache();
     } catch (e) {
       debugPrint('Seed Error: $e');
     }
@@ -95,6 +105,7 @@ class MenuService {
     String imageUrl = menu.imageUrl;
     if (imageBytes != null) { imageUrl = await uploadMenuImage(menu.id, imageBytes); }
     await _menuCollection.doc(menu.id).set(menu.copyWith(imageUrl: imageUrl).toMap(), SetOptions(merge: true));
+    invalidateCache();
   }
 
   Future<void> createMenu(MenuModel menu, {Uint8List? imageBytes}) async {
@@ -102,9 +113,13 @@ class MenuService {
     String imageUrl = menu.imageUrl;
     if (imageBytes != null) { imageUrl = await uploadMenuImage(docId, imageBytes); }
     await _menuCollection.doc(docId).set(menu.copyWith(id: docId, imageUrl: imageUrl).toMap());
+    invalidateCache();
   }
 
-  Future<void> deleteMenu(String id) async { await _menuCollection.doc(id).delete(); }
+  Future<void> deleteMenu(String id) async {
+    await _menuCollection.doc(id).delete();
+    invalidateCache();
+  }
 
   Future<String> uploadMenuImage(String menuId, Uint8List fileBytes) async {
     final ref = _storage.ref().child('menu_images/$menuId.jpg');
