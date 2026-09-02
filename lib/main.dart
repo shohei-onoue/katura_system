@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'screens/main_screen.dart';
 import 'firebase_options.dart';
 import 'services/settings_service.dart';
+import 'services/ink_recognition_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +29,9 @@ void main() async {
 
   // アプリ全体設定（文字入力方式など）の復元
   await SettingsService.load();
+
+  // 手書き認識モデルを背景で準備（ペンタブ立ち上がりの遅延を解消）
+  unawaited(InkRecognitionService.instance.prepare());
 
   runApp(const KaturaSystemApp());
 }

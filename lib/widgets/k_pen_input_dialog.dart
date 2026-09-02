@@ -3,6 +3,7 @@ import 'package:google_mlkit_digital_ink_recognition/google_mlkit_digital_ink_re
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_pen_canvas.dart';
+import '../services/ink_recognition_service.dart';
 
 class KPenInputDialog extends StatefulWidget {
   final Function(String) onTextRecognized;
@@ -35,32 +36,30 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
 
   /// すでに判定済み（フィールド反映済み）のテキスト。ここでも削除できるようにする。
   late String _baseText;
-  
-  late final mlkit.DigitalInkRecognizer _recognizer;
-  final _modelManager = mlkit.DigitalInkRecognizerModelManager();
+
+  final InkRecognitionService _ink = InkRecognitionService.instance;
 
   @override
   void initState() {
     super.initState();
     _baseText = widget.initialText;
-    _recognizer = mlkit.DigitalInkRecognizer(languageCode: 'ja');
     _checkModel();
   }
 
   @override
   void dispose() {
-    _recognizer.close();
     _canvasController.dispose();
     super.dispose();
   }
 
   Future<void> _checkModel() async {
+    if (_ink.isReady) {
+      _isModelReady = true;
+      return;
+    }
     try {
-      final isDownloaded = await _modelManager.isModelDownloaded('ja');
-      if (!isDownloaded) {
-        if (mounted) setState(() => _statusMessage = "システム準備中...");
-        await _modelManager.downloadModel('ja');
-      }
+      if (mounted) setState(() => _statusMessage = "システム準備中...");
+      await _ink.prepare();
       if (mounted) {
         setState(() {
           _isModelReady = true;
@@ -142,7 +141,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
       return;
     }
     try {
-      final candidates = await _recognizer.recognize(_pagesInks[_currentPageIndex]);
+      final candidates = await _ink.recognize(_pagesInks[_currentPageIndex]);
       if (mounted) {
         setState(() {
           if (candidates.isNotEmpty) {
@@ -177,6 +176,24 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
       _canvasController.clear();
       _pagesPoints[_currentPageIndex] = [];
       _pagesTexts[_currentPageIndex] = "";
+    });
+  }
+
+  /// 現在の手書き判定分を確定し、末尾に半角スペースを挿入する（スペースキー相当）。
+  void _insertSpace() {
+    setState(() {
+      _baseText = '$_baseText${_pagesTexts.join("")} ';
+      _pagesInks
+        ..clear()
+        ..add(mlkit.Ink());
+      _pagesPoints
+        ..clear()
+        ..add(<DrawingPoint?>[]);
+      _pagesTexts
+        ..clear()
+        ..add("");
+      _currentPageIndex = 0;
+      _canvasController.clear();
     });
   }
 
@@ -368,6 +385,28 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                       onPressed: hasStrokes
                           ? _clearCanvas
                           : (_baseText.isNotEmpty ? _clearBaseText : null),
+                    ),
+                  ),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(
+                    flex: 1,
+                    child: SizedBox(
+                      height: kFieldHeight(context),
+                      child: ElevatedButton(
+                        onPressed: combinedText.isNotEmpty ? _insertSpace : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(rav(context, 8)),
+                          ),
+                        ),
+                        child: RotatedBox(
+                          quarterTurns: 1,
+                          child: Text(']',
+                              style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold)),
+                        ),
+                      ),
                     ),
                   ),
                   SizedBox(width: rs(context, 12)),

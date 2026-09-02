@@ -146,6 +146,27 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
   // Mapのライフサイクルを安定させるためのKey
   final GlobalKey _mapKey = GlobalKey();
 
+  // GoogleMapへ渡すマーカーは毎ビルド作り直すとネイティブ側の差分更新が走るため、
+  // 元マーカー集合が変わったときだけ変換し直してキャッシュする。
+  Set<Marker>? _renderMarkers;
+  Set<Marker>? _renderMarkersSource;
+
+  Set<Marker> _resolveRenderMarkers() {
+    if (!identical(_renderMarkersSource, widget.markers)) {
+      _renderMarkersSource = widget.markers;
+      _renderMarkers = widget.markers.map((m) {
+        if (m.markerId.value == 'dest') {
+          return m.copyWith(
+            draggableParam: true,
+            onDragEndParam: widget.onMarkerDragEnd,
+          );
+        }
+        return m;
+      }).toSet();
+    }
+    return _renderMarkers!;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Expanded(
@@ -449,23 +470,17 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
               ),
             ),
           )
-        : GoogleMap(
-            key: _mapKey,
-            initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
-            onMapCreated: widget.onMapCreated,
-            onTap: widget.onMapTap,
-            markers: widget.markers.map((m) {
-              if (m.markerId.value == 'dest') {
-                return m.copyWith(
-                  draggableParam: true,
-                  onDragEndParam: widget.onMarkerDragEnd,
-                );
-              }
-              return m;
-            }).toSet(),
-            myLocationEnabled: false,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: true,
+        : RepaintBoundary(
+            child: GoogleMap(
+              key: _mapKey,
+              initialCameraPosition: CameraPosition(target: widget.initialCenter, zoom: 12),
+              onMapCreated: widget.onMapCreated,
+              onTap: widget.onMapTap,
+              markers: _resolveRenderMarkers(),
+              myLocationEnabled: false,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: true,
+            ),
           );
   }
 

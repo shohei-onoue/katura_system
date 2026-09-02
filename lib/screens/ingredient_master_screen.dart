@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/ingredient_model.dart';
 import '../services/ingredient_service.dart';
-import '../services/menu_service.dart';
 import '../../widgets/k_responsive.dart';
 import '../../widgets/k_multimodal_text_field.dart';
 
@@ -14,10 +13,8 @@ class IngredientMasterScreen extends StatefulWidget {
 
 class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
   final _ingredientService = IngredientService();
-  final _menuService = MenuService();
   List<IngredientModel> _ingredients = [];
   bool _isLoading = true;
-  bool _isSeeding = false;
   String _selectedCategory = 'すべて';
 
   List<String> get _categoryTabs => ['すべて', ...IngredientService.categoryPresets];
@@ -42,27 +39,6 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('食材の取得に失敗しました: $e')),
       );
-    }
-  }
-
-  Future<void> _seedFromMenus() async {
-    setState(() => _isSeeding = true);
-    try {
-      final menus = await _menuService.getAllMenus();
-      final added = await _ingredientService.seedFromMenus(menus);
-      if (!mounted) return;
-      await _load();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$added件の食材を登録しました')),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('自動生成に失敗しました: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _isSeeding = false);
     }
   }
 
@@ -104,15 +80,8 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   DropdownButtonFormField<String>(
                     value: unitOptions.contains(selectedUnit) ? selectedUnit : null,
                     decoration: const InputDecoration(labelText: '単位'),
-                    dropdownColor: Colors.black,
                     items: unitOptions
-                        .map((u) => DropdownMenuItem(
-                              value: u,
-                              child: Text(u, style: const TextStyle(color: Colors.white)),
-                            ))
-                        .toList(),
-                    selectedItemBuilder: (context) => unitOptions
-                        .map((u) => Text(u, style: const TextStyle(color: Colors.black87)))
+                        .map((u) => DropdownMenuItem(value: u, child: Text(u)))
                         .toList(),
                     onChanged: (val) {
                       if (val != null) setDialogState(() => selectedUnit = val);
@@ -225,18 +194,6 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
-          IconButton(
-            tooltip: '既存メニューから自動生成',
-            onPressed: _isSeeding ? null : _seedFromMenus,
-            icon: _isSeeding
-                ? SizedBox(
-                    width: rs(context, 18),
-                    height: rs(context, 18),
-                    child: const CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-          ),
-          SizedBox(width: rs(context, 8)),
           ElevatedButton.icon(
             onPressed: () => _showEditDialog(),
             icon: const Icon(Icons.add),
@@ -356,28 +313,16 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   fontWeight: FontWeight.bold,
                   color: Colors.blueGrey)),
           SizedBox(height: rs(context, 12)),
-          const Text('登録済みの弁当メニューの食材欄から\n食材マスタを自動生成できます。',
+          const Text('「新規登録」から食材を登録してください。',
               textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           SizedBox(height: rs(context, 32)),
           ElevatedButton.icon(
-            onPressed: _isSeeding ? null : _seedFromMenus,
-            icon: _isSeeding
-                ? SizedBox(
-                    width: rs(context, 18),
-                    height: rs(context, 18),
-                    child: const CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_awesome),
-            label: const Text('既存メニューから自動生成する'),
+            onPressed: () => _showEditDialog(),
+            icon: const Icon(Icons.add),
+            label: const Text('新規登録する'),
             style: ElevatedButton.styleFrom(
               padding: EdgeInsets.symmetric(horizontal: rs(context, 32), vertical: rs(context, 16)),
             ),
-          ),
-          SizedBox(height: rs(context, 16)),
-          TextButton.icon(
-            onPressed: () => _showEditDialog(),
-            icon: const Icon(Icons.add),
-            label: const Text('手動で登録する'),
           ),
         ],
       ),

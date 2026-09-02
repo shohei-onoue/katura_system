@@ -1,3 +1,5 @@
+import 'dart:collection';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 enum KPenTool { pen, eraser }
@@ -16,7 +18,10 @@ class DrawingPoint {
 
 class KPenCanvasController extends ChangeNotifier {
   final List<DrawingPoint?> _points = [];
-  List<DrawingPoint?> get points => List.unmodifiable(_points);
+
+  /// 描画用の読み取り専用ビュー。`_points` を直接参照する live view のため、
+  /// ポインタ移動のたびに新しいリストを生成しない。
+  late final List<DrawingPoint?> points = UnmodifiableListView(_points);
 
   void addPoint(DrawingPoint? point) {
     _points.add(point);
@@ -100,21 +105,28 @@ class KPenCanvas extends StatefulWidget {
 }
 
 class _KPenCanvasState extends State<KPenCanvas> {
-  Offset? _eraserPosition;
+  final ValueNotifier<Offset?> _eraserPosition = ValueNotifier<Offset?>(null);
+  late Listenable _repaint;
 
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(_rebuild);
+    _repaint = Listenable.merge([widget.controller, _eraserPosition]);
+  }
+
+  @override
+  void didUpdateWidget(KPenCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      _repaint = Listenable.merge([widget.controller, _eraserPosition]);
+    }
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_rebuild);
+    _eraserPosition.dispose();
     super.dispose();
   }
-
-  void _rebuild() => setState(() {});
 
   bool get _isEraser => widget.tool == KPenTool.eraser;
 
@@ -124,7 +136,7 @@ class _KPenCanvasState extends State<KPenCanvas> {
       onPointerDown: (event) {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         if (_isEraser) {
-          setState(() => _eraserPosition = event.localPosition);
+          _eraserPosition.value = event.localPosition;
           widget.controller.erase(event.localPosition, widget.eraserRadius);
         } else {
           widget.controller.addPoint(
@@ -143,7 +155,7 @@ class _KPenCanvasState extends State<KPenCanvas> {
       onPointerMove: (event) {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         if (_isEraser) {
-          setState(() => _eraserPosition = event.localPosition);
+          _eraserPosition.value = event.localPosition;
           widget.controller.erase(event.localPosition, widget.eraserRadius);
         } else {
           widget.controller.addPoint(
@@ -161,29 +173,43 @@ class _KPenCanvasState extends State<KPenCanvas> {
       },
       onPointerUp: (event) {
         if (_isEraser) {
-          setState(() => _eraserPosition = null);
+          _eraserPosition.value = null;
         } else {
           widget.controller.addPoint(null); // 線の切れ目
         }
         widget.onPointUp?.call();
       },
-      child: CustomPaint(
-        painter: _CanvasPainter(widget.controller.points, _eraserPosition, widget.eraserRadius),
-        size: Size.infinite,
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: _CanvasPainter(
+            widget.controller,
+            _eraserPosition,
+            widget.eraserRadius,
+            _repaint,
+          ),
+          size: Size.infinite,
+        ),
       ),
     );
   }
 }
 
 class _CanvasPainter extends CustomPainter {
-  final List<DrawingPoint?> points;
-  final Offset? eraserPosition;
+  final KPenCanvasController controller;
+  final ValueListenable<Offset?> eraserPositionListenable;
   final double eraserRadius;
 
-  _CanvasPainter(this.points, this.eraserPosition, this.eraserRadius);
+  _CanvasPainter(
+    this.controller,
+    this.eraserPositionListenable,
+    this.eraserRadius,
+    Listenable repaint,
+  ) : super(repaint: repaint);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final points = controller.points;
+    final eraserPosition = eraserPositionListenable.value;
     for (int i = 0; i < points.length - 1; i++) {
       if (points[i] != null && points[i + 1] != null) {
         canvas.drawLine(
@@ -198,14 +224,14 @@ class _CanvasPainter extends CustomPainter {
     }
     if (eraserPosition != null) {
       canvas.drawCircle(
-        eraserPosition!,
+        eraserPosition,
         eraserRadius,
         Paint()
           ..color = Colors.grey.withValues(alpha: 0.3)
           ..style = PaintingStyle.fill,
       );
       canvas.drawCircle(
-        eraserPosition!,
+        eraserPosition,
         eraserRadius,
         Paint()
           ..color = Colors.grey.shade600
@@ -216,5 +242,7 @@ class _CanvasPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CanvasPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _CanvasPainter oldDelegate) =>
+      oldDelegate.controller != controller ||
+      oldDelegate.eraserRadius != eraserRadius;
 }
