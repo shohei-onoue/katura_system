@@ -238,7 +238,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       return Center(child: Text('この日の受注はありません', style: TextStyle(fontSize: rf(context, 16))));
     }
     return ListView.builder(
-      padding: EdgeInsets.all(rav(context, 24)),
+      padding: EdgeInsets.fromLTRB(rav(context, 24), rav(context, 24), 0, rav(context, 24)),
       itemCount: orders.length,
       itemBuilder: (context, index) {
         return OrderListCard(

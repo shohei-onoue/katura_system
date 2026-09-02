@@ -3,6 +3,7 @@ import '../models/ingredient_model.dart';
 import '../services/ingredient_service.dart';
 import '../services/menu_service.dart';
 import '../../widgets/k_responsive.dart';
+import '../../widgets/k_multimodal_text_field.dart';
 
 class IngredientMasterScreen extends StatefulWidget {
   const IngredientMasterScreen({super.key});
@@ -39,7 +40,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('材料の取得に失敗しました: $e')),
+        SnackBar(content: Text('食材の取得に失敗しました: $e')),
       );
     }
   }
@@ -53,7 +54,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$added件の材料を登録しました')),
+        SnackBar(content: Text('$added件の食材を登録しました')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -65,11 +66,19 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
     }
   }
 
+  static const List<String> _unitPresets = [
+    'g', 'kg', 'ml', 'L', '大さじ', '小さじ', '個', '枚', '本', '束', '適量'
+  ];
+
   void _showEditDialog([IngredientModel? ingredient]) {
     final nameController = TextEditingController(text: ingredient?.name ?? '');
-    final unitController = TextEditingController(text: ingredient?.unit ?? 'g');
     final noteController = TextEditingController(text: ingredient?.note ?? '');
     String category = ingredient?.category ?? IngredientService.categoryPresets.first;
+    String selectedUnit = ingredient?.unit ?? 'g';
+    final List<String> unitOptions = [
+      ..._unitPresets,
+      if (selectedUnit.isNotEmpty && !_unitPresets.contains(selectedUnit)) selectedUnit,
+    ];
 
     showDialog(
       context: context,
@@ -78,23 +87,36 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.transparent,
-          title: Text(ingredient == null ? '新規材料登録' : '材料編集'),
+          title: Text(ingredient == null ? '新規食材登録' : '食材編集'),
           content: SizedBox(
             width: rs(context, 420),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
+                  KMultimodalTextField(
+                    label: '食材名',
                     controller: nameController,
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: const InputDecoration(labelText: '材料名', hintText: '例：牛肩ロース'),
+                    maxLines: 1,
+                    hintText: '例：牛肩ロース',
                   ),
                   SizedBox(height: rs(context, 16)),
-                  TextField(
-                    controller: unitController,
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: const InputDecoration(labelText: '単位', hintText: '例：g / ml / 個'),
+                  DropdownButtonFormField<String>(
+                    value: unitOptions.contains(selectedUnit) ? selectedUnit : null,
+                    decoration: const InputDecoration(labelText: '単位'),
+                    dropdownColor: Colors.black,
+                    items: unitOptions
+                        .map((u) => DropdownMenuItem(
+                              value: u,
+                              child: Text(u, style: const TextStyle(color: Colors.white)),
+                            ))
+                        .toList(),
+                    selectedItemBuilder: (context) => unitOptions
+                        .map((u) => Text(u, style: const TextStyle(color: Colors.black87)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedUnit = val);
+                    },
                   ),
                   SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
@@ -108,12 +130,11 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                     },
                   ),
                   SizedBox(height: rs(context, 16)),
-                  TextField(
+                  KMultimodalTextField(
+                    label: '備考',
                     controller: noteController,
-                    textAlignVertical: TextAlignVertical.center,
-                    decoration: const InputDecoration(
-                        labelText: '備考', hintText: '例：米は季節で使用量が変動'),
                     maxLines: 2,
+                    hintText: '例：米は季節で使用量が変動',
                   ),
                 ],
               ),
@@ -125,11 +146,10 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context)
-                      .showSnackBar(const SnackBar(content: Text('材料名を入力してください')));
+                      .showSnackBar(const SnackBar(content: Text('食材名を入力してください')));
                   return;
                 }
-                final unit =
-                    unitController.text.trim().isEmpty ? '適量' : unitController.text.trim();
+                final unit = selectedUnit.trim().isEmpty ? '適量' : selectedUnit.trim();
                 try {
                   if (ingredient == null) {
                     await _ingredientService.add(
@@ -150,7 +170,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   Navigator.pop(context);
                   _load();
                   ScaffoldMessenger.of(context)
-                      .showSnackBar(const SnackBar(content: Text('材料を保存しました')));
+                      .showSnackBar(const SnackBar(content: Text('食材を保存しました')));
                 } catch (e) {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +191,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        title: const Text('材料の削除'),
+        title: const Text('食材の削除'),
         content: Text('${ingredient.name} を削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
@@ -182,7 +202,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
               Navigator.pop(context);
               _load();
               ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('材料を削除しました')));
+                  .showSnackBar(const SnackBar(content: Text('食材を削除しました')));
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
             child: const Text('削除する'),
@@ -200,7 +220,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('材料マスタ', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('食材マスタ', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -330,13 +350,13 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
         children: [
           Icon(Icons.egg_alt_outlined, size: rs(context, 80), color: Colors.grey.shade300),
           SizedBox(height: rs(context, 24)),
-          Text('材料が登録されていません',
+          Text('食材が登録されていません',
               style: TextStyle(
                   fontSize: rf(context, 20),
                   fontWeight: FontWeight.bold,
                   color: Colors.blueGrey)),
           SizedBox(height: rs(context, 12)),
-          const Text('登録済みの弁当メニューの材料欄から\n材料マスタを自動生成できます。',
+          const Text('登録済みの弁当メニューの食材欄から\n食材マスタを自動生成できます。',
               textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
           SizedBox(height: rs(context, 32)),
           ElevatedButton.icon(

@@ -8,7 +8,6 @@ import '../services/menu_service.dart';
 import 'customer_list/widgets/customer_detail_dialog.dart';
 import 'customer_list/widgets/customer_edit_dialog.dart';
 import 'customer_list/widgets/customer_data_table.dart';
-import 'order_form/widgets/sidebar/sidebar_analysis.dart';
 import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_multimodal_text_field.dart';
@@ -31,8 +30,23 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   bool _isLoading = true;
   final _searchController = TextEditingController();
 
-  String _sortKey = 'name'; // 'name' | 'company'
+  String _sortKey = 'name'; // 'name' | 'company' | 'elapsed'
   bool _sortAscending = true;
+
+  static final _dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
+
+  /// 前回注文からの経過日数（履歴なしは null）
+  int? _elapsedDays(Customer c) {
+    DateTime? latest;
+    for (final h in c.orderHistory) {
+      final m = _dateRe.firstMatch(h);
+      if (m == null) continue;
+      final d = DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
+      if (latest == null || d.isAfter(latest)) latest = d;
+    }
+    if (latest == null) return null;
+    return DateTime.now().difference(latest).inDays;
+  }
 
   Customer? _selectedCustomer;
   List<OrderModel> _selectedCustomerOrders = [];
@@ -62,6 +76,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     int cmp(Customer a, Customer b) {
       if (_sortKey == 'company') {
         return a.companyName.compareTo(b.companyName);
+      }
+      if (_sortKey == 'elapsed') {
+        final da = _elapsedDays(a) ?? (1 << 30);
+        final db = _elapsedDays(b) ?? (1 << 30);
+        return da.compareTo(db);
       }
       final ka = a.furigana.isNotEmpty ? a.furigana : a.name;
       final kb = b.furigana.isNotEmpty ? b.furigana : b.name;
@@ -343,15 +362,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
           const Divider(),
 
-          // 3. 売上分析
-          SizedBox(
-            height: rs(context, 250), // 高さを少し広げて視認性向上
-            child: SidebarAnalysis(history: _selectedCustomerOrders),
-          ),
-
-          const Divider(),
-
-          // 4. 人気メニュー
+          // 3. 人気メニュー
           SizedBox(
             height: rs(context, 280), // 高さを少し広げて視認性向上
             child: SidebarRanking(history: _selectedCustomerOrders, allMenus: _allMenus),

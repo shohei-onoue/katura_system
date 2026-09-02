@@ -6,6 +6,8 @@ import '../models/ingredient_model.dart';
 import '../services/menu_service.dart';
 import '../services/ingredient_service.dart';
 import '../../widgets/k_responsive.dart';
+import '../../widgets/k_multimodal_text_field.dart';
+import '../../widgets/k_numeric_input_dialog.dart';
 
 class MenuMasterScreen extends StatefulWidget {
   const MenuMasterScreen({super.key});
@@ -141,7 +143,12 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     ),
                   ),
                   SizedBox(height: rs(context, 16)),
-                  TextField(controller: nameController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '商品名', hintText: '例：特製ステーキ弁当')),
+                  KMultimodalTextField(
+                    label: '商品名',
+                    controller: nameController,
+                    maxLines: 1,
+                    hintText: '例：特製ステーキ弁当',
+                  ),
                   SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
                     value: dropdownCategories.contains(category) ? category : null,
@@ -154,9 +161,47 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     },
                   ),
                   SizedBox(height: rs(context, 16)),
-                  TextField(controller: priceController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '価格 (税込)', hintText: '例：1800'), keyboardType: TextInputType.number),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('価格 (税込)',
+                        style: TextStyle(fontSize: rf(context, 12), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                  ),
+                  SizedBox(height: rs(context, 4)),
+                  InkWell(
+                    onTap: () => showDialog(
+                      context: context,
+                      builder: (_) => KNumericInputDialog(
+                        title: '価格の入力',
+                        initialValue: priceController.text,
+                        emptyHint: '価格を入力してください',
+                        onConfirmed: (v) => setDialogState(() => priceController.text = v),
+                      ),
+                    ),
+                    child: Container(
+                      height: rs(context, 48),
+                      width: double.infinity,
+                      alignment: Alignment.centerLeft,
+                      padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(rs(context, 4)),
+                      ),
+                      child: Text(
+                        priceController.text.isEmpty ? '例：1800' : '¥${priceController.text}',
+                        style: TextStyle(
+                          fontSize: rf(context, 15),
+                          color: priceController.text.isEmpty ? Colors.grey.shade500 : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
                   _buildIngredientEditor(context, setDialogState, ingredientRows),
-                  TextField(controller: descriptionController, textAlignVertical: TextAlignVertical.center, decoration: const InputDecoration(labelText: '説明', hintText: '商品の詳細説明を入力してください'), maxLines: 2),
+                  KMultimodalTextField(
+                    label: '説明',
+                    controller: descriptionController,
+                    maxLines: 2,
+                    hintText: '商品の詳細説明を入力してください',
+                  ),
                 ],
               ),
             ),
@@ -432,7 +477,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
           SizedBox(height: rs(context, 8)),
           Text(menu.description.isEmpty ? '説明はありません' : menu.description, style: const TextStyle(color: Colors.blueGrey)),
           SizedBox(height: rs(context, 24)),
-          Text('材料・分量', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+          Text('食材・分量', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
           SizedBox(height: rs(context, 8)),
           ...menu.ingredients.entries.map((e) => Padding(
             padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
@@ -446,14 +491,6 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               ],
             ),
           )),
-          SizedBox(height: rs(context, 40)),
-          Row(
-            children: [
-              Expanded(child: OutlinedButton.icon(onPressed: () => _showEditMenuDialog(menu), icon: const Icon(Icons.edit), label: const Text('編集'))),
-              SizedBox(width: rs(context, 12)),
-              Expanded(child: ElevatedButton.icon(onPressed: () => _showDeleteConfirmDialog(menu), icon: const Icon(Icons.delete_outline), label: const Text('削除'), style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade50, foregroundColor: Colors.red, elevation: 0))),
-            ],
-          ),
         ],
       ),
     );
@@ -481,12 +518,12 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: Colors.white,
-        title: const Text('材料を選択'),
+        title: const Text('食材を選択'),
         children: available.isEmpty
             ? [
                 Padding(
                   padding: EdgeInsets.all(rs(context, 16)),
-                  child: const Text('選択できる材料がありません。\n材料マスタに登録してください。'),
+                  child: const Text('選択できる食材がありません。\n食材マスタに登録してください。'),
                 )
               ]
             : available
@@ -507,7 +544,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         SizedBox(height: rs(context, 16)),
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('材料・使用量',
+          child: Text('食材・使用量',
               style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade600)),
         ),
         ...rows.map((row) => Padding(
@@ -551,7 +588,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               }
             },
             icon: const Icon(Icons.add),
-            label: const Text('材料を追加'),
+            label: const Text('食材を追加'),
           ),
         ),
       ],

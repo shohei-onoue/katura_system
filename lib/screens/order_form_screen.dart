@@ -144,6 +144,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   bool _isDeliveryTimeSelected = true;
   bool _isDeliveryTypeSelected = true;
 
+  // 受注一覧の受注カード「編集」から遷移してきた場合 true
+  bool get _isEditingOrder => widget.initialOrder != null;
+
   @override
   void initState() {
     super.initState();
@@ -326,6 +329,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _updateMap(coords, order.facilityName.isEmpty ? '配送先' : order.facilityName, promptBranch: false);
       });
     }
+  }
+
+  /// キャンセル／中止ボタン用：確認ダイヤログを挟んでからフォームを破棄する
+  Future<void> _confirmCancelOrder() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(_isEditingOrder ? '編集を中止しますか？' : '注文入力を中止しますか？'),
+        content: const Text('入力中の内容は破棄されます。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('戻る')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('中止する'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) _resetForm();
   }
 
   void _resetForm() {
@@ -926,24 +950,26 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       Customer updatedCustomer = _currentCustomer!;
       if (_addressController.text.isNotEmpty) {
         final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
-        if (destMarker != null) {
-          final idx = updatedCustomer.deliveryAddresses.indexWhere((a) => a.contains(_addressController.text));
-          // 今回調整していなければ既存エントリのストリートビュー画像を引き継ぐ
-          String? keepImg = imageUrl;
-          if (keepImg == null && idx != -1) {
-            keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
-          }
-          String displayEntry = "${_facilityController.text}: ${_addressController.text} (${destMarker.position.latitude}, ${destMarker.position.longitude})";
-          if (keepImg != null) displayEntry += " [IMG:$keepImg]";
-          final newList = List<String>.from(updatedCustomer.deliveryAddresses);
-          if (idx == -1) {
-            newList.add(displayEntry);
-          } else {
-            newList[idx] = displayEntry; // 座標・画像を最新へ更新
-          }
-          updatedCustomer = updatedCustomer.copyWith(deliveryAddresses: newList);
+        // マップにピンが無い（＝手入力の新規配達先）場合も履歴登録できるよう座標はフォールバックする
+        final double destLat = destMarker?.position.latitude ?? order.latitude ?? 0;
+        final double destLng = destMarker?.position.longitude ?? order.longitude ?? 0;
+        final idx = updatedCustomer.deliveryAddresses.indexWhere((a) => a.contains(_addressController.text));
+        // 今回調整していなければ既存エントリのストリートビュー画像を引き継ぐ
+        String? keepImg = imageUrl;
+        if (keepImg == null && idx != -1) {
+          keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
+        }
+        String displayEntry = "${_facilityController.text}: ${_addressController.text} ($destLat, $destLng)";
+        if (keepImg != null) displayEntry += " [IMG:$keepImg]";
+        final newList = List<String>.from(updatedCustomer.deliveryAddresses);
+        if (idx == -1) {
+          newList.add(displayEntry); // 新規配達先を履歴へ登録
+          customerUpdated = true;
+        } else if (newList[idx] != displayEntry) {
+          newList[idx] = displayEntry; // 座標・画像を最新へ更新
           customerUpdated = true;
         }
+        updatedCustomer = updatedCustomer.copyWith(deliveryAddresses: newList);
       }
       if (_receiverController.text.isNotEmpty && _facilityController.text.isNotEmpty) {
         final facility = _facilityController.text;
@@ -1365,7 +1391,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onSearchSubmit: _onSearchSubmit,
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog,
-          onCancelOrder: _resetForm,
+          onCancelOrder: _confirmCancelOrder,
+          isEditingOrder: _isEditingOrder,
       );
       case 2: return DeliveryDestinationStep(
           phoneNumberText: _phoneController.text,
@@ -1399,7 +1426,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
           onNext: () => _updateStep(3),
-          onCancelOrder: _resetForm,
+          onCancelOrder: _confirmCancelOrder,
+          isEditingOrder: _isEditingOrder,
           onModeToggle: (v) => setState(() { _isHistoryMode = v; _historyManuallySelected = false; }),
           onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v),
           onAddressSelected: _onAddressSelectedFromList,
@@ -1453,7 +1481,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onTimeSettingsChanged: (min, max, interval) { setState(() { _timePickerMin = min; _timePickerMax = max; _timePickerInterval = interval; }); },
           onTrashTimeSettingsChanged: (min, max, interval) { setState(() { _trashTimePickerMin = min; _trashTimePickerMax = max; _trashTimePickerInterval = interval; }); },
           onNext: () => _updateStep(4),
-          onCancelOrder: _resetForm
+          onCancelOrder: _confirmCancelOrder,
+          isEditingOrder: _isEditingOrder,
       );
       case 4: return ItemsSelectionStep(
           phoneNumberText: _phoneController.text,
@@ -1533,8 +1562,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
           onScheduledSmsDateTimeChanged: (v) => setState(() => _scheduledSmsDateTime = v),
           onSave: _handleSave,
-          onCancelOrder: _resetForm,
+          onCancelOrder: _confirmCancelOrder,
           onShowReceipt: _showReceiptPreviewDialog,
+          isEditingOrder: _isEditingOrder,
       );
       default: return Container();
     }

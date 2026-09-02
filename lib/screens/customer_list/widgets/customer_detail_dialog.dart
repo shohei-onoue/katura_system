@@ -116,13 +116,14 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // 顧客名 / 所属企業
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // 左：顧客名 / ふりがな / 電話番号
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 _fieldLabel(context, '顧客名'),
                                 KMultimodalTextField(
@@ -132,26 +133,14 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                                   maxLines: 1,
                                   height: rs(context, 52),
                                 ),
-                                SizedBox(height: rs(context, 14)),
-                                _fieldLabel(context, 'ふりがな'),
-                                KMultimodalTextField(
-                                  label: '',
-                                  showLabel: false,
-                                  controller: _furiganaController,
-                                  maxLines: 1,
-                                  height: rs(context, 52),
-                                ),
-                                SizedBox(height: rs(context, 14)),
-                                _fieldLabel(context, '電話番号'),
-                                _readonlyValue(context, widget.customer.phoneNumber),
                               ],
                             ),
                           ),
                           SizedBox(width: rs(context, 24)),
-                          // 右：所属企業 / 住所 / 位置座標
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Row(
                                   children: [
@@ -171,10 +160,66 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                                   ],
                                 ),
                                 _readonlyValue(context, _companyName.isEmpty ? '未設定' : _companyName),
-                                SizedBox(height: rs(context, 14)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: rs(context, 14)),
+                      // ふりがな / 住所
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _fieldLabel(context, 'ふりがな'),
+                                KMultimodalTextField(
+                                  label: '',
+                                  showLabel: false,
+                                  controller: _furiganaController,
+                                  maxLines: 1,
+                                  height: rs(context, 52),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: rs(context, 24)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 _fieldLabel(context, '住所'),
                                 _readonlyValue(context, _address.isEmpty ? '未設定' : _address),
-                                SizedBox(height: rs(context, 14)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: rs(context, 14)),
+                      // 電話番号 / 位置座標
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _fieldLabel(context, '電話番号'),
+                                _readonlyValue(context, widget.customer.phoneNumber),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: rs(context, 24)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 _fieldLabel(context, '位置座標'),
                                 _readonlyValue(context, '${_latitude ?? "-"}, ${_longitude ?? "-"}'),
                               ],

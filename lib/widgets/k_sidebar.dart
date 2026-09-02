@@ -26,7 +26,7 @@ class _KSidebarState extends State<KSidebar> {
 
   // 「管理」にまとめる画面の論理インデックス（MainScreenの_selectedIndexと対応）
   static const List<int> _manageIndices = [6, 7, 10, 8];
-  static const List<String> _manageLabels = ['顧客管理', 'メニューマスタ', '材料マスタ', 'スタッフ管理'];
+  static const List<String> _manageLabels = ['顧客管理', 'メニューマスタ', '食材マスタ', 'スタッフ管理'];
   static const List<IconData> _manageIcons = [Icons.people, Icons.restaurant, Icons.egg_alt, Icons.badge];
 
   bool get _isManageActive => _manageIndices.contains(widget.selectedIndex);

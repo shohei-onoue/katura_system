@@ -126,7 +126,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       final branch = o.branchName.isEmpty ? 'その他' : o.branchName;
       for (final it in o.items) {
         final name = (it['name'] ?? '').toString();
-        if (name.isEmpty) continue;
+        if (name.isEmpty || _isDrink(name)) continue;
         final qty = (it['quantity'] is int) ? it['quantity'] as int : int.tryParse('${it['quantity']}') ?? 0;
         final row = m.putIfAbsent(name, () => {});
         row[branch] = (row[branch] ?? 0) + qty;
@@ -143,7 +143,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       final row = byMonth.putIfAbsent(key, () => {});
       for (final it in o.items) {
         final name = (it['name'] ?? '').toString();
-        if (name.isEmpty) continue;
+        if (name.isEmpty || _isDrink(name)) continue;
         final qty = (it['quantity'] is int) ? it['quantity'] as int : int.tryParse('${it['quantity']}') ?? 0;
         row[name] = (row[name] ?? 0) + qty;
       }
@@ -160,6 +160,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       if (m.name == name) return m.imageUrl.isEmpty ? null : m.imageUrl;
     }
     return null;
+  }
+
+  /// ドリンク類はグラフ集計から除外する
+  bool _isDrink(String name) {
+    for (final m in _allMenus) {
+      if (m.name == name) return m.category.contains('ドリンク');
+    }
+    return false;
   }
 
   List<String> _branchesInData(Map<String, Map<String, int>> data) {

@@ -47,6 +47,7 @@ class CustomerConfirmationStep extends StatefulWidget {
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
   final VoidCallback onCancelOrder;
+  final bool isEditingOrder; // 受注一覧の編集から遷移した場合 true
 
   const CustomerConfirmationStep({
     super.key,
@@ -86,6 +87,7 @@ class CustomerConfirmationStep extends StatefulWidget {
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
     required this.onCancelOrder,
+    this.isEditingOrder = false,
   });
 
   @override
@@ -200,9 +202,9 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
               Expanded(
                 flex: 1,
                 child: KButton(
-                  label: '注文キャンセル',
-                  isSecondary: true,
-                  color: Colors.redAccent,
+                  label: widget.isEditingOrder ? '編集キャンセル' : '注文キャンセル',
+                  isSecondary: !widget.isEditingOrder,
+                  color: widget.isEditingOrder ? Colors.red : Colors.redAccent,
                   height: rs(context, 50),
                   onPressed: widget.onCancelOrder,
                 ),

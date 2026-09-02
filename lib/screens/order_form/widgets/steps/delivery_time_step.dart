@@ -47,6 +47,7 @@ class DeliveryTimeStep extends StatefulWidget {
   final Function(TimeOfDay, TimeOfDay, int) onTrashTimeSettingsChanged;
   final VoidCallback onNext;
   final VoidCallback onCancelOrder;
+  final bool isEditingOrder; // 受注一覧の編集から遷移した場合 true
   final String phoneNumberText;
 
   const DeliveryTimeStep({
@@ -84,6 +85,7 @@ class DeliveryTimeStep extends StatefulWidget {
     required this.onTrashTimeSettingsChanged,
     required this.onNext,
     required this.onCancelOrder,
+    this.isEditingOrder = false,
     this.phoneNumberText = '',
   });
 
@@ -216,7 +218,7 @@ class _DeliveryTimeStepState extends State<DeliveryTimeStep> {
             Row(
               children: [
                 Expanded(
-                  child: KButton(label: '注文キャンセル', isSecondary: true, color: Colors.redAccent, onPressed: widget.onCancelOrder),
+                  child: KButton(label: widget.isEditingOrder ? '編集キャンセル' : '注文キャンセル', isSecondary: !widget.isEditingOrder, color: widget.isEditingOrder ? Colors.red : Colors.redAccent, onPressed: widget.onCancelOrder),
                 ),
                 SizedBox(width: rs(context, 12)),
                 Expanded(

@@ -10,8 +10,9 @@ import '../services/branch_service.dart';
 import '../services/google_maps_service.dart';
 import '../widgets/k_choice_group.dart';
 import '../widgets/k_numeric_input_dialog.dart';
+import '../widgets/k_multimodal_text_field.dart';
+import '../widgets/k_direct_address_picker_dialog.dart';
 import '../widgets/k_responsive.dart';
-import '../widgets/k_text_field.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
 
 /// アプリ全体の設定を一括管理する画面
@@ -102,11 +103,6 @@ class SettingsScreen extends StatelessWidget {
                   Text('店舗登録',
                     style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
                 ],
-              ),
-              SizedBox(height: rs(context, 4)),
-              Text(
-                '店舗名・社名・住所・電話番号を登録します。社名はフランチャイズのため店舗ごとに設定でき、領収書の発行者名に使用されます。「調整」ではGoogleマップが開き、ピンの位置調整・座標登録・ストリートビュー写真の登録ができます。変更は自動保存されます。編集・削除は各カードの︙メニューから行います。左サイドバー下部の店舗表示にも反映されます。',
-                style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade600),
               ),
               SizedBox(height: rs(context, 16)),
               const _BranchSettingsSection(),
@@ -502,23 +498,160 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
   }
 
   Widget _buildBranchImage(_BranchRowData row) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(rs(context, 8)),
-      child: Container(
-        width: double.infinity,
-        height: rs(context, 150),
-        color: Colors.grey.shade200,
-        child: row.branch.imageUrl.isEmpty
-            ? Center(
-                child: Icon(Icons.storefront_outlined, size: rs(context, 40), color: Colors.grey.shade400),
-              )
-            : Image.network(
-                row.branch.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Center(
-                  child: Icon(Icons.broken_image_outlined, size: rs(context, 40), color: Colors.grey.shade400),
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(rs(context, 8)),
+          child: Container(
+            width: double.infinity,
+            height: rs(context, 150),
+            color: Colors.grey.shade200,
+            child: row.branch.imageUrl.isEmpty
+                ? Center(
+                    child: Icon(Icons.storefront_outlined, size: rs(context, 40), color: Colors.grey.shade400),
+                  )
+                : Image.network(
+                    row.branch.imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Center(
+                      child: Icon(Icons.broken_image_outlined, size: rs(context, 40), color: Colors.grey.shade400),
+                    ),
+                  ),
+          ),
+        ),
+        Positioned(
+          right: rs(context, 8),
+          bottom: rs(context, 8),
+          child: Material(
+            color: Colors.white,
+            elevation: 3,
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+            child: InkWell(
+              onTap: () => _adjustCoordinates(row),
+              borderRadius: BorderRadius.circular(rs(context, 8)),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 6)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_location_alt, size: rs(context, 16), color: Colors.deepOrange),
+                    SizedBox(width: rs(context, 4)),
+                    Text('調整', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                  ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// ラベル（フィールド外・左）とフィールドを上下中央で揃えた編集行
+  Widget _labeledField(String label, Widget field) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: rs(context, 8)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: rs(context, 88),
+            child: Text(label,
+                style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+          ),
+          Expanded(child: field),
+        ],
+      ),
+    );
+  }
+
+  /// テキスト入力（ペンタブ対応の共有ウィジェット）
+  Widget _penField(_BranchRowData row, TextEditingController controller) {
+    return Focus(
+      onFocusChange: (has) {
+        if (!has) _autoSave(row);
+      },
+      child: KMultimodalTextField(
+        label: '',
+        showLabel: false,
+        controller: controller,
+        maxLines: 1,
+        height: rs(context, 44),
+      ),
+    );
+  }
+
+  /// 番号入力（ダイヤル入力の共有ウィジェット）
+  Widget _dialField(_BranchRowData row) {
+    return SizedBox(
+      height: rs(context, 44),
+      child: InkWell(
+        onTap: () => showDialog(
+          context: context,
+          builder: (_) => KNumericInputDialog(
+            title: '電話番号の入力',
+            initialValue: row.phoneController.text,
+            emptyHint: '番号を入力してください',
+            onConfirmed: (v) {
+              setState(() => row.phoneController.text = v);
+              _autoSave(row);
+            },
+          ),
+        ),
+        child: Container(
+          alignment: Alignment.centerLeft,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+          ),
+          child: Text(
+            row.phoneController.text.isEmpty ? '番号を入力' : row.phoneController.text,
+            style: (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
+              color: row.phoneController.text.isEmpty ? Colors.grey.shade400 : Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 住所入力（受注入力「配達先の確定」の「住所検索」と同じダイヤログ）
+  Widget _addressField(_BranchRowData row) {
+    return SizedBox(
+      height: rs(context, 44),
+      child: InkWell(
+        onTap: () => showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => KDirectAddressPickerDialog(
+            initialPref: '',
+            initialCity: '',
+            initialTown: '',
+            onAddressConfirmed: (fullAddr) {
+              setState(() => row.addressController.text = fullAddr);
+              _autoSave(row);
+            },
+          ),
+        ),
+        child: Container(
+          alignment: Alignment.centerLeft,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+          ),
+          child: Text(
+            row.addressController.text.isEmpty ? '住所を検索' : row.addressController.text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
+              color: row.addressController.text.isEmpty ? Colors.grey.shade400 : Colors.black87,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -551,9 +684,17 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                     style: TextStyle(fontSize: rf(context, 13), color: Colors.grey.shade700),
                   ),
                   SizedBox(height: rs(context, 2)),
-                  Text(
-                    row.branch.phone.isEmpty ? '電話番号未設定' : row.branch.phone,
-                    style: TextStyle(fontSize: rf(context, 13), color: Colors.grey.shade700),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, size: rs(context, 14), color: Colors.grey.shade700),
+                      SizedBox(width: rs(context, 4)),
+                      Flexible(
+                        child: Text(
+                          row.branch.phone.isEmpty ? '電話番号未設定' : row.branch.phone,
+                          style: TextStyle(fontSize: rf(context, 13), color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -580,16 +721,6 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
             ),
           ],
         ),
-        SizedBox(height: rs(context, 8)),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: () => _adjustCoordinates(row),
-            icon: const Icon(Icons.edit_location_alt, color: Colors.deepOrange),
-            label: const Text('調整'),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.deepOrange),
-          ),
-        ),
       ],
     );
   }
@@ -599,53 +730,22 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildBranchImage(row),
-        SizedBox(height: rs(context, 10)),
-        Focus(
-          onFocusChange: (has) {
-            if (!has) _autoSave(row);
-          },
-          child: KTextField(label: '店舗名', controller: row.nameController),
-        ),
-        SizedBox(height: rs(context, 8)),
-        Focus(
-          onFocusChange: (has) {
-            if (!has) _autoSave(row);
-          },
-          child: KTextField(label: '社名（領収書の発行者名）', controller: row.companyController),
-        ),
-        SizedBox(height: rs(context, 8)),
-        Focus(
-          onFocusChange: (has) {
-            if (!has) _autoSave(row);
-          },
-          child: KTextField(label: '住所', controller: row.addressController),
-        ),
-        SizedBox(height: rs(context, 8)),
-        Focus(
-          onFocusChange: (has) {
-            if (!has) _autoSave(row);
-          },
-          child: KTextField(label: '電話番号', controller: row.phoneController),
-        ),
-        SizedBox(height: rs(context, 10)),
-        Row(
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => _adjustCoordinates(row),
-              icon: const Icon(Icons.edit_location_alt, color: Colors.deepOrange),
-              label: const Text('調整'),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.deepOrange),
-            ),
-            const Spacer(),
-            TextButton(
-              onPressed: () async {
-                await _autoSave(row);
-                if (!mounted) return;
-                setState(() => row.editing = false);
-              },
-              child: const Text('完了'),
-            ),
-          ],
+        SizedBox(height: rs(context, 12)),
+        _labeledField('店舗名', _penField(row, row.nameController)),
+        _labeledField('社名', _penField(row, row.companyController)),
+        _labeledField('住所', _addressField(row)),
+        _labeledField('電話番号', _dialField(row)),
+        SizedBox(height: rs(context, 4)),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () async {
+              await _autoSave(row);
+              if (!mounted) return;
+              setState(() => row.editing = false);
+            },
+            child: const Text('完了'),
+          ),
         ),
       ],
     );

@@ -11,11 +11,15 @@ class SidebarRanking extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ドリンク類はランキング集計から除外する
+    final drinkNames = allMenus.where((m) => m.category.contains('ドリンク')).map((m) => m.name).toSet();
+
     // 商品ごとの注文頻度（注文回数）を集計
     final Map<String, int> rankingMap = {};
     for (var order in history) {
       // 1回の注文で同じ商品を複数個頼んでも、その商品についてはカウント1とする
-      final uniqueItemsInOrder = order.items.map((i) => i['name'] as String? ?? '不明な商品').toSet();
+      final uniqueItemsInOrder = order.items.map((i) => i['name'] as String? ?? '不明な商品').toSet()
+        ..removeWhere(drinkNames.contains);
       for (var name in uniqueItemsInOrder) {
         rankingMap[name] = (rankingMap[name] ?? 0) + 1;
       }

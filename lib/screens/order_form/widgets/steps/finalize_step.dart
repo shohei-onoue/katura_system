@@ -49,6 +49,7 @@ class FinalizeStep extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onCancelOrder;
   final VoidCallback onShowReceipt; // 領収書確認
+  final bool isEditingOrder; // 受注一覧の編集から遷移した場合 true
 
   const FinalizeStep({
     super.key,
@@ -88,6 +89,7 @@ class FinalizeStep extends StatelessWidget {
     required this.onSave,
     required this.onCancelOrder,
     required this.onShowReceipt,
+    this.isEditingOrder = false,
   });
 
   @override
@@ -156,7 +158,7 @@ class FinalizeStep extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: KButton(label: '注文キャンセル', isSecondary: true, color: Colors.redAccent, onPressed: onCancelOrder),
+                child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文キャンセル', isSecondary: !isEditingOrder, color: isEditingOrder ? Colors.red : Colors.redAccent, onPressed: onCancelOrder),
               ),
               SizedBox(width: rs(context, 12)),
               Expanded(

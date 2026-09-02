@@ -10,7 +10,7 @@ class CustomerDataTable extends StatelessWidget {
   final Function(Customer) onEdit;
   final Function(Customer) onDelete;
 
-  /// 並び替えキー: 'name' | 'company' | null
+  /// 並び替えキー: 'name' | 'company' | 'elapsed' | null
   final String? sortKey;
   final bool sortAscending;
   final Function(String key) onSort;
@@ -83,7 +83,7 @@ class CustomerDataTable extends StatelessWidget {
                   Expanded(child: Text('電話番号', style: _headerStyle(context))),
                   SizedBox(
                     width: elapsedWidth,
-                    child: Text('前回経過日', style: _headerStyle(context)),
+                    child: _sortableHeader(context, '前回経過日', 'elapsed'),
                   ),
                   SizedBox(
                     width: actionWidth,
