@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 // Date and Time picker without external dependencies
 enum KPickerType { date, time }
@@ -65,7 +66,7 @@ class KDateTimePicker extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(rs(context, 8)),
-            color: Colors.white,
+            color: AppColors.background,
           ),
           padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
           child: Row(

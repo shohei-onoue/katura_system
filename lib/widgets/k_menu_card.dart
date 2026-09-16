@@ -3,6 +3,7 @@ import 'k_responsive.dart';
 import 'k_shared_quantity_input.dart';
 import 'k_button.dart';
 import '../models/menu_model.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KMenuCard extends StatefulWidget {
   final MenuModel menu;
@@ -43,7 +44,7 @@ class _KMenuCardState extends State<KMenuCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(
           color: hasSelection ? widget.themeColor : Colors.grey.shade200,
@@ -131,7 +132,7 @@ class _KMenuCardState extends State<KMenuCard> {
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.orange,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.background,
                             padding: EdgeInsets.zero,
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),

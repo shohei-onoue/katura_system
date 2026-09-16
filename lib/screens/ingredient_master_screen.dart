@@ -3,6 +3,7 @@ import '../models/ingredient_model.dart';
 import '../services/ingredient_service.dart';
 import '../../widgets/k_responsive.dart';
 import '../../widgets/k_multimodal_text_field.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class IngredientMasterScreen extends StatefulWidget {
   const IngredientMasterScreen({super.key});
@@ -61,7 +62,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           surfaceTintColor: Colors.transparent,
           title: Text(ingredient == null ? '新規食材登録' : '食材編集'),
           content: SizedBox(
@@ -159,7 +160,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('食材の削除'),
         content: Text('${ingredient.name} を削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
@@ -173,7 +174,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
               ScaffoldMessenger.of(context)
                   .showSnackBar(const SnackBar(content: Text('食材を削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
             child: const Text('削除する'),
           ),
         ],
@@ -190,7 +191,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('食材マスタ', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -217,7 +218,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                           final ing = filtered[index];
                           return Card(
                             elevation: 1,
-                            color: Colors.white,
+                            color: AppColors.background,
                             margin: EdgeInsets.only(bottom: rs(context, 12)),
                             child: ListTile(
                               leading: CircleAvatar(
@@ -290,7 +291,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                 selected: isSelected,
                 onSelected: (val) => setState(() => _selectedCategory = cat),
                 selectedColor: Colors.deepPurple,
-                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+                labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87),
                 showCheckmark: false,
               ),
             );

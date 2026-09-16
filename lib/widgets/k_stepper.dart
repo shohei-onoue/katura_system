@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KStepper extends StatelessWidget {
   final int currentStep;
@@ -62,7 +63,7 @@ class KStepper extends StatelessWidget {
                   child: Card(
                     elevation: isActive ? 8 : (isClickable ? 2 : 0),
                     margin: EdgeInsets.symmetric(horizontal: rav(context, 2), vertical: rav(context, 4)),
-                    color: isActive ? Colors.white : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
+                    color: isActive ? AppColors.background : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(rav(context, 8)),
                       side: BorderSide(
@@ -88,11 +89,11 @@ class KStepper extends StatelessWidget {
                             ),
                             child: Center(
                               child: isCompleted
-                                  ? Icon(Icons.check, color: Colors.white, size: rav(context, 14))
+                                  ? Icon(Icons.check, color: AppColors.background, size: rav(context, 14))
                                   : Text(
                                       '${index + 1}',
                                       style: TextStyle(
-                                        color: Colors.white,
+                                        color: AppColors.background,
                                         fontWeight: FontWeight.bold,
                                         fontSize: rf(context, 11),
                                       ),

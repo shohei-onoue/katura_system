@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_button.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 受注フォーム全ステップで共通の色・高さトークン
 class OrderFormTokens {
-  static const Color titleBarColor = Color(0xFF000038);
+  static const Color titleBarColor = AppColors.labelBackground;
   /// 入力フィールド・ボタンの共通高さ
   static double fieldHeight(BuildContext context) => rs(context, 50);
 }
@@ -79,9 +80,9 @@ class SidebarSectionTitle extends StatelessWidget {
       padding: EdgeInsets.all(rav(context, 16)),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: rav(context, 20)),
+          Icon(icon, color: AppColors.whiteText, size: rav(context, 20)),
           SizedBox(width: rav(context, 8)),
-          Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
           if (trailing != null) ...[const Spacer(), trailing!],
         ],
       ),
@@ -113,7 +114,7 @@ class OrderFormCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
@@ -138,9 +139,9 @@ class OrderFormCard extends StatelessWidget {
               padding: EdgeInsets.all(rav(context, 16)),
               child: Row(
                 children: [
-                  Icon(icon, color: Colors.white, size: rav(context, 20)),
+                  Icon(icon, color: AppColors.whiteText, size: rav(context, 20)),
                   SizedBox(width: rav(context, 8)),
-                  Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.white)),
+                  Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
                   if (trailing != null) ...[const Spacer(), trailing!],
                 ],
               ),
@@ -172,7 +173,7 @@ class CustomerInfoBanner extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(rav(context, 16)),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.background,
           borderRadius: BorderRadius.circular(rav(context, 12)),
           border: Border.all(color: Colors.blueGrey.shade100, width: rs(context, 1.5)),
         ),
@@ -286,8 +287,8 @@ class KInitialRowSelector extends StatelessWidget {
               height: rs(context, 36),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isSelected ? Colors.deepPurple : Colors.white,
-                  foregroundColor: isSelected ? Colors.white : Colors.black87,
+                  backgroundColor: isSelected ? Colors.deepPurple : AppColors.background,
+                  foregroundColor: isSelected ? AppColors.background : Colors.black87,
                   padding: EdgeInsets.zero,
                   elevation: 0,
                   shape: RoundedRectangleBorder(

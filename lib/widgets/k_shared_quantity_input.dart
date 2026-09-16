@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'k_numeric_input_dialog.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KSharedQuantityInput extends StatelessWidget {
   final int value;
@@ -39,7 +40,7 @@ class KSharedQuantityInput extends StatelessWidget {
             height: height ?? rs(context, 44),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: value > 0 ? themeColor.withValues(alpha: 0.05) : Colors.white,
+              color: value > 0 ? themeColor.withValues(alpha: 0.05) : AppColors.background,
               border: Border.all(color: value > 0 ? themeColor : Colors.grey.shade300, width: rs(context, 2)),
               borderRadius: BorderRadius.circular(rs(context, 8)),
             ),

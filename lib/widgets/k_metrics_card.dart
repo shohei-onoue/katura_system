@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 経営指標サマリーカード
 class KMetricsCard extends StatelessWidget {
@@ -25,7 +26,7 @@ class KMetricsCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: isAlert ? Colors.red.shade200 : Colors.grey.shade200, width: rs(context, 1.5)),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],

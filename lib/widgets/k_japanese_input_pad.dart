@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 enum KInputMode { kana, alpha, numeric }
 
@@ -183,8 +184,8 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
     return Expanded(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.deepPurple : Colors.white,
-          foregroundColor: isSelected ? Colors.white : Colors.black87,
+          backgroundColor: isSelected ? Colors.deepPurple : AppColors.background,
+          foregroundColor: isSelected ? AppColors.background : Colors.black87,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8)), side: BorderSide(color: Colors.grey.shade300)),
           padding: EdgeInsets.zero,
@@ -256,7 +257,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         foregroundColor: Colors.black87,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
@@ -277,7 +278,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey.shade600,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.background,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         padding: EdgeInsets.zero,
@@ -294,13 +295,13 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
 
   Widget _buildSpecialKey(BuildContext context, String label, VoidCallback onPressed, Color color) {
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))),
+      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.background, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))),
       onPressed: onPressed,
       child: Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _actionButton(BuildContext context, String label, Color color, VoidCallback onPressed) {
-    return SizedBox(height: rs(context, 54), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))), onPressed: onPressed, child: Text(label, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold))));
+    return SizedBox(height: rs(context, 54), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.background, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))), onPressed: onPressed, child: Text(label, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold))));
   }
 }

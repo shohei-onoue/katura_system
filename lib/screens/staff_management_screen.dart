@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/staff_model.dart';
 import '../services/staff_service.dart';
 import '../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class StaffManagementScreen extends StatefulWidget {
   const StaffManagementScreen({super.key});
@@ -37,7 +38,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text('スタッフ管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -68,7 +69,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add, color: AppColors.background),
       ),
     );
   }
@@ -76,7 +77,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Widget _buildStaffCard(Staff staff) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KTileSelector<T> extends StatelessWidget {
   final String label;
@@ -49,10 +50,10 @@ class KTileSelector<T> extends StatelessWidget {
                 alignment: Alignment.center,
                 padding: EdgeInsets.symmetric(horizontal: rs(context, 8)),
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.blueGrey.shade700 : Colors.white,
+                  color: isSelected ? AppColors.onButton : AppColors.offButton,
                   borderRadius: BorderRadius.circular(rs(context, 8)),
                   border: Border.all(
-                    color: isSelected ? Colors.blueGrey.shade700 : Colors.grey.shade300,
+                    color: isSelected ? AppColors.onButton : Colors.grey.shade300,
                     width: rs(context, 1.5),
                   ),
                 ),
@@ -62,7 +63,7 @@ class KTileSelector<T> extends StatelessWidget {
                   style: TextStyle(
                     fontSize: rf(context, 15),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: isSelected ? AppColors.onButtonText : AppColors.offButtonText,
                   ),
                 ),
               ),

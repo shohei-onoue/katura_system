@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class PlanningScreen extends StatelessWidget {
   const PlanningScreen({super.key});
@@ -10,7 +11,7 @@ class PlanningScreen extends StatelessWidget {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: const Text('調理・仕入れ計画', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
       ),

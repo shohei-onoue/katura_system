@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KNumericDialPad extends StatelessWidget {
   final Function(String) onInput;
@@ -53,7 +54,7 @@ class KNumericDialPad extends StatelessWidget {
                           backgroundColor: isAction 
                               ? Colors.grey.shade600 
                               : (buttonColor ?? Colors.blueGrey.shade800),
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.background,
                           elevation: 4,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                           padding: EdgeInsets.zero,

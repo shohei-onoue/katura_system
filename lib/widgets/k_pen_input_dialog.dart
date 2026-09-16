@@ -4,6 +4,7 @@ import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_pen_canvas.dart';
 import '../services/ink_recognition_service.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KPenInputDialog extends StatefulWidget {
   final Function(String) onTextRecognized;
@@ -255,12 +256,12 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   Icon(Icons.edit_note, color: Colors.deepPurple.shade300, size: rav(context, 24)),
                   SizedBox(width: rs(context, 8)),
                   Text('手書き入力（AI判定）',
-                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: Colors.white)),
+                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.background)),
                   const Spacer(),
                   _buildToolToggle(),
                   SizedBox(width: rs(context, 8)),
                   IconButton(
-                    icon: Icon(Icons.close, size: rav(context, 22), color: Colors.white), 
+                    icon: Icon(Icons.close, size: rav(context, 22), color: AppColors.background), 
                     onPressed: () => Navigator.pop(context)
                   ),
                 ],
@@ -276,7 +277,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                 margin: EdgeInsets.symmetric(vertical: rav(context, 8)),
                 padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(rs(context, 12)),
                   border: Border.all(color: Colors.grey.shade300, width: rs(context, 1)),
                 ),
@@ -332,7 +333,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.background,
                         border: Border.all(color: Colors.grey.shade400, width: rs(context, 2)),
                         borderRadius: BorderRadius.circular(rs(context, 12)),
                       ),
@@ -396,7 +397,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                         onPressed: combinedText.isNotEmpty ? _insertSpace : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueGrey,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.background,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(rav(context, 8)),
                           ),
@@ -434,7 +435,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     return Container(
       padding: EdgeInsets.all(rs(context, 4)),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: AppColors.background.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(rs(context, 10)),
       ),
       child: Row(
@@ -462,9 +463,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: rs(context, 18), color: Colors.white),
+            Icon(icon, size: rs(context, 18), color: AppColors.background),
             SizedBox(width: rs(context, 6)),
-            Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: AppColors.background)),
           ],
         ),
       ),
@@ -491,7 +492,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Icon(
             icon, 
-            color: onPressed != null ? Colors.white : Colors.grey.shade800,
+            color: onPressed != null ? AppColors.background : Colors.grey.shade800,
             size: rav(context, 32),
           ),
         ),

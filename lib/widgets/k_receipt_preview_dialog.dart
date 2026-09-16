@@ -6,6 +6,7 @@ import '../models/branch_model.dart';
 import '../services/branch_service.dart';
 import '../services/receipt_service.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 受注内容から領収書HTMLを生成し、WebViewでプレビュー・印刷するダイアログ。
 class KReceiptPreviewDialog extends StatefulWidget {
@@ -499,16 +500,16 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
     final screen = MediaQuery.of(context).size;
     return Dialog(
       insetPadding: EdgeInsets.all(rs(context, 12)),
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       child: SizedBox(
         width: screen.width,
         height: screen.height,
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           appBar: AppBar(
             title: Text('領収書プレビュー  No.${_no4(_issueNo)}',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.popupBackground,
             foregroundColor: Colors.black,
             elevation: 0,
             actions: [

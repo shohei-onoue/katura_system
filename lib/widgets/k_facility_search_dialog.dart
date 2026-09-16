@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/customer_service.dart';
 import 'k_responsive.dart';
 import 'k_multimodal_text_field.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 施設・住所検索の結果（施設名・住所・座標）。
 class KFacilitySearchResult {
@@ -129,7 +130,7 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       child: SizedBox(
         width: rs(context, 560),
         height: rs(context, 640),
@@ -141,9 +142,9 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
               child: Row(
                 children: [
                   Text('施設・住所の検索',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: rf(context, 15))),
+                      style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 15))),
                   const Spacer(),
-                  IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                  IconButton(icon: const Icon(Icons.close, color: AppColors.background), onPressed: () => Navigator.pop(context)),
                 ],
               ),
             ),
@@ -183,7 +184,7 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
                   label: const Text('検索'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF000038),
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.background,
                   ),
                 ),
               ),

@@ -7,6 +7,7 @@ import '../services/menu_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_point_heatmap.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -204,7 +205,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: EdgeInsets.all(rs(context, 6)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -233,7 +234,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.blueGrey,
+              color: selected ? AppColors.background : Colors.blueGrey,
               fontWeight: FontWeight.bold,
               fontSize: rf(context, 13),
             ),
@@ -305,7 +306,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget _card({required String title, required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -412,7 +413,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: Text(menu, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -584,7 +585,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 24), vertical: rs(context, 24)),
           title: Text('$year年 月別食数推移',
               style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
@@ -738,7 +739,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.9),
+          color: AppColors.background.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(rs(context, 8)),
           boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),

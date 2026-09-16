@@ -8,6 +8,7 @@ import 'screens/main_screen.dart';
 import 'firebase_options.dart';
 import 'services/settings_service.dart';
 import 'services/ink_recognition_service.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +51,7 @@ class KaturaSystemApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.deepOrange,
         useMaterial3: true,
-        scaffoldBackgroundColor: Colors.white,
+        scaffoldBackgroundColor: AppColors.mainBackground,
       ),
       home: const MainScreen(),
     );

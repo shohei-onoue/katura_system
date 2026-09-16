@@ -3,6 +3,7 @@ import 'k_button.dart';
 import 'k_responsive.dart';
 import 'k_dial_pad.dart';
 import '../services/address_service.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 住所・郵便番号から住所を確定する共有ダイヤログ。
 /// 受注入力「配達先の確定」ステップの「住所検索」で使用しているものと同一。
@@ -109,7 +110,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     final double dialogH = rs(context, 700) < maxH ? rs(context, 700) : maxH;
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       insetPadding: EdgeInsets.all(rs(context, 24)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
@@ -200,7 +201,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
             child: Card(
               elevation: isActive ? 4 : 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? Colors.white : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? AppColors.background : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
@@ -222,8 +223,8 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                       ),
                       child: Center(
                         child: isCompleted && !isActive
-                          ? Icon(Icons.check, color: Colors.white, size: rs(context, 14))
-                          : Text('${index + 1}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
+                          ? Icon(Icons.check, color: AppColors.background, size: rs(context, 14))
+                          : Text('${index + 1}', style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                       ),
                     ),
                     SizedBox(width: rs(context, 8)),

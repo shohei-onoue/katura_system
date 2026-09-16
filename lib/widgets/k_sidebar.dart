@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import '../models/branch_model.dart';
 import '../services/branch_service.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 標準の[NavigationRail]は項目間の余白が大きく調整できないため、
 /// 間隔を詰めた独自レイアウト（スクロール禁止・全項目を必ず画面内に収める）で実装する。
@@ -58,15 +59,15 @@ class _KSidebarState extends State<KSidebar> {
     showMenu<int>(
       context: context,
       position: position,
-      color: const Color(0xFF000038).withValues(alpha: 0.5),
+      color: AppColors.menuBackground.withValues(alpha: 0.5),
       items: List.generate(_manageIndices.length, (i) {
         return PopupMenuItem<int>(
           value: _manageIndices[i],
           child: Row(
             children: [
-              Icon(_manageIcons[i], size: rs(context, 18), color: Colors.white),
+              Icon(_manageIcons[i], size: rs(context, 18), color: AppColors.background),
               SizedBox(width: rs(context, 10)),
-              Text(_manageLabels[i], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text(_manageLabels[i], style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)),
             ],
           ),
         );

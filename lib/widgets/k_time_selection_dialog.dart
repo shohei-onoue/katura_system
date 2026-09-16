@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_numeric_dial_pad.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KTimeSelectionDialog extends StatefulWidget {
   final DateTime initialDateTime;
@@ -79,7 +80,7 @@ class _KTimeSelectionDialogState extends State<KTimeSelectionDialog> {
     final bool isValid = _isValidTime();
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
         width: rs(context, 400),

@@ -11,6 +11,7 @@ import 'customer_list/widgets/customer_data_table.dart';
 import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_multimodal_text_field.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -107,7 +108,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('名前・企業・電話番号で検索'),
         content: SizedBox(
           width: rs(context, 380),
@@ -221,7 +222,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('顧客データの削除'),
         content: Text('${customer.name} 様のデータを削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
@@ -234,7 +235,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               _loadCustomers();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
             child: const Text('削除する'),
           ),
         ],
@@ -248,7 +249,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('顧客管理システム', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -317,7 +318,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 Container(
                   width: rs(context, 380),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.background,
                     border: Border(left: BorderSide(color: Colors.grey.shade200)),
                     boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                   ),

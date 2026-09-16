@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'k_numeric_dial_pad.dart';
 import 'k_button.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 数字入力用の共通ダイヤログ（電話番号入力・数量直接入力などで共有）。
 /// 入力はローカル状態で保持し、「確定」でのみ [onConfirmed] を呼ぶ。
@@ -42,7 +43,7 @@ class _KNumericInputDialogState extends State<KNumericInputDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
         width: rs(context, 400),

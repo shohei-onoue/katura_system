@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/planning_models.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class CookingScheduleList extends StatelessWidget {
   final bool isLoading;
@@ -59,7 +60,7 @@ class CookingScheduleList extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(rs(context, 4)),
                               ),
                               child: Text('${task.quantity}個', 
-                                style: TextStyle(color: Colors.white, fontSize: rf(context, 12), fontWeight: FontWeight.bold)),
+                                style: TextStyle(color: AppColors.background, fontSize: rf(context, 12), fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),

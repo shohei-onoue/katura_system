@@ -9,6 +9,8 @@ import '../../../../widgets/k_pen_input_dialog.dart';
 import '../../../../widgets/k_text_field.dart';
 import '../../../../services/category_service.dart';
 import '../order_form_parts.dart';
+import 'receiver_selector.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class DeliveryDestinationStep extends StatelessWidget {
   final Customer? currentCustomer;
@@ -37,6 +39,7 @@ class DeliveryDestinationStep extends StatelessWidget {
   final String? searchGenre;
   final int searchTabIndex;
   final bool isApproximateLocation;
+  final String customerName;
   final TextEditingController remarksController;
   final ValueNotifier<List<Map<String, dynamic>>> facilityResultsListenable;
   final ValueNotifier<bool> isLoadingListenable;
@@ -94,6 +97,7 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.searchGenre,
     required this.searchTabIndex,
     this.isApproximateLocation = false,
+    this.customerName = '',
     required this.remarksController,
     required this.facilityResultsListenable,
     required this.isLoadingListenable,
@@ -140,6 +144,15 @@ class DeliveryDestinationStep extends StatelessWidget {
               ),
               SizedBox(height: rs(context, 32)),
               if (isHistoryMode) _buildHistoryList(context) else _buildNewForm(context),
+              SizedBox(height: rs(context, 32)),
+              Divider(height: rs(context, 1), color: Colors.grey.shade200),
+              SizedBox(height: rs(context, 20)),
+              ReceiverSelector(
+                receiverController: receiverController,
+                currentCustomer: currentCustomer,
+                customerName: customerName,
+                facilityName: facilityControllerText,
+              ),
               SizedBox(height: rs(context, 40)),
               Row(
                 children: [
@@ -148,10 +161,17 @@ class DeliveryDestinationStep extends StatelessWidget {
                   ),
                   SizedBox(width: rs(context, 12)),
                   Expanded(
-                    child: KButton(
-                      label: '配達日時の選択へ',
-                      onPressed: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? onNext : () {},
-                      color: (facilityControllerText.isNotEmpty && addressControllerText.isNotEmpty) ? Colors.deepPurple : Colors.grey,
+                    child: Builder(
+                      builder: (context) {
+                        final bool ready = facilityControllerText.isNotEmpty &&
+                            addressControllerText.isNotEmpty &&
+                            receiverController.text.isNotEmpty;
+                        return KButton(
+                          label: '注文商品の選択へ',
+                          onPressed: ready ? onNext : () {},
+                          color: ready ? Colors.deepPurple : Colors.grey,
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -170,7 +190,7 @@ class DeliveryDestinationStep extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: rs(context, 10)),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
+          color: isSelected ? Colors.deepPurple.shade50 : AppColors.background,
           border: Border.all(color: isSelected ? Colors.deepPurple : Colors.grey.shade300, width: rs(context, 2)),
           borderRadius: BorderRadius.circular(rs(context, 12)),
         ),
@@ -258,7 +278,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                     label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.background,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                     ),
                   ),
@@ -425,7 +445,7 @@ class FacilitySearchForm extends StatelessWidget {
         borderRadius: BorderRadius.circular(rs(context, 12)),
         child: Container(
           padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-          decoration: BoxDecoration(color: isSelected ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
+          decoration: BoxDecoration(color: isSelected ? AppColors.background : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? Colors.deepPurple : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? Colors.deepPurple : Colors.grey))]),
         ),
       ),
@@ -456,7 +476,7 @@ class FacilitySearchForm extends StatelessWidget {
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -492,7 +512,7 @@ class FacilitySearchForm extends StatelessWidget {
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -552,7 +572,7 @@ class FacilitySearchForm extends StatelessWidget {
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.background,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -601,7 +621,7 @@ class FacilitySearchForm extends StatelessWidget {
       barrierDismissible: false,
       builder: (dialogContext) {
         return Dialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
           child: Container(
             width: rs(context, 800),
@@ -869,7 +889,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
         width: rs(context, 900),
@@ -949,7 +969,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             child: Card(
               elevation: isActive ? 4 : 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? Colors.white : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? AppColors.background : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
@@ -971,8 +991,8 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                       ),
                       child: Center(
                         child: isCompleted && !isActive
-                          ? Icon(Icons.check, color: Colors.white, size: rs(context, 14))
-                          : Text('${index + 1}', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
+                          ? Icon(Icons.check, color: AppColors.background, size: rs(context, 14))
+                          : Text('${index + 1}', style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                       ),
                     ),
                     SizedBox(width: rs(context, 8)),
@@ -1198,13 +1218,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                     final isSelected = tempCategory == cat;
                     return Card(
                       elevation: isSelected ? 2 : 0,
-                      color: isSelected ? Colors.deepPurple : Colors.white,
+                      color: isSelected ? Colors.deepPurple : AppColors.background,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(rs(context, 8)),
                         side: BorderSide(color: isSelected ? Colors.deepPurple : Colors.grey.shade300),
                       ),
                       child: ListTile(
-                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black87)),
+                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.background : Colors.black87)),
                         onTap: () {
                           setState(() {
                             tempCategory = cat;
@@ -1256,12 +1276,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                           child: Container(
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.orange : Colors.white,
+                              color: isSelected ? Colors.orange : AppColors.background,
                               borderRadius: BorderRadius.circular(rs(context, 8)),
                               border: Border.all(color: isSelected ? Colors.orange : Colors.grey.shade300),
                             ),
                             child: Text(gen, 
-                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.black87),
+                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: isSelected ? AppColors.background : Colors.black87),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -1443,7 +1463,7 @@ class _AddressDialField extends StatelessWidget {
             height: kFieldHeight(context),
             padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
             decoration: BoxDecoration(
-              color: isWarning ? Colors.pink.shade50 : Colors.white,
+              color: isWarning ? Colors.pink.shade50 : AppColors.background,
               border: Border.all(color: isWarning ? Colors.pink.shade200 : Colors.grey.shade300, width: isWarning ? 2 : 1),
               borderRadius: BorderRadius.circular(rs(context, 8)),
             ),

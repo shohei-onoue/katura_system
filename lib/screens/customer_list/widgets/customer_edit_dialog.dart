@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerEditDialog extends StatefulWidget {
   final Customer customer;
@@ -119,7 +120,7 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
             Navigator.pop(context);
             widget.onSaved();
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, foregroundColor: AppColors.background),
           child: const Text('保存'),
         ),
       ],

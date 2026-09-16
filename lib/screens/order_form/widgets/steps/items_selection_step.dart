@@ -5,6 +5,7 @@ import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_item_details_dialog.dart';
 import '../../../../widgets/k_menu_card.dart';
 import '../order_form_parts.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class ItemsSelectionStep extends StatefulWidget {
   final List<MenuModel> menus;
@@ -120,7 +121,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                     },
                     selectedColor: Colors.deepPurple,
                     labelStyle: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
+                      color: isSelected ? AppColors.background : Colors.black87,
                       fontSize: rf(context, 13),
                     ),
                     showCheckmark: false,
@@ -198,7 +199,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
       width: double.infinity,
       padding: EdgeInsets.all(rs(context, 48)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 16)),
       ),
       child: Column(

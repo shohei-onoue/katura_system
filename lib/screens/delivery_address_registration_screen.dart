@@ -8,6 +8,7 @@ import 'delivery_address/constants.dart';
 import 'delivery_address/widgets/address_search_panel.dart';
 import 'delivery_address/widgets/delivery_map_area.dart';
 import 'delivery_address/widgets/registration_input_pad.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class DeliveryAddressRegistrationScreen extends StatefulWidget {
   final Customer customer;
@@ -57,7 +58,7 @@ class _DeliveryAddressRegistrationScreenState extends State<DeliveryAddressRegis
       appBar: AppBar(
         title: const Text('新規配達先の登録', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.background,
         elevation: 0,
         leading: _currentStep != SearchStep.method 
           ? IconButton(

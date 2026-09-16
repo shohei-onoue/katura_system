@@ -9,6 +9,7 @@ import '../../../../widgets/k_date_time_display.dart';
 import '../../../../widgets/k_date_time_selection_dialog.dart';
 import '../../../../widgets/k_numeric_input_dialog.dart';
 import '../order_form_parts.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class FinalizeStep extends StatelessWidget {
   final String branchName;
@@ -225,7 +226,6 @@ class FinalizeStep extends StatelessWidget {
                 ],
                 onSelected: onPackagingTypeChanged,
                 showLabel: false,
-                selectedColor: Colors.deepPurple,
               ),
             ),
             SizedBox(width: rs(context, 12)),
@@ -387,7 +387,7 @@ class FinalizeStep extends StatelessWidget {
       alignment: Alignment.centerLeft,
       padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
@@ -415,18 +415,18 @@ class FinalizeStep extends StatelessWidget {
         height: rs(context, 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? Colors.deepPurple.shade50 : Colors.white,
+          color: selected ? AppColors.onButton : AppColors.offButton,
           borderRadius: BorderRadius.circular(rs(context, 10)),
-          border: Border.all(color: selected ? Colors.deepPurple : Colors.grey.shade300, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? AppColors.onButton : Colors.grey.shade300, width: selected ? 2 : 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: rs(context, 18), color: selected ? Colors.deepPurple : Colors.grey),
+                size: rs(context, 18), color: selected ? AppColors.onButtonText : Colors.grey),
             SizedBox(width: rs(context, 6)),
             Text(label,
-                style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? Colors.deepPurple.shade900 : Colors.black87)),
+                style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? AppColors.onButtonText : AppColors.offButtonText)),
           ],
         ),
       ),
@@ -460,7 +460,7 @@ class FinalizeStep extends StatelessWidget {
             },
             isCompact: true,
             height: rs(context, 40),
-            fillColor: Colors.white,
+            fillColor: AppColors.background,
           ),
         ),
       ],
@@ -558,7 +558,7 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
         height: rs(context, 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: sel ? Colors.deepPurple.shade50 : Colors.white,
+          color: sel ? Colors.deepPurple.shade50 : AppColors.background,
           borderRadius: BorderRadius.circular(rs(context, 10)),
           border: Border.all(color: sel ? Colors.deepPurple : Colors.grey.shade300, width: sel ? 2 : 1),
         ),

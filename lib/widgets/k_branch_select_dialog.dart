@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 配達元店舗を選ぶアニメーション付きメニュー。
 /// showDialog で表示し、選択された店舗名を pop で返す（項目タップで即確定）。
@@ -109,7 +110,7 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                       child: Text(
                         '配達元店舗',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.background,
                           fontWeight: FontWeight.bold,
                           fontSize: rf(context, 15),
                         ),
@@ -137,14 +138,14 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                                 isNearest
                                     ? Icons.radio_button_checked
                                     : Icons.radio_button_unchecked,
-                                color: Colors.white,
+                                color: AppColors.background,
                                 size: rs(context, 22),
                               ),
                               SizedBox(width: rs(context, 12)),
                               Text(
                                 b,
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.background,
                                   fontWeight: FontWeight.bold,
                                   fontSize: rf(context, 16),
                                 ),

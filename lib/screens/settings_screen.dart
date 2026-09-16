@@ -14,6 +14,7 @@ import '../widgets/k_multimodal_text_field.dart';
 import '../widgets/k_direct_address_picker_dialog.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// アプリ全体の設定を一括管理する画面
 class SettingsScreen extends StatelessWidget {
@@ -25,7 +26,7 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text('設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
       ),
@@ -34,7 +35,7 @@ class SettingsScreen extends StatelessWidget {
         child: Container(
           constraints: BoxConstraints(maxWidth: rs(context, 880)),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.background,
             borderRadius: BorderRadius.circular(rs(context, 12)),
             border: Border.all(color: Colors.grey.shade200),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
@@ -64,7 +65,6 @@ class SettingsScreen extends StatelessWidget {
                     label: '',
                     showLabel: false,
                     selectedValue: mode,
-                    selectedColor: Colors.deepPurple,
                     onSelected: (newMode) {
                       SettingsService.setInputMode(newMode);
                     },
@@ -370,7 +370,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('店舗を削除しますか？'),
         content: Text('「${row.branch.name}」を削除します。この操作は取り消せません。'),
         actions: [
@@ -523,7 +523,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           right: rs(context, 8),
           bottom: rs(context, 8),
           child: Material(
-            color: Colors.white,
+            color: AppColors.background,
             elevation: 3,
             borderRadius: BorderRadius.circular(rs(context, 8)),
             child: InkWell(
@@ -602,7 +602,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.background,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
@@ -639,7 +639,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.background,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(rs(context, 8)),
           ),

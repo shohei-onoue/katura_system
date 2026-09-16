@@ -11,10 +11,12 @@ import 'planning_screen.dart';
 import 'analysis_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 /// 経営効率化を極めたメイン司令塔画面
 /// ループエンジニアリング評価：
-/// [改善] IndexedStackを廃止し、非アクティブな重い画面（地図等）をメモリから解放。
+/// [改善] 受注入力・データ分析（地図を含む）以外の一覧・設定系画面はIndexedStackで
+///        マウントしたままにし、再訪時のFirestore再取得・読み込み待ちを解消。
 /// [改善] レスポンシブ設計を強化し、サイドバーとの連携を最適化。
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,35 +27,38 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  
+
   // 編集中の注文情報を保持（画面切り替えで消えないように）
   OrderModel? _currentEditingOrder;
+
+  // 常駐キャッシュ対象の画面インデックス（受注入力=0とデータ分析=5は対象外）
+  static const List<int> _cachedIndices = [1, 2, 6, 7, 10, 8, 9];
 
   @override
   void initState() {
     super.initState();
   }
 
-  /// インデックスに基づいて必要な画面だけを生成する（Lazy Loading）
-  /// これにより、背後でGoogle Maps等が動き続けるのを防ぎ、劇的に軽量化される。
-  Widget _buildBody() {
-    switch (_selectedIndex) {
-      case 0: // 受注入力
-        return OrderFormScreen(
-          key: ValueKey('order_form_${_currentEditingOrder?.id ?? "new"}'),
-          initialOrder: _currentEditingOrder,
-          onSaveSuccess: () {
-            setState(() {
-              _currentEditingOrder = null;
-              _selectedIndex = 1; // 受注一覧へ
-            });
-          },
-          onCancel: () {
-            setState(() {
-              _currentEditingOrder = null;
-            });
-          },
-        );
+  Widget _buildOrderFormScreen() {
+    return OrderFormScreen(
+      key: ValueKey('order_form_${_currentEditingOrder?.id ?? "new"}'),
+      initialOrder: _currentEditingOrder,
+      onSaveSuccess: () {
+        setState(() {
+          _currentEditingOrder = null;
+          _selectedIndex = 1; // 受注一覧へ
+        });
+      },
+      onCancel: () {
+        setState(() {
+          _currentEditingOrder = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildCachedScreen(int index) {
+    switch (index) {
       case 1: // 受注一覧
         return OrderListScreen(onEditOrder: (order) {
           setState(() {
@@ -63,8 +68,6 @@ class _MainScreenState extends State<MainScreen> {
         });
       case 2: // 調理・仕入れ計画
         return const PlanningScreen();
-      case 5: // データ分析
-        return const AnalysisScreen();
       case 6: // 顧客管理
         return const CustomerListScreen();
       case 7: // メニューマスタ
@@ -80,13 +83,35 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  /// 受注入力・データ分析以外はIndexedStackで常時マウントし、
+  /// タブ切り替え時の再読み込みラグをなくす（Google Mapsを含むデータ分析は除外）。
+  Widget _buildBody() {
+    return Stack(
+      children: [
+        Offstage(
+          offstage: !_cachedIndices.contains(_selectedIndex),
+          child: IndexedStack(
+            index: _cachedIndices.indexOf(_selectedIndex).clamp(0, _cachedIndices.length - 1),
+            children: _cachedIndices.map(_buildCachedScreen).toList(),
+          ),
+        ),
+        if (_selectedIndex == 0)
+          _buildOrderFormScreen()
+        else if (_selectedIndex == 5) // データ分析
+          const AnalysisScreen()
+        else if (!_cachedIndices.contains(_selectedIndex))
+          _buildUnderConstruction(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 900;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.mainBackground,
       drawer: isMobile ? Drawer(
         child: KSidebar(
           selectedIndex: _selectedIndex,

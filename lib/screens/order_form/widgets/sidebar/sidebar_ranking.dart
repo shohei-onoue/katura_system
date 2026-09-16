@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../models/order_model.dart';
 import '../../../../models/menu_model.dart';
 import '../../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class SidebarRanking extends StatelessWidget {
   final List<OrderModel> history;
@@ -119,7 +120,7 @@ class _RankingItem extends StatelessWidget {
             child: Text(
               '$rank',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.background,
                 fontSize: rf(context, 12),
                 fontWeight: FontWeight.bold,
               ),

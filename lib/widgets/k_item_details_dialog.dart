@@ -4,6 +4,7 @@ import 'k_button.dart';
 import 'k_multimodal_text_field.dart';
 import 'k_shared_quantity_input.dart';
 import '../models/menu_model.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KItemDetailsDialog extends StatefulWidget {
   final MenuModel menu;
@@ -45,7 +46,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
     final double qInputWidth = rs(context, 80); // 受注内容ステップと統一
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -266,7 +267,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
             if (val) setState(() => _teaOption = opt);
           },
           selectedColor: Colors.deepPurple,
-          labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontSize: rf(context, 13)),
+          labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87, fontSize: rf(context, 13)),
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 10)),
           visualDensity: VisualDensity.standard,
           showCheckmark: false,

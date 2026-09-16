@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'k_pen_input_dialog.dart';
 import '../services/settings_service.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KMultimodalTextField extends StatefulWidget {
   final String label;
@@ -109,7 +110,7 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                             borderSide: BorderSide(color: Colors.deepPurple, width: rs(context, 1.5)),
                           ),
                           filled: true,
-                          fillColor: isPenMode ? Colors.grey.shade50 : Colors.white,
+                          fillColor: isPenMode ? Colors.grey.shade50 : AppColors.background,
                         ),
                       );
                     },

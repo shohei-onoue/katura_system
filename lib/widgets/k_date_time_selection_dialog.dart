@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import '../models/order_model.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_numeric_dial_pad.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KDateTimeSelectionDialog extends StatefulWidget {
   final DateTime initialDateTime;
@@ -16,6 +18,10 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   final DateTime? highlightDate;
   final String highlightLabel;
 
+  /// カレンダー下部に「選択日の受注」を簡易カードで一覧表示する場合に渡す。
+  /// 空のときは何も表示しない。
+  final List<OrderModel> previewOrders;
+
   const KDateTimeSelectionDialog({
     super.key,
     required this.initialDateTime,
@@ -26,6 +32,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.themeColor = Colors.deepPurple,
     this.highlightDate,
     this.highlightLabel = '配達日',
+    this.previewOrders = const [],
   });
 
   @override
@@ -82,6 +89,72 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
   }
 
+  /// 住所文字列から市区町村部分を抜き出す（取れなければ施設名で代替）。
+  String _areaLabel(OrderModel o) {
+    final m = RegExp(r'([^\d\s]+?[市区町村])').firstMatch(o.address);
+    if (m != null) return m.group(1)!;
+    return o.facilityName.isNotEmpty ? o.facilityName : o.address;
+  }
+
+  /// カレンダー下部：選択日の受注を「市区町村＋顧客名＋時間」で簡易表示する。
+  Widget _buildOrderPreview(BuildContext context) {
+    if (widget.previewOrders.isEmpty) return const SizedBox.shrink();
+    final sameDay = widget.previewOrders
+        .where((o) => isSameDay(o.deliveryDate, _tempDate))
+        .toList()
+      ..sort((a, b) => a.deliveryTime.compareTo(b.deliveryTime));
+
+    return Padding(
+      padding: EdgeInsets.only(top: rs(context, 10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${DateFormat('M/d(E)', 'ja_JP').format(_tempDate)} の受注 ${sameDay.length}件',
+            style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700),
+          ),
+          SizedBox(height: rs(context, 6)),
+          if (sameDay.isEmpty)
+            Text('受注なし', style: TextStyle(fontSize: rf(context, 12), color: Colors.grey))
+          else
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: rs(context, 160)),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: sameDay.length,
+                separatorBuilder: (context, index) => SizedBox(height: rs(context, 6)),
+                itemBuilder: (context, i) {
+                  final o = sameDay[i];
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 8)),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(o.deliveryTime,
+                            style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: widget.themeColor)),
+                        SizedBox(width: rs(context, 8)),
+                        Expanded(
+                          child: Text('${_areaLabel(o)}　${o.customerName}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
@@ -92,7 +165,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     final double dialogWidth = screenWidth < 900 ? screenWidth * 0.95 : 850;
 
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.popupBackground,
       insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 16)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
@@ -167,7 +240,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         calendarStyle: CalendarStyle(
                           // 選択日：枠なし・テーマ色塗りつぶし・白文字（配達＝#000038 / 回収＝オレンジ）
                           selectedDecoration: BoxDecoration(color: widget.themeColor, shape: BoxShape.circle),
-                          selectedTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          selectedTextStyle: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold),
                           // 今日：丸枠のみ・塗りつぶしなし
                           todayDecoration: BoxDecoration(
                             color: Colors.transparent,
@@ -203,6 +276,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                       ),
                     ),
+                      _buildOrderPreview(context),
                       if (widget.highlightDate != null)
                         Padding(
                           padding: EdgeInsets.only(top: rs(context, 8)),

@@ -4,6 +4,7 @@ import '../models/order_model.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class OrderListScreen extends StatefulWidget {
   final Function(OrderModel)? onEditOrder;
@@ -53,7 +54,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           title: const Text('受注のキャンセル'),
           content: Text('${order.customerName} 様の受注をキャンセルしますか？'),
           actions: [
@@ -95,7 +96,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('受注一覧・工程管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -111,7 +112,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
         children: [
           Container(
             width: rs(context, 350),
-            color: Colors.white,
+            color: AppColors.background,
             padding: EdgeInsets.all(rav(context, 16)),
             child: Column(
               children: [
@@ -193,7 +194,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   Widget _buildBranchTabs() {
     return Container(
-      color: Colors.white,
+      color: AppColors.background,
       padding: EdgeInsets.symmetric(horizontal: rav(context, 12), vertical: rs(context, 6)),
       child: Row(
         children: _branchTabs.map((tab) {
@@ -215,7 +216,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   style: TextStyle(
                     fontSize: rf(context, 13),
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    color: selected ? Colors.white : color,
+                    color: selected ? AppColors.background : color,
                   ),
                 ),
               ),

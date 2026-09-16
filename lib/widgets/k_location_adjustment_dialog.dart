@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import '../firebase_options.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KLocationAdjustmentDialog extends StatefulWidget {
   final LatLng initialPosition;
@@ -209,7 +210,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
         appBar: AppBar(
           title: const Text('場所の微調整と写真撮影', style: TextStyle(fontWeight: FontWeight.bold)),
           backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.background,
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
@@ -248,7 +249,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
             Container(
               padding: EdgeInsets.all(rs(context, 20)),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.background,
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
               ),
               child: SizedBox(

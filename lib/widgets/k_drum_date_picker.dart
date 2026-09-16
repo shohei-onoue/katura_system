@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KDrumDatePicker extends StatefulWidget {
   final DateTime selectedDate;
@@ -96,7 +97,7 @@ class _KDrumDatePickerState extends State<KDrumDatePicker> {
     return Container(
       height: rav(context, 100),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rav(context, 12)),
         border: Border.all(color: widget.themeColor.withValues(alpha: 0.2)),
       ),

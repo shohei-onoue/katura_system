@@ -14,6 +14,9 @@ import '../widgets/k_stepper.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
 import '../widgets/k_branch_select_dialog.dart';
 import '../widgets/k_receipt_preview_dialog.dart';
+import '../widgets/k_date_time_selection_dialog.dart';
+import '../widgets/k_order_intake_dialog.dart';
+import '../widgets/k_trash_pickup_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -21,6 +24,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
@@ -61,33 +65,33 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   int _maxStepReached = 0;
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
-  String _deliveryType = '配送';
+  String _deliveryType = ''; // 未選択がデフォルト。受注区分ダイアログで選択する
   DateTime _selectedTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 11, 0);
   
-  int _timePickerInterval = 15;
-  TimeOfDay _timePickerMin = const TimeOfDay(hour: 11, minute: 0);
-  TimeOfDay _timePickerMax = const TimeOfDay(hour: 12, minute: 0);
+  final int _timePickerInterval = 15;
+  final TimeOfDay _timePickerMin = const TimeOfDay(hour: 11, minute: 0);
+  final TimeOfDay _timePickerMax = const TimeOfDay(hour: 12, minute: 0);
 
   // ゴミ回収用
-  int _trashTimePickerInterval = 15;
-  TimeOfDay _trashTimePickerMin = const TimeOfDay(hour: 9, minute: 0);
-  TimeOfDay _trashTimePickerMax = const TimeOfDay(hour: 18, minute: 0);
+  final int _trashTimePickerInterval = 15;
+  final TimeOfDay _trashTimePickerMin = const TimeOfDay(hour: 9, minute: 0);
+  final TimeOfDay _trashTimePickerMax = const TimeOfDay(hour: 18, minute: 0);
 
-  String _paymentMethod = '現金';
+  String _paymentMethod = ''; // 未選択がデフォルト
   String _branchName = '岡崎本店';
   Customer? _currentCustomer;
 
   // 追加項目：受注区分・梱包・ゴミ・お茶・事前確認
-  String _orderSource = '直取';
-  String _packagingType = '紙袋';
+  String _orderSource = ''; // 未選択がデフォルト
+  String _packagingType = ''; // 未選択がデフォルト
   int _packagingSmallQty = 0;
   bool _trashPickupRequested = false;
   DateTime? _trashPickupDateTime;
   String _trashPickupLocation = '引渡し場所';
   String _teaOption = 'なし';
   int _teaQuantity = 0;
-  String _preConfirmationMethod = 'SMS';
-  String _preConfirmationPhoneType = 'この電話番号';
+  String _preConfirmationMethod = ''; // 未選択がデフォルト
+  String _preConfirmationPhoneType = ''; // 未選択がデフォルト
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
   String _preConfirmationSmsTime = '09:00';
@@ -137,7 +141,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String? _estimatedDeliveryDuration;
   static const LatLng _initialCenter = LatLng(34.9563, 137.1685);
   Map<String, LatLng> _branchCoordinates = {};
-  final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '配達日時', '注文内容', '支払・完了'];
+  final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '注文内容', '支払・完了'];
 
   bool _isDeliveryDateSelected = true;
   bool _isDeliveryTimeSelected = true;
@@ -320,13 +324,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryDateSelected = true;
       _isDeliveryTimeSelected = true;
       _isDeliveryTypeSelected = true;
-      // 受注一覧からの編集は「配達日時」ステップから開始
+      // 受注一覧からの編集は「注文内容」ステップから開始し、直後に配達日時ダイヤログを表示する
       _currentStep = 3;
       _maxStepReached = _stepLabels.length - 1;
     });
     // 受注一覧からの編集では顧客が未ロードのため、電話番号から引き当てて
     // 配達先履歴カードの表示・保存時の顧客更新（新規顧客の重複作成防止）を有効にする
     _hydrateCustomerForEdit(order);
+    // 入力済みの配達日時をダイヤログで確認・修正できるようにする
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showDeliveryDateDialog(withPreview: order.deliveryType == '配送');
+    });
     final coords = _parseCoordsFromAddress(order.address);
     if (coords != null && coords.latitude != 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -381,14 +390,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: Text(_isEditingOrder ? '編集を中止しますか？' : '注文入力を中止しますか？'),
         content: const Text('入力中の内容は破棄されます。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('戻る')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
             child: const Text('中止する'),
           ),
         ],
@@ -430,8 +439,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryDateSelected = false;
       _isDeliveryTimeSelected = false;
       _isDeliveryTypeSelected = false;
-      _preConfirmationMethod = 'SMS';
-      _preConfirmationPhoneType = 'この電話番号';
+      _deliveryType = '';
+      _orderSource = '';
+      _paymentMethod = '';
+      _packagingType = '';
+      _preConfirmationMethod = '';
+      _preConfirmationPhoneType = '';
       _preConfirmationPhoneNumber = '';
       _preConfirmationDateTime = null;
       _preConfirmationSmsTime = '09:00';
@@ -505,6 +518,95 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     });
   }
 
+  /// 番号確認「次へ」→ 受注区分・受け渡し方法 → 配達日時 の一連のダイヤログ。
+  /// 日時まで確定できたら顧客確認ステップ（1）へ進む。
+  Future<void> _startPostPhoneFlow() async {
+    final intake = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => KOrderIntakeDialog(
+        initialOrderSource: _orderSource,
+        initialOrderSourceOther: _orderSourceOtherController.text,
+        initialDeliveryType: _deliveryType,
+      ),
+    );
+    if (!mounted || intake == null) return;
+
+    setState(() {
+      _orderSource = intake['orderSource'] as String;
+      _orderSourceOtherController.text = intake['orderSourceOther'] as String;
+      _deliveryType = intake['deliveryType'] as String;
+      _isDeliveryTypeSelected = true;
+    });
+
+    final picked = await _showDeliveryDateDialog(withPreview: _deliveryType == '配送');
+    if (picked && mounted) _updateStep(1);
+  }
+
+  /// 配達日時ダイヤログを表示し、確定できたら true を返す。
+  /// [withPreview] が true のときはカレンダー下部に「選択日の受注（全店舗）」を表示する。
+  Future<bool> _showDeliveryDateDialog({required bool withPreview}) async {
+    List<OrderModel> preview = const [];
+    if (withPreview) {
+      try {
+        preview = await _orderService.getAllOrders();
+      } catch (e) {
+        debugPrint('previewOrders load error: $e');
+      }
+      if (!mounted) return false;
+    }
+
+    final initial = DateTime(
+      _deliveryDate.year, _deliveryDate.month, _deliveryDate.day,
+      _selectedTime.hour, _selectedTime.minute,
+    );
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (_) => KDateTimeSelectionDialog(
+        initialDateTime: initial,
+        minTime: _timePickerMin,
+        maxTime: _timePickerMax,
+        interval: _timePickerInterval,
+        previewOrders: preview,
+      ),
+    );
+    if (!mounted || result == null) return false;
+
+    setState(() {
+      _deliveryDate = result;
+      _selectedTime = result;
+      _isDeliveryDateSelected = true;
+      _isDeliveryTimeSelected = true;
+    });
+    return true;
+  }
+
+  /// 注文内容「次へ」→ ゴミ回収ダイヤログ → 支払・完了ステップ（4）へ。
+  Future<void> _showTrashPickupDialogThenAdvance() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => KTrashPickupDialog(
+        initialRequested: _trashPickupRequested,
+        initialDateTime: _trashPickupDateTime,
+        initialLocation: _trashPickupLocation,
+        initialLocationDetail: _trashPickupLocationController.text,
+        deliveryDate: _deliveryDate,
+        trashTimeMin: _trashTimePickerMin,
+        trashTimeMax: _trashTimePickerMax,
+        trashTimeInterval: _trashTimePickerInterval,
+      ),
+    );
+    if (!mounted) return;
+    if (result != null) {
+      setState(() {
+        _trashPickupRequested = result['requested'] as bool;
+        _trashPickupDateTime = result['dateTime'] as DateTime?;
+        _trashPickupLocation = result['location'] as String;
+        _trashPickupLocationController.text = result['locationDetail'] as String;
+      });
+    }
+    _updateStep(4);
+  }
+
   Future<void> _lookupCustomer(String phone) async {
     final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
     _lastPhoneQuery = cleanDigits;
@@ -535,9 +637,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _selectCustomer(Customer customer) async {
-    // 同一顧客の再選択ならフィールドをクリアせずステップ1へ
+    // 同一顧客の再選択ならフィールドをクリアしない。
+    // ステップ遷移は番号確認の「次へ」（_startPostPhoneFlow）に任せる。
     if (_currentCustomer?.id == customer.id) {
-      _updateStep(1);
       setState(() {
         _phoneController.text = _formatPhone(customer.phoneNumber);
       });
@@ -590,7 +692,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       } else {
         _markers = {};
       }
-      _updateStep(1);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -936,7 +1037,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   int get _totalCount => _confirmedItems.fold(0, (s, i) => s + (i['quantity'] as int));
   int get _totalPrice => _confirmedItems.fold(0, (s, i) => s + (i['price'] as int) * (i['quantity'] as int));
 
+  /// 未選択の選択ボタンがあれば理由を返す（全て選択済みなら null）
+  String? _validateSelections() {
+    if (_deliveryType.isEmpty) return '配送方法を選択してください';
+    if (_orderSource.isEmpty) return '受注区分を選択してください';
+    if (_packagingType.isEmpty) return '梱包方法を選択してください';
+    if (_preConfirmationMethod.isEmpty) return '事前連絡方法を選択してください';
+    if (_preConfirmationPhoneType.isEmpty) return '事前連絡の連絡先番号を選択してください';
+    if (_paymentMethod.isEmpty) return '支払方法を選択してください';
+    return null;
+  }
+
   Future<void> _handleSave() async {
+    final validationError = _validateSelections();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      return;
+    }
     setState(() => _isLoadingNotifier.value = true);
     String? imageUrl;
     if (_pendingStreetViewImageUrl != null) {
@@ -1110,7 +1227,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             ),
           ),
         ],
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         elevation: 0,
       ) : null,
       body: SafeArea(
@@ -1128,7 +1245,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   steps: _stepLabels,
                   onStepTapped: (s) {
                     // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
-                    bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 5;
+                    bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 4;
                     if (s <= _maxStepReached || isJumpableToFinal) {
                       _updateStep(s);
                       if (s == 0) {
@@ -1141,7 +1258,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 )),
                   Expanded(
                     child: RepaintBoundary(
-                      child: _currentStep == 4
+                      child: _currentStep == 3
                           // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
                           ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
                           : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
@@ -1196,7 +1313,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   }
                 }),
                 onNext: () {
-                  if (_currentStep < 5) _updateStep(_currentStep + 1);
+                  if (_currentStep == 3) {
+                    _showTrashPickupDialogThenAdvance();
+                  } else if (_currentStep < 4) {
+                    _updateStep(_currentStep + 1);
+                  }
                 },
                 onReset: _resetForm,
                 trashPickupRequested: _trashPickupRequested,
@@ -1309,7 +1430,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         }
       }),
       onNext: () {
-        if (_currentStep < 5) _updateStep(_currentStep + 1);
+        if (_currentStep == 3) {
+          _showTrashPickupDialogThenAdvance();
+        } else if (_currentStep < 4) {
+          _updateStep(_currentStep + 1);
+        }
       },
       onReset: _resetForm,
       trashPickupRequested: _trashPickupRequested,
@@ -1395,9 +1520,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 _phoneController.text = _formatPhone("$prefix$suffix");
                 setState(() => _isCompletingPhone = false);
               }
-              _updateStep(1);
+              _startPostPhoneFlow();
             }
-          }, 
+          },
           onSelectCustomer: _selectCustomer
       );
       case 1: return CustomerConfirmationStep(
@@ -1472,8 +1597,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           searchTownInitial: _searchTownInitial, 
           searchCategory: _searchCategory, 
           searchGenre: _searchGenre, 
-          searchTabIndex: _searchTabIndex, 
+          searchTabIndex: _searchTabIndex,
           isApproximateLocation: _isApproximateLocation,
+          customerName: _nameController.text,
           remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
@@ -1499,44 +1625,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog
       );
-      case 3: return DeliveryTimeStep(
-          phoneNumberText: _phoneController.text,
-          deliveryDate: _deliveryDate,
-          deliveryType: _deliveryType, 
-          selectedTime: _selectedTime, 
-          timeMin: _timePickerMin,
-          timeMax: _timePickerMax,
-          timeInterval: _timePickerInterval,
-          isDateSelected: _isDeliveryDateSelected,
-          isTimeSelected: _isDeliveryTimeSelected,
-          isTypeSelected: _isDeliveryTypeSelected,
-          receiverController: _receiverController,
-          currentCustomer: _currentCustomer,
-          customerName: _nameController.text,
-          facilityName: _facilityController.text,
-          orderSource: _orderSource,
-          orderSourceOtherController: _orderSourceOtherController,
-          onOrderSourceChanged: (v) => setState(() => _orderSource = v),
-          trashPickupRequested: _trashPickupRequested,
-          trashPickupDateTime: _trashPickupDateTime,
-          trashPickupLocation: _trashPickupLocation,
-          trashPickupLocationController: _trashPickupLocationController,
-          trashTimeMin: _trashTimePickerMin,
-          trashTimeMax: _trashTimePickerMax,
-          trashTimeInterval: _trashTimePickerInterval,
-          onTrashPickupRequestedChanged: (v) => setState(() => _trashPickupRequested = v),
-          onTrashPickupDateTimeChanged: (v) => setState(() => _trashPickupDateTime = v),
-          onTrashPickupLocationChanged: (v) => setState(() => _trashPickupLocation = v),
-          onDateSelected: (v) => setState(() { _deliveryDate = v; _isDeliveryDateSelected = true; }), 
-          onTypeSelected: (v) => setState(() { _deliveryType = v; _isDeliveryTypeSelected = true; }), 
-          onTimeSelected: (v) => setState(() { _selectedTime = v; _isDeliveryTimeSelected = true; }),
-          onTimeSettingsChanged: (min, max, interval) { setState(() { _timePickerMin = min; _timePickerMax = max; _timePickerInterval = interval; }); },
-          onTrashTimeSettingsChanged: (min, max, interval) { setState(() { _trashTimePickerMin = min; _trashTimePickerMax = max; _trashTimePickerInterval = interval; }); },
-          onNext: () => _updateStep(4),
-          onCancelOrder: _confirmCancelOrder,
-          isEditingOrder: _isEditingOrder,
-      );
-      case 4: return ItemsSelectionStep(
+      case 3: return ItemsSelectionStep(
           phoneNumberText: _phoneController.text,
           menus: _menus,
           confirmedItems: _confirmedItems, 
@@ -1574,9 +1663,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             }
           }), 
           onReloadMenus: _loadData,
-          onNext: () => _updateStep(5)
+          onNext: _showTrashPickupDialogThenAdvance
       );
-      case 5: return FinalizeStep(
+      case 4: return FinalizeStep(
           branchName: _branchName,
           paymentMethod: _paymentMethod,
           preConfirmationRecipientController: _preConfirmationRecipientController,
@@ -1649,7 +1738,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
         child: Container(
           width: rs(context, 560),
@@ -1698,7 +1787,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                               style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
                         ],
                       ),
-                      Text('支払方法：$_paymentMethod', style: TextStyle(fontSize: rf(context, 13))),
+                      Text('支払方法：${_paymentMethod.isEmpty ? '未選択' : _paymentMethod}', style: TextStyle(fontSize: rf(context, 13))),
                     ],
                   ),
                 ),
@@ -1707,7 +1796,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: AppColors.background),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('閉じる'),
                 ),

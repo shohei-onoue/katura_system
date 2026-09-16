@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class SidebarDestinationInfo extends StatelessWidget {
   final String facilityName;
@@ -98,7 +99,7 @@ class _ImportantRow extends StatelessWidget {
       margin: EdgeInsets.symmetric(vertical: rs(context, 4)),
       padding: EdgeInsets.all(rs(context, 8)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rs(context, 4)),
         border: Border.all(color: Colors.orange.shade300),
       ),

@@ -3,6 +3,7 @@ import '../constants.dart';
 import '../../../widgets/k_text_field.dart';
 import '../../../widgets/k_button.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class AddressSearchPanel extends StatelessWidget {
   final SearchStep currentStep;
@@ -53,7 +54,7 @@ class AddressSearchPanel extends StatelessWidget {
     return Container(
       width: rs(context, 460),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         border: Border(left: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Column(
@@ -211,7 +212,7 @@ class AddressSearchPanel extends StatelessWidget {
             itemCount: displayOptions.length,
             itemBuilder: (context, i) => ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                backgroundColor: AppColors.background,
                 foregroundColor: Colors.black,
                 elevation: 1,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
@@ -274,7 +275,7 @@ class AddressSearchPanel extends StatelessWidget {
       height: rs(context, 100),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.background,
           foregroundColor: Colors.black,
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),

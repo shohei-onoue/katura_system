@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KTimeSlotSelector extends StatelessWidget {
   final String label;
@@ -54,7 +55,7 @@ class KTimeSlotSelector extends StatelessWidget {
                 child: Container(
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isSelected ? Colors.deepOrange : Colors.white,
+                    color: isSelected ? Colors.deepOrange : AppColors.background,
                     borderRadius: BorderRadius.circular(rs(context, 8)),
                     border: Border.all(color: isSelected ? Colors.deepOrange : Colors.grey.shade300),
                   ),
@@ -63,7 +64,7 @@ class KTimeSlotSelector extends StatelessWidget {
                     style: TextStyle(
                       fontSize: rf(context, 16),
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? Colors.white : Colors.black87,
+                      color: isSelected ? AppColors.background : Colors.black87,
                     ),
                   ),
                 ),

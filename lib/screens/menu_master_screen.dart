@@ -8,6 +8,7 @@ import '../services/ingredient_service.dart';
 import '../../widgets/k_responsive.dart';
 import '../../widgets/k_multimodal_text_field.dart';
 import '../../widgets/k_numeric_input_dialog.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class MenuMasterScreen extends StatefulWidget {
   const MenuMasterScreen({super.key});
@@ -94,7 +95,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       barrierDismissible: false,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.popupBackground,
           surfaceTintColor: Colors.transparent,
           title: Text(menu == null ? '新規メニュー登録' : 'メニュー編集'),
           content: SizedBox(
@@ -259,7 +260,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('メニューの削除'),
         content: Text('${menu.name} を削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
@@ -272,7 +273,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
               _loadMenus();
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
             child: const Text('削除する'),
           ),
         ],
@@ -289,7 +290,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('メニューマスタ', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
@@ -322,7 +323,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                 final isSelected = _selectedMenu?.id == menu.id;
                                 return Card(
                                   elevation: isSelected ? 4 : 1,
-                                  color: isSelected ? Colors.deepPurple.shade50 : Colors.white,
+                                  color: isSelected ? Colors.deepPurple.shade50 : AppColors.background,
                                   margin: EdgeInsets.only(bottom: rs(context, 12)),
                                   child: ListTile(
                                     selected: isSelected,
@@ -377,7 +378,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     Container(
                       width: rs(context, 350),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.background,
                         border: Border(left: BorderSide(color: Colors.grey.shade200)),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
                       ),
@@ -446,7 +447,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                 selected: isSelected,
                 onSelected: (val) => setState(() => _selectedCategory = cat),
                 selectedColor: Colors.deepPurple,
-                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+                labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87),
                 showCheckmark: false, // チェックマークを非表示に
               ),
             );
@@ -517,7 +518,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     return showDialog<IngredientModel>(
       context: context,
       builder: (context) => SimpleDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.popupBackground,
         title: const Text('食材を選択'),
         children: available.isEmpty
             ? [

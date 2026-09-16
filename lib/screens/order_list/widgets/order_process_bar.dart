@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class OrderProcessBar extends StatelessWidget {
   final OrderModel order;
@@ -73,11 +74,11 @@ class OrderProcessBar extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: isDone 
-                  ? Icon(Icons.check, size: rs(context, 16), color: Colors.white)
+                  ? Icon(Icons.check, size: rs(context, 16), color: AppColors.background)
                   : isActive 
                     ? Padding(
                         padding: EdgeInsets.all(rs(context, 4.0)),
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.background),
                       )
                     : null,
               ),

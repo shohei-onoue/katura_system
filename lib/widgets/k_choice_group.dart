@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KChoiceGroup<T> extends StatelessWidget {
   final String label;
@@ -7,7 +8,6 @@ class KChoiceGroup<T> extends StatelessWidget {
   final T selectedValue;
   final ValueChanged<T> onSelected;
   final bool showLabel;
-  final Color selectedColor;
   final bool enabled;
 
   const KChoiceGroup({
@@ -17,7 +17,6 @@ class KChoiceGroup<T> extends StatelessWidget {
     required this.selectedValue,
     required this.onSelected,
     this.showLabel = true,
-    this.selectedColor = Colors.deepPurple,
     this.enabled = true,
   });
 
@@ -54,8 +53,8 @@ class KChoiceGroup<T> extends StatelessWidget {
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isSelected ? selectedColor : Colors.white,
-                        border: Border.all(color: isSelected ? selectedColor : Colors.grey.shade300),
+                        color: isSelected ? AppColors.onButton : AppColors.offButton,
+                        border: Border.all(color: isSelected ? AppColors.onButton : Colors.grey.shade300),
                         borderRadius: BorderRadius.horizontal(
                           left: Radius.circular(isFirst ? 8 : 0),
                           right: Radius.circular(isLast ? 8 : 0),
@@ -64,7 +63,7 @@ class KChoiceGroup<T> extends StatelessWidget {
                       child: Text(
                         item.label,
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
+                          color: isSelected ? AppColors.onButtonText : AppColors.offButtonText,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),

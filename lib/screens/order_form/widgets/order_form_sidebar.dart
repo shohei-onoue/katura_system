@@ -5,9 +5,9 @@ import '../../../models/customer_model.dart';
 import '../../../models/menu_model.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_button.dart';
-import '../../../../widgets/k_date_time_display.dart';
 import 'order_form_parts.dart';
 import 'sidebar/sidebar_phone_pad.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class OrderFormSidebar extends StatefulWidget {
   final int currentStep;
@@ -218,7 +218,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   ),
                   if (widget.isLoading)
                     Container(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppColors.background.withValues(alpha: 0.6),
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                 ],
@@ -285,87 +285,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
       );
     }
 
-    // ステップ3 (配達日時) - 決定事項を大きく表示
+    // ステップ3 (注文内容) - カート表示
     if (widget.currentStep == 3) {
-      return Column(
-        children: [
-          SizedBox(height: rav(context, 24)),
-          const SidebarSectionTitle(title: '現在の決定事項', icon: Icons.fact_check),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(rs(context, 12)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDecisionCard(
-                    title: '配達・引取情報',
-                    icon: Icons.local_shipping,
-                    color: Colors.deepPurple,
-                    child: KDateTimeDisplay(
-                      label: '', 
-                      dateTime: widget.isDateSelected && widget.isTimeSelected 
-                        ? widget.deliveryDate.copyWith(hour: widget.selectedTime.hour, minute: widget.selectedTime.minute) 
-                        : null,
-                      onTap: () {}, // サイドバーからは操作不可
-                      themeColor: Colors.deepPurple,
-                      isCompact: true,
-                    ),
-                  ),
-                  SizedBox(height: rs(context, 16)),
-                  if (widget.trashPickupRequested)
-                    _buildDecisionCard(
-                      title: 'ゴミ回収情報',
-                      icon: Icons.delete_outline,
-                      color: Colors.orange,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          KDateTimeDisplay(
-                            label: '',
-                            dateTime: widget.trashPickupDateTime,
-                            onTap: () {},
-                            themeColor: Colors.orange,
-                            isCompact: true,
-                          ),
-                          SizedBox(height: rs(context, 8)),
-                          // 回収場所も日時フィールドと同じフィールド表示にする
-                          _buildFieldLike(
-                            widget.trashPickupLocation == '指定場所'
-                                ? (widget.trashPickupLocationDetail.isEmpty ? '未入力' : widget.trashPickupLocationDetail)
-                                : widget.trashPickupLocation,
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    _buildDecisionCard(
-                      title: 'ゴミ回収',
-                      icon: Icons.delete_sweep_outlined,
-                      color: Colors.grey,
-                      child: const Text('ゴミ回収希望なし', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-                    ),
-
-                  SizedBox(height: rs(context, 16)),
-                  _buildDecisionCard(
-                    title: '受取人氏名',
-                    icon: Icons.person_outline,
-                    color: Colors.blueGrey,
-                    child: _buildFieldLike(widget.receiverName.isEmpty ? "未確定" : widget.receiverName),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // ステップ4 (注文内容) - カート表示
-    if (widget.currentStep == 4) {
       return _buildCartView();
     }
 
-    // ステップ5 (支払・完了)
+    // ステップ4 (支払・完了)
     return _buildFinalizeSummary();
   }
 
@@ -581,7 +506,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         SidebarSectionTitle(
           title: 'カートの中身',
           icon: Icons.shopping_cart,
-          trailing: Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white)),
+          trailing: Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.background)),
         ),
         Expanded(
           child: widget.confirmedItems.isEmpty
@@ -601,7 +526,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                     return Card(
                       margin: EdgeInsets.zero,
                       elevation: 0,
-                      color: Colors.white,
+                      color: AppColors.background,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(rs(context, 8)),
                         side: BorderSide(color: Colors.grey.shade200),
@@ -656,7 +581,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         Container(
           padding: EdgeInsets.all(rs(context, 20)),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.background,
             boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
           ),
           child: Column(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KTimeSlotPicker extends StatelessWidget {
   final TimeOfDay minTime;
@@ -50,8 +51,8 @@ class KTimeSlotPicker extends StatelessWidget {
           height: rs(context, 40),
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isSelected ? themeColor : Colors.white,
-              foregroundColor: isSelected ? Colors.white : themeColor,
+              backgroundColor: isSelected ? themeColor : AppColors.background,
+              foregroundColor: isSelected ? AppColors.background : themeColor,
               elevation: isSelected ? 4 : 0,
               padding: EdgeInsets.zero,
               side: BorderSide(color: isSelected ? Colors.transparent : themeColor.withValues(alpha: 0.3)),

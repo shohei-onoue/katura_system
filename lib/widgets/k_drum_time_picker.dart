@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/app_colors.dart';
 
 class KDrumTimePicker extends StatefulWidget {
   final TimeOfDay minTime;
@@ -105,7 +106,7 @@ class _KDrumTimePickerState extends State<KDrumTimePicker> {
     return Container(
       height: rav(context, 80),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.background,
         borderRadius: BorderRadius.circular(rav(context, 12)),
         border: Border.all(color: widget.themeColor.withValues(alpha: 0.2)),
       ),
