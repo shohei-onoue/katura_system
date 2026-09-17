@@ -43,6 +43,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/img/
-    - assets/json/
     - assets/navi_database.db
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
-import '../models/branch_model.dart';
-import '../services/branch_service.dart';
+import '../services/auth_service.dart';
+import '../screens/login/login_screen.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 標準の[NavigationRail]は項目間の余白が大きく調整できないため、
@@ -22,8 +22,8 @@ class KSidebar extends StatefulWidget {
 
 class _KSidebarState extends State<KSidebar> {
   final GlobalKey _manageLabelKey = GlobalKey();
-  final _branchService = BranchService();
-  List<BranchModel> _branches = [];
+  final GlobalKey _accountMenuKey = GlobalKey();
+  String _staffName = '';
 
   // 「管理」にまとめる画面の論理インデックス（MainScreenの_selectedIndexと対応）
   static const List<int> _manageIndices = [6, 7, 10, 8];
@@ -35,13 +35,53 @@ class _KSidebarState extends State<KSidebar> {
   @override
   void initState() {
     super.initState();
-    _loadBranches();
+    _loadStaff();
   }
 
-  Future<void> _loadBranches() async {
-    final branches = await _branchService.getAllBranches();
+  Future<void> _loadStaff() async {
+    final staff = await AuthService().restoreSession();
     if (!mounted) return;
-    setState(() => _branches = branches);
+    setState(() => _staffName = staff?.name ?? '');
+  }
+
+  void _showAccountMenu() {
+    final renderBox = _accountMenuKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlayBox = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (renderBox == null || overlayBox == null) return;
+
+    final topRight = renderBox.localToGlobal(Offset(renderBox.size.width, 0), ancestor: overlayBox);
+    final bottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlayBox);
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(topRight, bottomRight),
+      Offset.zero & overlayBox.size,
+    );
+
+    showMenu<String>(
+      context: context,
+      position: position,
+      color: AppColors.menuBackground.withValues(alpha: 0.5),
+      items: [
+        PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: rs(context, 18), color: AppColors.background),
+              SizedBox(width: rs(context, 10)),
+              Text('ログアウト', style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+      ],
+    ).then((selected) async {
+      if (selected == 'logout') {
+        await AuthService().logout();
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    });
   }
 
   void _showManageMenu() {
@@ -222,10 +262,28 @@ class _KSidebarState extends State<KSidebar> {
         children: [
           const Divider(),
           SizedBox(height: rs(context, 6)),
-          for (final branch in _branches) ...[
-            _buildStoreInfo(context, branch.name, branch.address, branch.phone),
-            SizedBox(height: rs(context, 3)),
-          ],
+          Row(
+            key: _accountMenuKey,
+            children: [
+              Expanded(
+                child: Text(
+                  _staffName.isNotEmpty ? _staffName : '未ログイン',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 12), color: Colors.black87),
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(rs(context, 8)),
+                onTap: _showAccountMenu,
+                child: Padding(
+                  padding: EdgeInsets.all(rs(context, 4)),
+                  child: Icon(Icons.more_vert, size: rs(context, 18), color: Colors.black54),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: rs(context, 6)),
           Text(
             'Version 1.0.52',
             style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, fontWeight: FontWeight.bold),
@@ -233,26 +291,6 @@ class _KSidebarState extends State<KSidebar> {
           SizedBox(height: rs(context, 8)),
         ],
       ),
-    );
-  }
-
-  Widget _buildStoreInfo(BuildContext context, String name, String address, String phone) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          name,
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 12), color: Colors.black87),
-        ),
-        Text(
-          address,
-          style: TextStyle(fontSize: rf(context, 10), color: Colors.grey),
-        ),
-        Text(
-          phone,
-          style: TextStyle(fontSize: rf(context, 10), color: Colors.blueGrey, fontWeight: FontWeight.w500),
-        ),
-      ],
     );
   }
 }
