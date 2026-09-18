@@ -1,6 +1,6 @@
 ---
-name: 5000
-description: katura_systemを接続中の実機（Android/iOS）でデバッグ起動・監視・再起動する。「実機デバッグして」「実機に反映して」等の指示、または "/5000" で使う。
+name: debug5000
+description: katura_systemを接続中の実機（Android/iOS）でデバッグ起動・監視・再起動する。「実機デバッグして」「実機に反映して」等の指示、または /debug5000 で使う。
 ---
 
 # 実機デバッグ (katura_system)
