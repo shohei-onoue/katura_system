@@ -6,7 +6,7 @@ arguments:
     description: FigmaのノードURL
     required: true
   - name: path
-    description: 反映先のDartファイルパス (例: lib/screens/figmaTest.dart)
+    description: "反映先のDartファイルパス (例: lib/screens/figmaTest.dart)"
     required: true
 ---
 
