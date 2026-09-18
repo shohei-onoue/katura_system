@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import '../services/auth_service.dart';
+import '../services/email_auth_service.dart';
 import '../screens/login/login_screen.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
@@ -75,6 +76,7 @@ class _KSidebarState extends State<KSidebar> {
     ).then((selected) async {
       if (selected == 'logout') {
         await AuthService().logout();
+        await EmailAuthService().signOut();
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const LoginScreen()),

@@ -1,5 +1,5 @@
 ---
-name: 5000
+name: debag
 description: katura_systemを接続中の実機（Android/iOS）でデバッグ起動・監視・再起動する。「実機デバッグして」「実機に反映して」等の指示で使う。
 ---
 

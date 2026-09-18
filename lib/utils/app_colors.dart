@@ -21,7 +21,7 @@ class AppColors {
   static const Color onButtonText = Colors.white;
 
   // 文字色
-  static const Color accentText = Colors.deepOrange;
+  static const Color accentText = Color(0xFFFF5722);
   static const Color primaryText = Colors.black;
   static const Color whiteText = Colors.white;
 

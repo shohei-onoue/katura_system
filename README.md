@@ -1,17 +1,16 @@
 # katura_system
 
-A new Flutter project.
+新規Flutterプロジェクトです。
 
-## Getting Started
+## はじめに
 
-This project is a starting point for a Flutter application.
+このプロジェクトはFlutterアプリケーションの出発点です。
 
-A few resources to get you started if this is your first Flutter project:
+Flutterプロジェクトが初めての方向けの参考資料です。
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- [Flutterを学ぶ](https://docs.flutter.dev/get-started/learn-flutter)
+- [はじめてのFlutterアプリを書く](https://docs.flutter.dev/get-started/codelab)
+- [Flutter学習リソース](https://docs.flutter.dev/reference/learning-resources)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Flutter開発を始めるにあたっては、チュートリアルやサンプル、モバイル開発のガイド、APIリファレンスが揃った
+[公式ドキュメント](https://docs.flutter.dev/)をご覧ください。
