@@ -24,6 +24,7 @@ class AppColors {
   static const Color accentText = Color(0xFFFF5722);
   static const Color primaryText = Colors.black;
   static const Color whiteText = Colors.white;
+  static const Color secondaryText = Color(0xFF888888);
 
   // 強調色
   static const Color accentPurple = Colors.deepPurple;

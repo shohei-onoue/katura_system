@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/email_auth_service.dart';
+import '../../utils/app_colors.dart';
 import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -69,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.mainBackground,
       body: SafeArea(
         child: Stack(
           children: [
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'ログイン認証',
                   style: TextStyle(
-                    color: Color(0xFF888888),
+                    color: AppColors.secondaryText,
                     fontSize: 20,
                   ),
                   textAlign: TextAlign.center,
@@ -98,35 +99,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF888888),
+                        color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
                         hintText: 'メールアドレスを入力してください',
                         hintStyle: const TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF888888),
+                          color: AppColors.secondaryText,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: AppColors.mainBackground,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                       ),
@@ -144,35 +145,35 @@ class _LoginScreenState extends State<LoginScreen> {
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF888888),
+                        color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
                         hintText: 'パスワードを入力してください',
                         hintStyle: const TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF888888),
+                          color: AppColors.secondaryText,
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: AppColors.mainBackground,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: Color(0xFF888888),
+                            color: AppColors.secondaryText,
                           ),
                         ),
                       ),
@@ -187,8 +188,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: ElevatedButton(
                       onPressed: _isSubmitting ? null : _handleLogin,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.accentOrangeLight,
+                        foregroundColor: AppColors.whiteText,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -199,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: AppColors.whiteText,
                               ),
                             )
                           : const Text('ログイン'),
@@ -219,7 +220,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.right,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF888888),
+                    color: AppColors.secondaryText,
                   ),
                 ),
               ),
@@ -228,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: Container(height: 4, color: Colors.orange),
+              child: Container(height: 4, color: AppColors.accentOrangeLight),
             ),
           ],
         ),
