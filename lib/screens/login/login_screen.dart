@@ -78,14 +78,14 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 48),
                 Center(
-                  child: Image.asset('assets/img/logo.png', width: 180),
+                  child: Image.asset('assets/img/logo.png', width: 260),
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'ログイン認証',
                   style: TextStyle(
                     color: AppColors.secondaryText,
-                    fontSize: 20,
+                    fontSize: 24,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -98,13 +98,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
                         hintText: 'メールアドレスを入力してください',
                         hintStyle: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                           color: AppColors.secondaryText,
                         ),
                         filled: true,
@@ -115,19 +117,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                       ),
@@ -144,13 +146,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: true,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                         color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
                         hintText: 'パスワードを入力してください',
                         hintStyle: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                           color: AppColors.secondaryText,
                         ),
                         filled: true,
@@ -161,19 +165,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: const BorderSide(
-                            color: AppColors.secondaryText,
+                            color: AppColors.accentOrangeLight,
                           ),
                         ),
                       ),
@@ -203,7 +207,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 color: AppColors.whiteText,
                               ),
                             )
-                          : const Text('ログイン'),
+                          : const Text(
+                              'ログイン',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -213,23 +223,25 @@ class _LoginScreenState extends State<LoginScreen> {
               left: 0,
               right: 0,
               bottom: 24,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  '株式会社OLDROOKIE',
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.secondaryText,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(height: 1, color: AppColors.borderLight2),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      '株式会社OLDROOKIE',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.secondaryText,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(height: 4, color: AppColors.accentOrangeLight),
             ),
           ],
         ),
