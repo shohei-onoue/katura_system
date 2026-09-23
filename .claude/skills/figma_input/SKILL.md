@@ -1,5 +1,5 @@
 ---
-name: figmaInput
+name: figmain
 description: Figmaのノード情報からFlutterウィジェットを生成し、指定ファイルに反映する
 arguments:
   - name: url
