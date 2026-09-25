@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'screens/main_screen.dart';
+import 'screens/login/login_screen.dart';
 import 'firebase_options.dart';
 import 'services/settings_service.dart';
 import 'services/ink_recognition_service.dart';
@@ -53,7 +53,7 @@ class KaturaSystemApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.mainBackground,
       ),
-      home: const MainScreen(),
+      home: const LoginScreen(),
     );
   }
 }

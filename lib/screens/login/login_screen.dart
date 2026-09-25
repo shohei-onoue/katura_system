@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/email_auth_service.dart';
 import '../../utils/app_colors.dart';
+import '../../widgets/k_email_keyboard_pad.dart';
 import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -15,19 +16,32 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSubmitting = false;
+  bool _keepLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (EmailAuthService().currentUser != null) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainScreen()),
-          (route) => false,
-        );
-      }
-    });
+    _restoreLogin();
+  }
+
+  /// 保存済みの「ログイン状態を維持する」設定に従い、自動ログインするか判断する。
+  Future<void> _restoreLogin() async {
+    final authService = EmailAuthService();
+    final keepLoggedIn = await authService.loadKeepLoggedIn();
+    if (!mounted) return;
+    setState(() => _keepLoggedIn = keepLoggedIn);
+
+    final user = await authService.waitForRestoredUser();
+    if (!mounted || user == null) return;
+
+    if (keepLoggedIn) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
+      );
+    } else {
+      await authService.signOut();
+    }
   }
 
   @override
@@ -35,6 +49,39 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  /// メール・パスワード欄タップ時にカスタムオンスクリーンキーボードを
+  /// ボトムシートで表示し、OS標準キーボードの代わりに使わせる。
+  void _openKeyboard({required TextEditingController controller, required bool isEmailMode}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 12,
+            right: 12,
+            top: 12,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 12,
+          ),
+          child: SafeArea(
+            top: false,
+            child: KEmailKeyboardPad(
+              controller: controller,
+              isEmailMode: isEmailMode,
+              onCompleted: () => Navigator.of(sheetContext).pop(),
+            ),
+          ),
+        );
+      },
+    ).whenComplete(() {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _handleLogin() async {
@@ -51,6 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isSubmitting = true);
     try {
       await EmailAuthService().signInWithEmail(email, password);
+      await EmailAuthService().saveKeepLoggedIn(_keepLoggedIn);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainScreen()),
@@ -96,6 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     height: 40,
                     child: TextField(
                       controller: _emailController,
+                      readOnly: true,
+                      onTap: () => _openKeyboard(controller: _emailController, isEmailMode: true),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -103,7 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'メールアドレスを入力してください',
+                        hintText: 'メールアドレスを入力',
                         hintStyle: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -144,6 +194,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextField(
                       controller: _passwordController,
                       obscureText: true,
+                      readOnly: true,
+                      onTap: () => _openKeyboard(controller: _passwordController, isEmailMode: false),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 16,
@@ -151,7 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.secondaryText,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'パスワードを入力してください',
+                        hintText: 'パスワードを入力',
                         hintStyle: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -217,6 +269,40 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Center(
+                  child: SizedBox(
+                    width: 340,
+                    // 「ログイン状態を維持する」チェックボックスとラベルを横並びで表示
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Checkbox(
+                            value: _keepLoggedIn,
+                            side: const BorderSide(color: Colors.black),
+                            onChanged: (value) {
+                              setState(() => _keepLoggedIn = value ?? false);
+                              EmailAuthService().saveKeepLoggedIn(_keepLoggedIn);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'ログイン状態を維持する',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w300,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
             Positioned(
@@ -226,6 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // フッター上部の区切り線を表示
                   Container(height: 1, color: AppColors.borderLight2),
                   const SizedBox(height: 8),
                   Padding(

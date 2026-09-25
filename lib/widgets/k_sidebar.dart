@@ -23,7 +23,6 @@ class KSidebar extends StatefulWidget {
 
 class _KSidebarState extends State<KSidebar> {
   final GlobalKey _manageLabelKey = GlobalKey();
-  final GlobalKey _accountMenuKey = GlobalKey();
   String _staffName = '';
 
   // 「管理」にまとめる画面の論理インデックス（MainScreenの_selectedIndexと対応）
@@ -40,50 +39,24 @@ class _KSidebarState extends State<KSidebar> {
   }
 
   Future<void> _loadStaff() async {
+    final emailName = EmailAuthService().currentUserDisplayName;
+    if (emailName != null) {
+      setState(() => _staffName = emailName);
+      return;
+    }
     final staff = await AuthService().restoreSession();
     if (!mounted) return;
     setState(() => _staffName = staff?.name ?? '');
   }
 
-  void _showAccountMenu() {
-    final renderBox = _accountMenuKey.currentContext?.findRenderObject() as RenderBox?;
-    final overlayBox = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (renderBox == null || overlayBox == null) return;
-
-    final topRight = renderBox.localToGlobal(Offset(renderBox.size.width, 0), ancestor: overlayBox);
-    final bottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlayBox);
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(topRight, bottomRight),
-      Offset.zero & overlayBox.size,
+  Future<void> _logout() async {
+    await AuthService().logout();
+    await EmailAuthService().signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
-
-    showMenu<String>(
-      context: context,
-      position: position,
-      color: AppColors.menuBackground.withValues(alpha: 0.5),
-      items: [
-        PopupMenuItem<String>(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, size: rs(context, 18), color: AppColors.background),
-              SizedBox(width: rs(context, 10)),
-              Text('ログアウト', style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-      ],
-    ).then((selected) async {
-      if (selected == 'logout') {
-        await AuthService().logout();
-        await EmailAuthService().signOut();
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    });
   }
 
   void _showManageMenu() {
@@ -265,7 +238,6 @@ class _KSidebarState extends State<KSidebar> {
           const Divider(),
           SizedBox(height: rs(context, 6)),
           Row(
-            key: _accountMenuKey,
             children: [
               Expanded(
                 child: Text(
@@ -275,12 +247,15 @@ class _KSidebarState extends State<KSidebar> {
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 12), color: Colors.black87),
                 ),
               ),
-              InkWell(
-                borderRadius: BorderRadius.circular(rs(context, 8)),
-                onTap: _showAccountMenu,
-                child: Padding(
-                  padding: EdgeInsets.all(rs(context, 4)),
-                  child: Icon(Icons.more_vert, size: rs(context, 18), color: Colors.black54),
+              Tooltip(
+                message: 'ログアウト',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                  onTap: _logout,
+                  child: Padding(
+                    padding: EdgeInsets.all(rs(context, 4)),
+                    child: Icon(Icons.logout, size: rs(context, 18), color: Colors.black54),
+                  ),
                 ),
               ),
             ],
