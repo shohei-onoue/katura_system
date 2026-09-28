@@ -20,7 +20,7 @@ class KSharedQuantityInput extends StatelessWidget {
     this.title,
     this.width,
     this.height,
-    this.themeColor = Colors.deepPurple,
+    this.themeColor = AppColors.accentPurple,
     this.clearOnDirectInput = false,
   });
 
@@ -40,7 +40,7 @@ class KSharedQuantityInput extends StatelessWidget {
             height: height ?? rs(context, 44),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: value > 0 ? themeColor.withValues(alpha: 0.05) : AppColors.background,
+              color: value > 0 ? themeColor.withValues(alpha: 0.05) : AppColors.mainBackground,
               border: Border.all(color: value > 0 ? themeColor : Colors.grey.shade300, width: rs(context, 2)),
               borderRadius: BorderRadius.circular(rs(context, 8)),
             ),

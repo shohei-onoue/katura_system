@@ -209,8 +209,8 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('場所の微調整と写真撮影', style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: AppColors.background,
+          backgroundColor: AppColors.accentPurple,
+          foregroundColor: AppColors.mainBackground,
           actions: [
             IconButton(
               icon: const Icon(Icons.close),
@@ -229,7 +229,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: Colors.deepOrange),
+                      const Icon(Icons.location_on, color: AppColors.accentOrange),
                       SizedBox(width: rs(context, 12)),
                       Expanded(
                         child: Text(_currentAddress, 
@@ -249,7 +249,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
             Container(
               padding: EdgeInsets.all(rs(context, 20)),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: AppColors.mainBackground,
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
               ),
               child: SizedBox(

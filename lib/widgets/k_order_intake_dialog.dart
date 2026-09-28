@@ -65,7 +65,7 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double dialogWidth = screenWidth < 900 ? screenWidth * 0.92 : 560;
-    const themeColor = Color(0xFF000038);
+    const themeColor = AppColors.primary;
 
     return Dialog(
       backgroundColor: AppColors.popupBackground,

@@ -137,22 +137,22 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
         child: Column(
           children: [
             Container(
-              color: const Color(0xFF000038),
+              color: AppColors.primary,
               padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 10)),
               child: Row(
                 children: [
                   Text('施設・住所の検索',
-                      style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 15))),
+                      style: TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold, fontSize: rf(context, 15))),
                   const Spacer(),
-                  IconButton(icon: const Icon(Icons.close, color: AppColors.background), onPressed: () => Navigator.pop(context)),
+                  IconButton(icon: const Icon(Icons.close, color: AppColors.mainBackground), onPressed: () => Navigator.pop(context)),
                 ],
               ),
             ),
             TabBar(
               controller: _tab,
-              labelColor: const Color(0xFF000038),
+              labelColor: AppColors.primary,
               unselectedLabelColor: Colors.grey,
-              indicatorColor: const Color(0xFF000038),
+              indicatorColor: AppColors.primary,
               labelStyle: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold),
               tabs: const [
                 Tab(text: '地域・カテゴリ'),
@@ -183,8 +183,8 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
                   icon: const Icon(Icons.search),
                   label: const Text('検索'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF000038),
-                    foregroundColor: AppColors.background,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.mainBackground,
                   ),
                 ),
               ),

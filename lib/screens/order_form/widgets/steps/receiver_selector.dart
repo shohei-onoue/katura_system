@@ -98,7 +98,7 @@ class _ReceiverSelectorState extends State<ReceiverSelector> {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isSelected ? Colors.deepPurple : Colors.transparent,
+                  color: isSelected ? AppColors.accentPurple : Colors.transparent,
                   borderRadius: BorderRadius.circular(rs(context, 8)),
                 ),
                 child: Text(
@@ -106,7 +106,7 @@ class _ReceiverSelectorState extends State<ReceiverSelector> {
                   style: TextStyle(
                     fontSize: KR.fontSmall(context),
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? AppColors.background : Colors.blueGrey,
+                    color: isSelected ? AppColors.mainBackground : Colors.blueGrey,
                   ),
                 ),
               ),

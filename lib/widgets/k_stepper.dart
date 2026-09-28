@@ -53,7 +53,7 @@ class KStepper extends StatelessWidget {
                     boxShadow: [
                       if (isActive) 
                         BoxShadow(
-                          color: Colors.deepOrange.withValues(alpha: 0.3),
+                          color: AppColors.accentOrange.withValues(alpha: 0.3),
                           blurRadius: rav(context, 12),
                           spreadRadius: rav(context, 2),
                           offset: Offset(0, rav(context, 4)),
@@ -63,11 +63,11 @@ class KStepper extends StatelessWidget {
                   child: Card(
                     elevation: isActive ? 8 : (isClickable ? 2 : 0),
                     margin: EdgeInsets.symmetric(horizontal: rav(context, 2), vertical: rav(context, 4)),
-                    color: isActive ? AppColors.background : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
+                    color: isActive ? AppColors.mainBackground : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(rav(context, 8)),
                       side: BorderSide(
-                        color: isActive ? Colors.deepOrange : (isAvailableButUnvisited ? Colors.deepPurple.withValues(alpha: 0.3) : Colors.transparent),
+                        color: isActive ? AppColors.accentOrange : (isAvailableButUnvisited ? AppColors.accentPurple.withValues(alpha: 0.3) : Colors.transparent),
                         width: rav(context, 2),
                       ),
                     ),
@@ -81,19 +81,19 @@ class KStepper extends StatelessWidget {
                             height: rav(context, 22),
                             decoration: BoxDecoration(
                               color: isActive 
-                                  ? Colors.deepOrange 
+                                  ? AppColors.accentOrange 
                                   : (isCompleted 
                                       ? Colors.green 
-                                      : (isAvailableButUnvisited ? Colors.deepPurple : Colors.grey.shade400)),
+                                      : (isAvailableButUnvisited ? AppColors.accentPurple : Colors.grey.shade400)),
                               shape: BoxShape.circle,
                             ),
                             child: Center(
                               child: isCompleted
-                                  ? Icon(Icons.check, color: AppColors.background, size: rav(context, 14))
+                                  ? Icon(Icons.check, color: AppColors.mainBackground, size: rav(context, 14))
                                   : Text(
                                       '${index + 1}',
                                       style: TextStyle(
-                                        color: AppColors.background,
+                                        color: AppColors.mainBackground,
                                         fontWeight: FontWeight.bold,
                                         fontSize: rf(context, 11),
                                       ),
@@ -105,7 +105,7 @@ class KStepper extends StatelessWidget {
                             child: Text(
                               steps[index],
                               style: TextStyle(
-                                color: isActive ? Colors.black : (isClickable ? Colors.black87 : Colors.grey.shade600),
+                                color: isActive ? AppColors.primaryText : (isClickable ? Colors.black87 : Colors.grey.shade600),
                                 fontWeight: isActive || isAvailableButUnvisited ? FontWeight.bold : FontWeight.normal,
                                 fontSize: rf(context, 12),
                               ),

@@ -29,7 +29,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.maxTime = const TimeOfDay(hour: 23, minute: 59),
     this.interval = 15,
     this.title = '配達日時の設定',
-    this.themeColor = Colors.deepPurple,
+    this.themeColor = AppColors.primary,
     this.highlightDate,
     this.highlightLabel = '配達日',
     this.previewOrders = const [],
@@ -112,7 +112,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
         children: [
           Text(
             '${DateFormat('M/d(E)', 'ja_JP').format(_tempDate)} の受注 ${sameDay.length}件',
-            style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700),
+            style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.secondaryText),
           ),
           SizedBox(height: rs(context, 6)),
           if (sameDay.isEmpty)
@@ -192,13 +192,13 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                       SizedBox(width: rs(context, 8)),
                       Text(
                         "$formattedDate  ",
-                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? Colors.black87 : Colors.red),
+                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? AppColors.primaryText : Colors.red),
                       ),
                       Icon(Icons.access_time, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
                       SizedBox(width: rs(context, 8)),
                       Text(
                         _displayTime,
-                        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.w900, color: isValid ? Colors.black87 : Colors.red, letterSpacing: 1),
+                        style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.w900, color: isValid ? AppColors.primaryText : Colors.red, letterSpacing: 1),
                       ),
                     ],
                   ),
@@ -240,7 +240,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         calendarStyle: CalendarStyle(
                           // 選択日：枠なし・テーマ色塗りつぶし・白文字（配達＝#000038 / 回収＝オレンジ）
                           selectedDecoration: BoxDecoration(color: widget.themeColor, shape: BoxShape.circle),
-                          selectedTextStyle: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold),
+                          selectedTextStyle: const TextStyle(color: AppColors.whiteText, fontWeight: FontWeight.bold),
                           // 今日：丸枠のみ・塗りつぶしなし
                           todayDecoration: BoxDecoration(
                             color: Colors.transparent,
@@ -264,10 +264,24 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: const Color(0xFF000038), width: rs(context, 1.5)),
+                                    border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
                                   ),
                                   child: Text('${day.day}',
-                                      style: const TextStyle(color: Color(0xFF000038), fontWeight: FontWeight.bold)),
+                                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                                ),
+                              );
+                            }
+                            if (widget.previewOrders.any((o) => isSameDay(o.deliveryDate, day))) {
+                              return Center(
+                                child: Container(
+                                  width: rs(context, 36),
+                                  height: rs(context, 36),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: AppColors.accentOrange, width: rs(context, 1.5)),
+                                  ),
+                                  child: Text('${day.day}'),
                                 ),
                               );
                             }
@@ -287,12 +301,12 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 height: rs(context, 14),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF000038), width: rs(context, 1.5)),
+                                  border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
                                 ),
                               ),
                               SizedBox(width: rs(context, 6)),
                               Text('${widget.highlightLabel}: ${DateFormat('M/d(E)', 'ja_JP').format(widget.highlightDate!)}',
-                                  style: TextStyle(fontSize: rf(context, 12), color: const Color(0xFF000038), fontWeight: FontWeight.bold)),
+                                  style: TextStyle(fontSize: rf(context, 12), color: AppColors.primary, fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),

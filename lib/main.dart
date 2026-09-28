@@ -49,7 +49,7 @@ class KaturaSystemApp extends StatelessWidget {
       title: 'Katura System',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.deepOrange,
+        primarySwatch: Colors.orange,
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.mainBackground,
       ),

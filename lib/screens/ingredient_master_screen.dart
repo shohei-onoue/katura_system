@@ -79,7 +79,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   ),
                   SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
-                    value: unitOptions.contains(selectedUnit) ? selectedUnit : null,
+                    initialValue: unitOptions.contains(selectedUnit) ? selectedUnit : null,
                     decoration: const InputDecoration(labelText: '単位'),
                     items: unitOptions
                         .map((u) => DropdownMenuItem(value: u, child: Text(u)))
@@ -90,7 +90,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   ),
                   SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
-                    value: IngredientService.categoryPresets.contains(category) ? category : null,
+                    initialValue: IngredientService.categoryPresets.contains(category) ? category : null,
                     decoration: const InputDecoration(labelText: 'カテゴリ'),
                     items: IngredientService.categoryPresets
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
@@ -120,6 +120,8 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                   return;
                 }
                 final unit = selectedUnit.trim().isEmpty ? '適量' : selectedUnit.trim();
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 try {
                   if (ingredient == null) {
                     await _ingredientService.add(
@@ -137,13 +139,12 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                     ));
                   }
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  navigator.pop();
                   _load();
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(const SnackBar(content: Text('食材を保存しました')));
+                  messenger.showSnackBar(const SnackBar(content: Text('食材を保存しました')));
                 } catch (e) {
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red),
                   );
                 }
@@ -167,14 +168,15 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
           ElevatedButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               await _ingredientService.delete(ingredient.id);
               if (!mounted) return;
-              Navigator.pop(context);
+              navigator.pop();
               _load();
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(const SnackBar(content: Text('食材を削除しました')));
+              messenger.showSnackBar(const SnackBar(content: Text('食材を削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
             child: const Text('削除する'),
           ),
         ],
@@ -192,7 +194,7 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
       appBar: AppBar(
         title: const Text('食材マスタ', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
           ElevatedButton.icon(
@@ -218,13 +220,13 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                           final ing = filtered[index];
                           return Card(
                             elevation: 1,
-                            color: AppColors.background,
+                            color: AppColors.mainBackground,
                             margin: EdgeInsets.only(bottom: rs(context, 12)),
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: Colors.deepPurple.shade50,
                                 child: Icon(Icons.egg_alt_outlined,
-                                    color: Colors.deepPurple, size: rs(context, 20)),
+                                    color: AppColors.accentPurple, size: rs(context, 20)),
                               ),
                               title: Text(ing.name,
                                   style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -290,8 +292,8 @@ class _IngredientMasterScreenState extends State<IngredientMasterScreen> {
                 label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                 selected: isSelected,
                 onSelected: (val) => setState(() => _selectedCategory = cat),
-                selectedColor: Colors.deepPurple,
-                labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87),
+                selectedColor: AppColors.accentPurple,
+                labelStyle: TextStyle(color: isSelected ? AppColors.mainBackground : Colors.black87),
                 showCheckmark: false,
               ),
             );

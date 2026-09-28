@@ -27,7 +27,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('設定', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -35,10 +35,10 @@ class SettingsScreen extends StatelessWidget {
         child: Container(
           constraints: BoxConstraints(maxWidth: rs(context, 880)),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             borderRadius: BorderRadius.circular(rs(context, 12)),
             border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
+            boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
           ),
           padding: EdgeInsets.all(rs(context, 24)),
           child: Column(
@@ -46,7 +46,7 @@ class SettingsScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.edit_note, color: Colors.deepPurple.withValues(alpha: 0.7)),
+                  Icon(Icons.edit_note, color: AppColors.accentPurple.withValues(alpha: 0.7)),
                   SizedBox(width: rs(context, 8)),
                   Text('文字入力方式',
                     style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
@@ -80,7 +80,7 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(height: rs(context, 16)),
               Row(
                 children: [
-                  Icon(Icons.email_outlined, color: Colors.deepPurple.withValues(alpha: 0.7)),
+                  Icon(Icons.email_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
                   SizedBox(width: rs(context, 8)),
                   Text('事前確認・事前連絡',
                     style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
@@ -98,7 +98,7 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(height: rs(context, 16)),
               Row(
                 children: [
-                  Icon(Icons.storefront_outlined, color: Colors.deepPurple.withValues(alpha: 0.7)),
+                  Icon(Icons.storefront_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
                   SizedBox(width: rs(context, 8)),
                   Text('店舗登録',
                     style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
@@ -174,7 +174,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
         maxLength: 4,
         overwrite: true,
         emptyHint: 'HHMM',
-        themeColor: Colors.deepPurple,
+        themeColor: AppColors.accentPurple,
         onConfirmed: (text) {
           final d = text.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
           int h = int.tryParse(d.substring(0, 2)) ?? 0;
@@ -194,7 +194,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
         title: '事前電話連絡の担当者番号（リマインドSMS送信先）',
         initialValue: _callbackPhone,
         emptyHint: '番号を入力してください',
-        themeColor: Colors.deepPurple,
+        themeColor: AppColors.accentPurple,
         onConfirmed: (v) => _update(callbackPhone: v),
       ),
     );
@@ -227,7 +227,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
                 ),
               ),
             ),
-            Icon(Icons.edit, size: rs(context, 16), color: Colors.deepPurple.withValues(alpha: 0.7)),
+            Icon(Icons.edit, size: rs(context, 16), color: AppColors.accentPurple.withValues(alpha: 0.7)),
           ],
         ),
       ),
@@ -523,7 +523,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           right: rs(context, 8),
           bottom: rs(context, 8),
           child: Material(
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             elevation: 3,
             borderRadius: BorderRadius.circular(rs(context, 8)),
             child: InkWell(
@@ -534,9 +534,9 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.edit_location_alt, size: rs(context, 16), color: Colors.deepOrange),
+                    Icon(Icons.edit_location_alt, size: rs(context, 16), color: AppColors.accentOrange),
                     SizedBox(width: rs(context, 4)),
-                    Text('調整', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                    Text('調整', style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
                   ],
                 ),
               ),
@@ -602,7 +602,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
@@ -639,7 +639,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(rs(context, 8)),
           ),

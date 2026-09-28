@@ -39,7 +39,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
       appBar: AppBar(
         title: Text('スタッフ管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
           IconButton(
@@ -68,8 +68,8 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add, color: AppColors.background),
+        backgroundColor: AppColors.accentOrange,
+        child: const Icon(Icons.add, color: AppColors.mainBackground),
       ),
     );
   }
@@ -77,19 +77,19 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Widget _buildStaffCard(Staff staff) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       padding: EdgeInsets.all(rs(context, 16)),
       child: Row(
         children: [
           CircleAvatar(
             radius: rs(context, 24),
-            backgroundColor: Colors.deepOrange.withValues(alpha: 0.1),
+            backgroundColor: AppColors.accentOrange.withValues(alpha: 0.1),
             child: Text(staff.name[0], 
-              style: TextStyle(color: Colors.deepOrange, fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
+              style: TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
           ),
           SizedBox(width: rs(context, 16)),
           Expanded(

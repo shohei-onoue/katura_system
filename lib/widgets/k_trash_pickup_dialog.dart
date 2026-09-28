@@ -66,7 +66,7 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
         maxTime: widget.trashTimeMax,
         interval: widget.trashTimeInterval,
         title: 'ゴミ回収日時の設定',
-        themeColor: Colors.orange,
+        themeColor: AppColors.accentOrange,
         highlightDate: widget.deliveryDate,
       ),
     );
@@ -132,13 +132,13 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
                   alignment: Alignment.centerLeft,
                   padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: AppColors.mainBackground,
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(rs(context, 8)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.event, size: rs(context, 18), color: Colors.orange),
+                      Icon(Icons.event, size: rs(context, 18), color: AppColors.accentOrange),
                       SizedBox(width: rs(context, 8)),
                       Text(
                         _dateTime != null

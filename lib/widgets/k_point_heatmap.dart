@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -89,7 +90,7 @@ class _KPointHeatmapState extends State<KPointHeatmap> {
       switch (p.status) {
         case 'new': return Colors.green.withValues(alpha: 0.7);
         case 'active': return Colors.blue.withValues(alpha: 0.6);
-        case 'churned': return Colors.black.withValues(alpha: 0.5);
+        case 'churned': return AppColors.primaryText.withValues(alpha: 0.5);
         default: return Colors.blue.withValues(alpha: 0.4);
       }
     }

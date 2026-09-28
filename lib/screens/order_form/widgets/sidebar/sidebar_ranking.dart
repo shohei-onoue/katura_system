@@ -120,7 +120,7 @@ class _RankingItem extends StatelessWidget {
             child: Text(
               '$rank',
               style: TextStyle(
-                color: AppColors.background,
+                color: AppColors.mainBackground,
                 fontSize: rf(context, 12),
                 fontWeight: FontWeight.bold,
               ),

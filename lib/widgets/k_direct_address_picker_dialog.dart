@@ -123,7 +123,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('住所・郵便番号で検索',
-                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentPurple)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -201,11 +201,11 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
             child: Card(
               elevation: isActive ? 4 : 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? AppColors.background : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? AppColors.mainBackground : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
-                  color: isActive ? Colors.deepPurple : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.2) : Colors.transparent),
+                  color: isActive ? AppColors.accentPurple : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
                   width: rs(context, 2),
                 ),
               ),
@@ -218,13 +218,13 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                       width: rs(context, 24),
                       height: rs(context, 24),
                       decoration: BoxDecoration(
-                        color: isActive ? Colors.orange : (isCompleted ? Colors.deepPurple : Colors.grey.shade400),
+                        color: isActive ? AppColors.accentOrange : (isCompleted ? AppColors.accentPurple : Colors.grey.shade400),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: isCompleted && !isActive
-                          ? Icon(Icons.check, color: AppColors.background, size: rs(context, 14))
-                          : Text('${index + 1}', style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
+                          ? Icon(Icons.check, color: AppColors.mainBackground, size: rs(context, 14))
+                          : Text('${index + 1}', style: TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                       ),
                     ),
                     SizedBox(width: rs(context, 8)),
@@ -238,7 +238,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                             style: TextStyle(
                               fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
-                              color: isActive ? Colors.orange : (isCompleted ? Colors.black87 : Colors.grey),
+                              color: isActive ? AppColors.accentOrange : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -303,7 +303,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
           Text("$tempPref$tempCity$tempTown", style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
           SizedBox(height: rs(context, 40)),
           Text(tempDetail.isEmpty ? '丁目-番地-号' : tempDetail,
-            style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: tempDetail.isEmpty ? Colors.grey.shade300 : Colors.deepPurple)),
+            style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: tempDetail.isEmpty ? Colors.grey.shade300 : AppColors.accentPurple)),
         ],
       );
     }
@@ -321,7 +321,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                 final item = items[i];
                 return ListTile(
                   title: Text(item, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
-                  trailing: const Icon(Icons.chevron_right, color: Colors.deepPurple),
+                  trailing: const Icon(Icons.chevron_right, color: AppColors.accentPurple),
                   onTap: () => _handleAddressItemSelect(item),
                 );
               },
@@ -364,7 +364,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
         label: Text(isNumericMode ? '地域名で選択' : '郵便番号で入力',
           style: const TextStyle(fontWeight: FontWeight.bold)),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Colors.deepPurple, width: rs(context, 2)),
+          side: BorderSide(color: AppColors.accentPurple, width: rs(context, 2)),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         ),
       ),

@@ -94,15 +94,15 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
             // ヘッダー
             Container(
               width: double.infinity,
-              color: const Color(0xFF000038),
+              color: AppColors.primary,
               padding: EdgeInsets.symmetric(horizontal: rs(context, 20), vertical: rs(context, 12)),
               child: Row(
                 children: [
-                  Text('詳細', style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+                  Text('詳細', style: TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
                   const Spacer(),
                   InkWell(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, color: AppColors.background),
+                    child: const Icon(Icons.close, color: AppColors.mainBackground),
                   ),
                 ],
               ),
@@ -110,7 +110,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
             // 詳細情報エリア（白背景）
             Flexible(
               child: Container(
-                color: AppColors.background,
+                color: AppColors.mainBackground,
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(rs(context, 24)),
                   child: Column(
@@ -253,7 +253,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.business, size: rs(context, 18), color: Colors.deepOrange),
+                                    Icon(Icons.business, size: rs(context, 18), color: AppColors.accentOrange),
                                     SizedBox(width: rs(context, 8)),
                                     Expanded(
                                       child: Text(facilityName,
@@ -277,7 +277,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
             ),
             // アクション
             Container(
-              color: AppColors.background,
+              color: AppColors.mainBackground,
               padding: EdgeInsets.fromLTRB(rs(context, 20), rs(context, 8), rs(context, 20), rs(context, 12)),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -287,14 +287,14 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                   ElevatedButton(
                     onPressed: _saving ? null : _save,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF000038),
-                      foregroundColor: AppColors.background,
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.mainBackground,
                     ),
                     child: _saving
                         ? SizedBox(
                             width: rs(context, 16),
                             height: rs(context, 16),
-                            child: const CircularProgressIndicator(strokeWidth: 2, color: AppColors.background),
+                            child: const CircularProgressIndicator(strokeWidth: 2, color: AppColors.mainBackground),
                           )
                         : const Text('保存'),
                   ),

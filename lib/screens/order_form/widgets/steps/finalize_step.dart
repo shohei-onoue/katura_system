@@ -163,7 +163,7 @@ class FinalizeStep extends StatelessWidget {
               ),
               SizedBox(width: rs(context, 12)),
               Expanded(
-                child: KButton(label: '受注を確定して保存する', color: Colors.deepOrange, onPressed: onSave),
+                child: KButton(label: '受注を確定して保存する', color: AppColors.accentOrange, onPressed: onSave),
               ),
             ],
           ),
@@ -387,7 +387,7 @@ class FinalizeStep extends StatelessWidget {
       alignment: Alignment.centerLeft,
       padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
@@ -460,7 +460,7 @@ class FinalizeStep extends StatelessWidget {
             },
             isCompact: true,
             height: rs(context, 40),
-            fillColor: AppColors.background,
+            fillColor: AppColors.mainBackground,
           ),
         ),
       ],
@@ -474,7 +474,7 @@ class FinalizeStep extends StatelessWidget {
         title: '電話番号の入力',
         initialValue: preConfirmationPhoneController.text,
         emptyHint: '番号を入力してください',
-        themeColor: Colors.deepPurple,
+        themeColor: AppColors.accentPurple,
         onConfirmed: onPreConfirmationPhoneNumberChanged,
       ),
     );
@@ -558,15 +558,15 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
         height: rs(context, 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: sel ? Colors.deepPurple.shade50 : AppColors.background,
+          color: sel ? Colors.deepPurple.shade50 : AppColors.mainBackground,
           borderRadius: BorderRadius.circular(rs(context, 10)),
-          border: Border.all(color: sel ? Colors.deepPurple : Colors.grey.shade300, width: sel ? 2 : 1),
+          border: Border.all(color: sel ? AppColors.accentPurple : Colors.grey.shade300, width: sel ? 2 : 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(sel ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: rs(context, 15), color: sel ? Colors.deepPurple : Colors.grey),
+                size: rs(context, 15), color: sel ? AppColors.accentPurple : Colors.grey),
             SizedBox(width: rs(context, 3)),
             Flexible(
               child: Text(label,
@@ -603,7 +603,7 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
                         visualDensity: VisualDensity.compact,
                         onPressed: () => setState(() => widget.controller.text = name),
                         backgroundColor: sel ? Colors.deepPurple.shade100 : Colors.deepPurple.shade50,
-                        side: BorderSide(color: sel ? Colors.deepPurple : Colors.deepPurple.shade100),
+                        side: BorderSide(color: sel ? AppColors.accentPurple : Colors.deepPurple.shade100),
                       ),
                     );
                   }).toList(),

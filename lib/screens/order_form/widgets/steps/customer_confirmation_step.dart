@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
@@ -110,7 +111,7 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
             width: double.infinity,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.deepOrange.withValues(alpha: 0.03),
+              color: AppColors.accentOrange.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(rs(context, 12)),
             ),
             child: Text(
@@ -118,7 +119,7 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
               style: TextStyle(
                 fontSize: rf(context, 64), 
                 fontWeight: FontWeight.w900, 
-                color: Colors.deepOrange, 
+                color: AppColors.accentOrange, 
                 letterSpacing: 4
               ),
             ),
@@ -235,7 +236,7 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
                     }
                     widget.onNext();
                   },
-                  color: Colors.deepPurple
+                  color: AppColors.accentPurple
                 ),
               ),
             ],

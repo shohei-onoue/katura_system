@@ -397,7 +397,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('戻る')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
             child: const Text('中止する'),
           ),
         ],
@@ -1750,7 +1750,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.description_outlined, color: const Color(0xFF000038), size: rs(context, 24)),
+                  Icon(Icons.description_outlined, color: AppColors.primary, size: rs(context, 24)),
                   SizedBox(width: rs(context, 12)),
                   Text('請求書 印刷プレビュー', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
                   const Spacer(),
@@ -1784,7 +1784,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         children: [
                           Text('合計金額', style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold)),
                           Text('¥$_totalPrice',
-                              style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                              style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
                         ],
                       ),
                       Text('支払方法：${_paymentMethod.isEmpty ? '未選択' : _paymentMethod}', style: TextStyle(fontSize: rf(context, 13))),
@@ -1796,7 +1796,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: AppColors.background),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: AppColors.mainBackground),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('閉じる'),
                 ),

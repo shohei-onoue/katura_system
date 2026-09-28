@@ -107,10 +107,10 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(widget.height != null ? 8 : 12),
-                            borderSide: BorderSide(color: Colors.deepPurple, width: rs(context, 1.5)),
+                            borderSide: BorderSide(color: AppColors.accentPurple, width: rs(context, 1.5)),
                           ),
                           filled: true,
-                          fillColor: isPenMode ? Colors.grey.shade50 : AppColors.background,
+                          fillColor: isPenMode ? Colors.grey.shade50 : AppColors.mainBackground,
                         ),
                       );
                     },

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/email_auth_service.dart';
 import '../../utils/app_colors.dart';
 import '../../widgets/k_email_keyboard_pad.dart';
+import '../../widgets/k_responsive.dart';
 import '../main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -53,28 +54,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   /// メール・パスワード欄タップ時にカスタムオンスクリーンキーボードを
   /// ボトムシートで表示し、OS標準キーボードの代わりに使わせる。
-  void _openKeyboard({required TextEditingController controller, required bool isEmailMode}) {
-    showModalBottomSheet(
+  void _openKeyboard({
+    required TextEditingController controller,
+    required bool isEmailMode,
+  }) {
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 12,
-            right: 12,
-            top: 12,
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 12,
-          ),
-          child: SafeArea(
-            top: false,
-            child: KEmailKeyboardPad(
-              controller: controller,
-              isEmailMode: isEmailMode,
-              onCompleted: () => Navigator.of(sheetContext).pop(),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.mainBackground,
+          insetPadding: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: KEmailKeyboardPad(
+                controller: controller,
+                isEmailMode: isEmailMode,
+                onCompleted: () => Navigator.of(dialogContext).pop(),
+              ),
             ),
           ),
         );
@@ -89,9 +88,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('メールアドレスとパスワードを入力してください')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('メールアドレスとパスワードを入力してください')));
       return;
     }
 
@@ -107,9 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       final message = e.toString().replaceFirst('Exception: ', '');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -117,211 +116,245 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 画面幅・高さに対する比率でサイズ・余白を算出（widgets/k_responsive.dart の既存方式に準拠）
+    final fieldWidth = rs(context, 340).clamp(240.0, 420.0);
+    final fieldHeight = rs(context, 40).clamp(36.0, 56.0);
+    final logoWidth = rs(context, 260).clamp(160.0, 340.0);
+    final titleFont = rf(context, 24).clamp(18.0, 32.0);
+    final fieldFont = rf(context, 16).clamp(13.0, 20.0);
+    final buttonFont = rf(context, 16).clamp(13.0, 20.0);
+    final checkLabelFont = rf(context, 16).clamp(13.0, 20.0);
+    final footerFont = rf(context, 16).clamp(13.0, 20.0);
+    final fieldRadius = rs(context, 20).clamp(14.0, 26.0);
+    final checkboxSize = rs(context, 20).clamp(16.0, 24.0);
+    final progressSize = rs(context, 20).clamp(16.0, 24.0);
+    // ロゴ〜タイトルの間隔を詰め、email/password欄が画面中央付近に来るようにする
+    final gapLogoTitle = rh(context, 16).clamp(8.0, 24.0);
+    final gapTitleField = rh(context, 20).clamp(10.0, 32.0);
+    final gap24 = rh(context, 24).clamp(12.0, 32.0);
+    final gap32 = rh(context, 32).clamp(16.0, 48.0);
+    final gap8 = rh(context, 8).clamp(4.0, 16.0);
+    final footerBottom = rh(context, 24).clamp(12.0, 40.0);
+    final footerPaddingH = rs(context, 24).clamp(12.0, 32.0);
+
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                const SizedBox(height: 48),
-                Center(
-                  child: Image.asset('assets/img/logo.png', width: 260),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'ログイン認証',
-                  style: TextStyle(
-                    color: AppColors.secondaryText,
-                    fontSize: 24,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                Center(
-                  child: SizedBox(
-                    width: 340,
-                    height: 40,
-                    child: TextField(
-                      controller: _emailController,
-                      readOnly: true,
-                      onTap: () => _openKeyboard(controller: _emailController, isEmailMode: true),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.secondaryText,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'メールアドレスを入力',
-                        hintStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.secondaryText,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.mainBackground,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
+            Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset('assets/img/logo.png', width: logoWidth),
+                          SizedBox(height: gapLogoTitle),
+                          Text(
+                            'ログイン認証',
+                            style: TextStyle(
+                              color: AppColors.secondaryText,
+                              fontSize: titleFont,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
-                          ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: SizedBox(
-                    width: 340,
-                    height: 40,
-                    child: TextField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      readOnly: true,
-                      onTap: () => _openKeyboard(controller: _passwordController, isEmailMode: false),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.secondaryText,
-                      ),
-                      decoration: InputDecoration(
-                        hintText: 'パスワードを入力',
-                        hintStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.secondaryText,
-                        ),
-                        filled: true,
-                        fillColor: AppColors.mainBackground,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
+                  SizedBox(height: gapTitleField),
+                  Center(
+                      child: SizedBox(
+                        width: fieldWidth,
+                        height: fieldHeight,
+                        child: TextField(
+                          controller: _emailController,
+                          readOnly: true,
+                          onTap: () => _openKeyboard(controller: _emailController, isEmailMode: true),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: fieldFont,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.secondaryText,
                           ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: const BorderSide(
-                            color: AppColors.accentOrangeLight,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Center(
-                  child: SizedBox(
-                    width: 340,
-                    height: 40,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _handleLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentOrangeLight,
-                        foregroundColor: AppColors.whiteText,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.whiteText,
-                              ),
-                            )
-                          : const Text(
-                              'ログイン',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                          decoration: InputDecoration(
+                            hintText: 'メールアドレスを入力',
+                            hintStyle: TextStyle(
+                              fontSize: fieldFont,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.secondaryText,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.mainBackground,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
                               ),
                             ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: SizedBox(
-                    width: 340,
-                    // 「ログイン状態を維持する」チェックボックスとラベルを横並びで表示
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: Checkbox(
-                            value: _keepLoggedIn,
-                            side: const BorderSide(color: Colors.black),
-                            onChanged: (value) {
-                              setState(() => _keepLoggedIn = value ?? false);
-                              EmailAuthService().saveKeepLoggedIn(_keepLoggedIn);
-                            },
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'ログイン状態を維持する',
+                      ),
+                    ),
+                    SizedBox(height: gap24),
+                    Center(
+                      child: SizedBox(
+                        width: fieldWidth,
+                        height: fieldHeight,
+                        child: TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          readOnly: true,
+                          onTap: () => _openKeyboard(controller: _passwordController, isEmailMode: false),
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w300,
-                            color: Colors.black,
+                            fontSize: fieldFont,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.secondaryText,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'パスワードを入力',
+                            hintStyle: TextStyle(
+                              fontSize: fieldFont,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.secondaryText,
+                            ),
+                            filled: true,
+                            fillColor: AppColors.mainBackground,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(fieldRadius),
+                              borderSide: const BorderSide(
+                                color: AppColors.accentOrange,
+                              ),
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+                    ),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(height: gap32),
+                          SizedBox(
+                            width: fieldWidth,
+                            height: fieldHeight,
+                            child: ElevatedButton(
+                              onPressed: _isSubmitting ? null : _handleLogin,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.accentOrange,
+                                foregroundColor: AppColors.whiteText,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(fieldRadius),
+                                ),
+                              ),
+                              child: _isSubmitting
+                                  ? SizedBox(
+                                      width: progressSize,
+                                      height: progressSize,
+                                      child: const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.whiteText,
+                                      ),
+                                    )
+                                  : Text(
+                                      'ログイン',
+                                      style: TextStyle(
+                                        fontSize: buttonFont,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: gapLogoTitle),
+                          SizedBox(
+                            width: fieldWidth,
+                            // 「ログイン状態を維持する」チェックボックスとラベルを横並びで表示
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: checkboxSize,
+                                  height: checkboxSize,
+                                  child: Checkbox(
+                                    value: _keepLoggedIn,
+                                    side: const BorderSide(color: AppColors.primaryText),
+                                    onChanged: (value) {
+                                      setState(() => _keepLoggedIn = value ?? false);
+                                      EmailAuthService().saveKeepLoggedIn(_keepLoggedIn);
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: gap8),
+                                Text(
+                                  'ログイン状態を維持する',
+                                  style: TextStyle(
+                                    fontSize: checkLabelFont,
+                                    fontWeight: FontWeight.w300,
+                                    color: AppColors.primaryText,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 24,
+            Padding(
+              padding: EdgeInsets.only(bottom: footerBottom),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // フッター上部の区切り線を表示
-                  Container(height: 1, color: AppColors.borderLight2),
-                  const SizedBox(height: 8),
+                  Container(height: 1, color: Color(0xFFE5E5E5)),
+                  SizedBox(height: gap8),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: EdgeInsets.symmetric(horizontal: footerPaddingH),
                     child: Text(
                       '株式会社OLDROOKIE',
                       textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: footerFont,
                         fontWeight: FontWeight.bold,
                         color: AppColors.secondaryText,
                       ),

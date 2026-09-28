@@ -152,7 +152,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   ),
                   SizedBox(height: rs(context, 16)),
                   DropdownButtonFormField<String>(
-                    value: dropdownCategories.contains(category) ? category : null,
+                    initialValue: dropdownCategories.contains(category) ? category : null,
                     decoration: const InputDecoration(labelText: 'カテゴリー'),
                     items: dropdownCategories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
                     onChanged: (val) {
@@ -215,6 +215,8 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('商品名と価格を入力してください')));
                   return;
                 }
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(context);
                 showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
                 try {
                   final Map<String, String> ingredientsMap = {};
@@ -238,14 +240,14 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     await _menuService.updateMenu(newMenu, imageBytes: pendingImageBytes);
                   }
                   if (!mounted) return;
-                  Navigator.pop(context); // Close progress
-                  Navigator.pop(context); // Close dialog
+                  navigator.pop(); // Close progress
+                  navigator.pop(); // Close dialog
                   _loadMenus();
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
+                  messenger.showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
                 } catch (e) {
                   if (!mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red));
+                  navigator.pop();
+                  messenger.showSnackBar(SnackBar(content: Text('保存に失敗しました: $e'), backgroundColor: Colors.red));
                 }
               },
               child: const Text('保存'),
@@ -267,13 +269,15 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
           ElevatedButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               await _menuService.deleteMenu(menu.id);
               if (!mounted) return;
-              Navigator.pop(context);
+              navigator.pop();
               _loadMenus();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
+              messenger.showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
             child: const Text('削除する'),
           ),
         ],
@@ -291,7 +295,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       appBar: AppBar(
         title: const Text('メニューマスタ', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
           ElevatedButton.icon(
@@ -323,7 +327,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                 final isSelected = _selectedMenu?.id == menu.id;
                                 return Card(
                                   elevation: isSelected ? 4 : 1,
-                                  color: isSelected ? Colors.deepPurple.shade50 : AppColors.background,
+                                  color: isSelected ? Colors.deepPurple.shade50 : AppColors.mainBackground,
                                   margin: EdgeInsets.only(bottom: rs(context, 12)),
                                   child: ListTile(
                                     selected: isSelected,
@@ -378,9 +382,9 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                     Container(
                       width: rs(context, 350),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: AppColors.mainBackground,
                         border: Border(left: BorderSide(color: Colors.grey.shade200)),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                        boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: 10)],
                       ),
                       child: _selectedMenu == null
                           ? const Center(child: Text('メニューを選択してください'))
@@ -446,8 +450,8 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                 label: Text(cat, style: const TextStyle(fontWeight: FontWeight.bold)),
                 selected: isSelected,
                 onSelected: (val) => setState(() => _selectedCategory = cat),
-                selectedColor: Colors.deepPurple,
-                labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87),
+                selectedColor: AppColors.accentPurple,
+                labelStyle: TextStyle(color: isSelected ? AppColors.mainBackground : Colors.black87),
                 showCheckmark: false, // チェックマークを非表示に
               ),
             );
@@ -470,7 +474,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
           SizedBox(height: rs(context, 24)),
           Text(menu.name, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold)),
           SizedBox(height: rs(context, 8)),
-          Text('¥${menu.price}', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+          Text('¥${menu.price}', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
           SizedBox(height: rs(context, 16)),
           _detailItem('カテゴリー', menu.category),
           Divider(height: rs(context, 32)),
@@ -484,7 +488,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
             padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
             child: Row(
               children: [
-                Icon(Icons.check_circle, size: rs(context, 16), color: Colors.orange),
+                Icon(Icons.check_circle, size: rs(context, 16), color: AppColors.accentOrange),
                 SizedBox(width: rs(context, 8)),
                 Text(e.key),
                 const Spacer(),

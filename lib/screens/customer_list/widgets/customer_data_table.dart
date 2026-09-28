@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../widgets/k_responsive.dart';
@@ -46,7 +47,7 @@ class CustomerDataTable extends StatelessWidget {
     if (days == null) return null;
     if (days >= 365) return Colors.grey;
     if (days >= 180) return Colors.red;
-    if (days > 90) return Colors.orange;
+    if (days > 90) return AppColors.accentOrange;
     return Colors.blue;
   }
 
@@ -108,7 +109,7 @@ class CustomerDataTable extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: rs(context, 10), horizontal: rs(context, 16)),
                       color: isSelected
-                          ? Colors.deepPurple.withValues(alpha: 0.05)
+                          ? AppColors.accentPurple.withValues(alpha: 0.05)
                           : (elapsedColor?.withValues(alpha: 0.07)),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -121,7 +122,7 @@ class CustomerDataTable extends StatelessWidget {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: rf(context, 13),
-                                color: isSelected ? Colors.deepPurple : Colors.black87,
+                                color: isSelected ? AppColors.accentPurple : Colors.black87,
                               ),
                             ),
                           ),
@@ -167,7 +168,7 @@ class CustomerDataTable extends StatelessWidget {
                                   if (value == 'delete') onDelete(customer);
                                 },
                                 itemBuilder: (context) => [
-                                  _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', Colors.deepOrange),
+                                  _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', AppColors.accentOrange),
                                   _buildPopupItem(context, 'edit', Icons.edit, '編集', Colors.blue),
                                   _buildPopupItem(context, 'delete', Icons.delete_outline, '削除', Colors.red),
                                 ],
@@ -198,7 +199,7 @@ class CustomerDataTable extends StatelessWidget {
           Icon(
             active ? (sortAscending ? Icons.arrow_drop_down : Icons.arrow_drop_up) : Icons.arrow_drop_down,
             size: rs(context, 20),
-            color: active ? Colors.deepPurple : Colors.grey,
+            color: active ? AppColors.accentPurple : Colors.grey,
           ),
         ],
       ),

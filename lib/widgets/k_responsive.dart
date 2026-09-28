@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 
 /// 画面全体を比率ベースで拡大縮小するためのユーティリティ
@@ -64,7 +65,7 @@ class KR {
   static const Color cardBorder = Color(0xFFE0E0E4);
 
   /// ボタン・選択肢の標準色（主要アクション）
-  static const Color primaryColor = Colors.deepPurple;
+  static const Color primaryColor = AppColors.accentPurple;
 
   /// 入力フィールド・選択肢グループ・ボタンなど、1行の操作コンポーネントの標準高さ
   static const double fieldHeight = 50.0;

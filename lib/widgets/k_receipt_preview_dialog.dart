@@ -510,7 +510,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
             title: Text('領収書プレビュー  No.${_no4(_issueNo)}',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             backgroundColor: AppColors.popupBackground,
-            foregroundColor: Colors.black,
+            foregroundColor: AppColors.primaryText,
             elevation: 0,
             actions: [
               TextButton.icon(
@@ -537,7 +537,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 12)],
+                        boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.12), blurRadius: 12)],
                       ),
                       child: SizedBox(
                         width: 972,

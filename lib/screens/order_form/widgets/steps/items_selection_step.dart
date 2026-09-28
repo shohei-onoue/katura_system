@@ -119,9 +119,9 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                     onSelected: (val) {
                       if (val) setState(() => selectedCategory = cat);
                     },
-                    selectedColor: Colors.deepPurple,
+                    selectedColor: AppColors.accentPurple,
                     labelStyle: TextStyle(
-                      color: isSelected ? AppColors.background : Colors.black87,
+                      color: isSelected ? AppColors.mainBackground : Colors.black87,
                       fontSize: rf(context, 13),
                     ),
                     showCheckmark: false,
@@ -199,7 +199,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
       width: double.infinity,
       padding: EdgeInsets.all(rs(context, 48)),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 16)),
       ),
       child: Column(

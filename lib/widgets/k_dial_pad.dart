@@ -44,8 +44,8 @@ class KDialPad extends StatelessWidget {
         return ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: key.backgroundColor ??
-              (key.isHighlight ? Colors.deepPurple : (isSpecial ? Colors.orange.shade800 : Colors.grey.shade50)),
-            foregroundColor: key.foregroundColor ?? (key.isHighlight || isSpecial ? AppColors.background : Colors.black87),
+              (key.isHighlight ? AppColors.accentPurple : (isSpecial ? Colors.orange.shade800 : Colors.grey.shade50)),
+            foregroundColor: key.foregroundColor ?? (key.isHighlight || isSpecial ? AppColors.mainBackground : Colors.black87),
             elevation: key.isHighlight ? 4 : 0,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
             padding: EdgeInsets.zero,

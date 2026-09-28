@@ -218,7 +218,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                   ),
                   if (widget.isLoading)
                     Container(
-                      color: AppColors.background.withValues(alpha: 0.6),
+                      color: AppColors.mainBackground.withValues(alpha: 0.6),
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                 ],
@@ -335,7 +335,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 _buildDecisionCard(
                   title: '梱包方法',
                   icon: Icons.inventory_2_outlined,
-                  color: Colors.deepPurple,
+                  color: AppColors.accentPurple,
                   child: _buildFieldLike(packaging),
                 ),
                 SizedBox(height: rs(context, 8)),
@@ -360,7 +360,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 _buildDecisionCard(
                   title: '支払方法・金額',
                   icon: Icons.payments_outlined,
-                  color: Colors.deepOrange,
+                  color: AppColors.accentOrange,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -371,7 +371,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                         children: [
                           Text('合計金額', style: TextStyle(fontSize: rf(context, 13), color: Colors.grey.shade700)),
                           Text('¥${widget.totalPrice}',
-                              style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                              style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
                         ],
                       ),
                     ],
@@ -506,7 +506,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         SidebarSectionTitle(
           title: 'カートの中身',
           icon: Icons.shopping_cart,
-          trailing: Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.background)),
+          trailing: Text('${widget.confirmedItems.length} 点', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.mainBackground)),
         ),
         Expanded(
           child: widget.confirmedItems.isEmpty
@@ -521,12 +521,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                     final specialOrderQty = item['specialOrderQuantity'] as int? ?? item['quantity'];
                     final teaOption = item['teaOption'] as String? ?? 'なし';
                     final teaQty = item['teaQuantity'] as int? ?? 0;
-                    final qtyLabelStyle = TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: Colors.black);
+                    final qtyLabelStyle = TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: AppColors.primaryText);
 
                     return Card(
                       margin: EdgeInsets.zero,
                       elevation: 0,
-                      color: AppColors.background,
+                      color: AppColors.mainBackground,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(rs(context, 8)),
                         side: BorderSide(color: Colors.grey.shade200),
@@ -536,7 +536,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item['name'], style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: (specialOrder.isNotEmpty || teaOption != 'なし') ? Colors.orange : null)),
+                            Text(item['name'], style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: (specialOrder.isNotEmpty || teaOption != 'なし') ? AppColors.accentOrange : null)),
                             if (specialOrder.isNotEmpty || teaOption != 'なし') ...[
                               SizedBox(height: rs(context, 4)),
                               if (specialOrder.isNotEmpty) ...[
@@ -545,7 +545,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                                     style: qtyLabelStyle,
                                     children: [
                                       TextSpan(text: '特注 $specialOrderQty個: '),
-                                      TextSpan(text: specialOrder, style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                                      TextSpan(text: specialOrder, style: const TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.bold)),
                                     ],
                                   ),
                                 ),
@@ -581,7 +581,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
         Container(
           padding: EdgeInsets.all(rs(context, 20)),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))],
           ),
           child: Column(
@@ -590,7 +590,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('合計金額', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey.shade700)),
-                  Text('¥${widget.totalPrice}', style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                  Text('¥${widget.totalPrice}', style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
                 ],
               ),
               SizedBox(height: rs(context, 4)),
@@ -643,7 +643,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
           border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(rs(context, 4)),
         ),
-        child: Icon(icon, size: rs(context, 16), color: Colors.deepPurple),
+        child: Icon(icon, size: rs(context, 16), color: AppColors.accentPurple),
       ),
     );
   }

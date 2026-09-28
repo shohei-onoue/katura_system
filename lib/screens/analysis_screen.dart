@@ -205,7 +205,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     return Container(
       padding: EdgeInsets.all(rs(context, 6)),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -227,14 +227,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         child: Container(
           padding: EdgeInsets.symmetric(vertical: rs(context, 10)),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFF000038) : Colors.transparent,
+            color: selected ? AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(rs(context, 8)),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? AppColors.background : Colors.blueGrey,
+              color: selected ? AppColors.mainBackground : Colors.blueGrey,
               fontWeight: FontWeight.bold,
               fontSize: rf(context, 13),
             ),
@@ -286,7 +286,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: selected ? const Color(0xFF000038) : Colors.transparent,
+              color: selected ? AppColors.primary : Colors.transparent,
               width: rs(context, 2),
             ),
           ),
@@ -296,7 +296,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           style: TextStyle(
             fontSize: rf(context, 13),
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            color: selected ? const Color(0xFF000038) : Colors.grey,
+            color: selected ? AppColors.primary : Colors.grey,
           ),
         ),
       ),
@@ -306,7 +306,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   Widget _card({required String title, required Widget child}) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade200),
       ),
@@ -439,7 +439,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 Text('合計', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
                 const Spacer(),
                 Text('$total食',
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.deepOrange)),
+                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
               ],
             ),
           ],
@@ -571,7 +571,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final year = int.parse(monthKey.split('-')[0]);
     final names = top.map((e) => e.key).toList();
     final trend = _annualMenuTrend(year, names);
-    const palette = [Colors.deepOrange, Colors.blue, Colors.green];
+    const palette = [AppColors.accentOrange, Colors.blue, Colors.green];
 
     double maxY = 0;
     for (final series in trend.values) {
@@ -680,7 +680,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(rs(context, 20)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15)],
+              boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: 15)],
             ),
             clipBehavior: Clip.antiAlias,
             child: Stack(
@@ -714,7 +714,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: selected ? const Color(0xFF000038) : Colors.transparent,
+              color: selected ? AppColors.primary : Colors.transparent,
               width: rs(context, 2),
             ),
           ),
@@ -724,7 +724,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           style: TextStyle(
             fontSize: rf(context, 13),
             fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-            color: selected ? const Color(0xFF000038) : Colors.grey,
+            color: selected ? AppColors.primary : Colors.grey,
           ),
         ),
       ),
@@ -739,7 +739,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
         decoration: BoxDecoration(
-          color: AppColors.background.withValues(alpha: 0.9),
+          color: AppColors.mainBackground.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(rs(context, 8)),
           boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
@@ -764,7 +764,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       SizedBox(width: rs(context, 8)),
                       _legendItem('継続', Colors.blue),
                       SizedBox(width: rs(context, 8)),
-                      _legendItem('離脱', Colors.black),
+                      _legendItem('離脱', AppColors.primaryText),
                     ],
             ),
           ],

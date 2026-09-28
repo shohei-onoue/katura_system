@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -91,7 +92,7 @@ class KPenCanvas extends StatefulWidget {
   const KPenCanvas({
     super.key,
     required this.controller,
-    this.strokeColor = Colors.black,
+    this.strokeColor = AppColors.primaryText,
     this.strokeWidth = 4.0,
     this.tool = KPenTool.pen,
     this.eraserRadius = 16.0,

@@ -36,8 +36,8 @@ class CategoryService {
         }
         hierarchy[parent]![name] = keywords;
       }
-    } catch (e) {
-      print('Error fetching custom categories: $e');
+    } catch (_) {
+      // Error fetching custom categories; fallback continues below.
     }
 
     _cachedHierarchy = hierarchy;

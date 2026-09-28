@@ -23,7 +23,7 @@ class KNumericInputDialog extends StatefulWidget {
     this.initialValue = '',
     this.maxLength = 20,
     this.emptyHint = '番号を入力してください',
-    this.themeColor = Colors.deepPurple,
+    this.themeColor = AppColors.accentPurple,
     this.overwrite = false,
   });
 

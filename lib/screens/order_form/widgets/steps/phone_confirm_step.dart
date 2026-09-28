@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
@@ -43,7 +44,7 @@ class PhoneConfirmStep extends StatelessWidget {
               textAlign: TextAlign.center,
               textAlignVertical: TextAlignVertical.center,
               readOnly: true,
-              style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: Colors.deepOrange, letterSpacing: rs(context, 10)),
+              style: TextStyle(fontSize: rf(context, 80), fontWeight: FontWeight.bold, color: AppColors.accentOrange, letterSpacing: rs(context, 10)),
               decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: '0000',
@@ -60,7 +61,7 @@ class PhoneConfirmStep extends StatelessWidget {
             KButton(
               label: isCompletingPhone ? '確定して次へ' : (currentCustomer != null ? '顧客確認へ進む' : '新規登録として受注フォームへ'),
               onPressed: onNext,
-              color: isCompletingPhone ? Colors.deepOrange : Colors.deepPurple,
+              color: isCompletingPhone ? AppColors.accentOrange : AppColors.accentPurple,
             )
           else
             Text('下４桁を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
@@ -80,9 +81,9 @@ class PhoneConfirmStep extends StatelessWidget {
           height: fieldHeight,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.deepOrange, width: rs(context, 2)),
+            border: Border.all(color: AppColors.accentOrange, width: rs(context, 2)),
             borderRadius: BorderRadius.circular(rs(context, 12)),
-            color: Colors.deepOrange.withValues(alpha: 0.05),
+            color: AppColors.accentOrange.withValues(alpha: 0.05),
           ),
           alignment: Alignment.center,
           child: prefixEmpty
@@ -92,7 +93,7 @@ class PhoneConfirmStep extends StatelessWidget {
                 )
               : Text(
                   phonePrefixController.text,
-                  style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                  style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                 ),
         ),
         Padding(
@@ -133,7 +134,7 @@ class PhoneConfirmStep extends StatelessWidget {
         : days >= 180
             ? Colors.red
             : days > 90
-                ? Colors.orange
+                ? AppColors.accentOrange
                 : Colors.blue;
     return SizedBox(
       height: rs(context, 40),

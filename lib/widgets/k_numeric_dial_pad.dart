@@ -54,7 +54,7 @@ class KNumericDialPad extends StatelessWidget {
                           backgroundColor: isAction 
                               ? Colors.grey.shade600 
                               : (buttonColor ?? Colors.blueGrey.shade800),
-                          foregroundColor: AppColors.background,
+                          foregroundColor: AppColors.mainBackground,
                           elevation: 4,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
                           padding: EdgeInsets.zero,

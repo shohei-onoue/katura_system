@@ -169,7 +169,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                         return KButton(
                           label: '注文商品の選択へ',
                           onPressed: ready ? onNext : () {},
-                          color: ready ? Colors.deepPurple : Colors.grey,
+                          color: ready ? AppColors.accentPurple : Colors.grey,
                         );
                       },
                     ),
@@ -190,16 +190,16 @@ class DeliveryDestinationStep extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: rs(context, 10)),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade50 : AppColors.background,
-          border: Border.all(color: isSelected ? Colors.deepPurple : Colors.grey.shade300, width: rs(context, 2)),
+          color: isSelected ? Colors.deepPurple.shade50 : AppColors.mainBackground,
+          border: Border.all(color: isSelected ? AppColors.accentPurple : Colors.grey.shade300, width: rs(context, 2)),
           borderRadius: BorderRadius.circular(rs(context, 12)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? Colors.deepPurple : Colors.grey, size: rs(context, 20)),
+            Icon(icon, color: isSelected ? AppColors.accentPurple : Colors.grey, size: rs(context, 20)),
             SizedBox(width: rs(context, 12)),
-            Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? Colors.deepPurple : Colors.grey)),
+            Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.accentPurple : Colors.grey)),
           ],
         ),
       ),
@@ -234,7 +234,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(rs(context, 8)),
-                      side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1)
+                      side: BorderSide(color: isSelected ? AppColors.accentOrange : Colors.grey.shade200, width: isSelected ? 2 : 1)
                     ),
                     child: InkWell(
                       onTap: () {
@@ -252,7 +252,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                         padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
                         child: Row(
                           children: [
-                            Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? Colors.orange : Colors.blueGrey.withValues(alpha: 0.5)),
+                            Icon(Icons.location_on, size: rs(context, 20), color: isSelected ? AppColors.accentOrange : Colors.blueGrey.withValues(alpha: 0.5)),
                             SizedBox(width: rs(context, 12)),
                             SizedBox(width: rs(context, 220), child: Text(fName, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
                             SizedBox(width: rs(context, 16)),
@@ -261,7 +261,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                               key: checkKey,
                               width: rs(context, 20),
                               height: rs(context, 20),
-                              child: isSelected ? Icon(Icons.check_circle, color: Colors.orange, size: rs(context, 20)) : null,
+                              child: isSelected ? Icon(Icons.check_circle, color: AppColors.accentOrange, size: rs(context, 20)) : null,
                             ),
                           ],
                         ),
@@ -277,8 +277,8 @@ class DeliveryDestinationStep extends StatelessWidget {
                     icon: Icon(Icons.map, size: rs(context, 20)),
                     label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                      foregroundColor: AppColors.background,
+                      backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                      foregroundColor: AppColors.mainBackground,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                     ),
                   ),
@@ -445,8 +445,8 @@ class FacilitySearchForm extends StatelessWidget {
         borderRadius: BorderRadius.circular(rs(context, 12)),
         child: Container(
           padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-          decoration: BoxDecoration(color: isSelected ? AppColors.background : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? Colors.deepPurple : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? Colors.deepPurple : Colors.grey))]),
+          decoration: BoxDecoration(color: isSelected ? AppColors.mainBackground : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? AppColors.accentPurple : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.accentPurple : Colors.grey))]),
         ),
       ),
     );
@@ -475,8 +475,8 @@ class FacilitySearchForm extends StatelessWidget {
                 icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.background,
+                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                  foregroundColor: AppColors.mainBackground,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -511,8 +511,8 @@ class FacilitySearchForm extends StatelessWidget {
                 icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.background,
+                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                  foregroundColor: AppColors.mainBackground,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -571,8 +571,8 @@ class FacilitySearchForm extends StatelessWidget {
                 icon: Icon(Icons.map, size: rs(context, 20)),
                 label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? Colors.orange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.background,
+                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                  foregroundColor: AppColors.mainBackground,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
                 ),
               ),
@@ -683,13 +683,13 @@ class FacilitySearchForm extends StatelessWidget {
                                   color: isNearby ? Colors.grey.shade300 : Colors.blue.shade50,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(rs(context, 8)),
-                                    side: BorderSide(color: isSelected ? Colors.orange : Colors.grey.shade200, width: isSelected ? 2 : 1),
+                                    side: BorderSide(color: isSelected ? AppColors.accentOrange : Colors.grey.shade200, width: isSelected ? 2 : 1),
                                   ),
                                   child: ListTile(
-                                    leading: Icon(Icons.business, color: isSelected ? Colors.orange : (isNearby ? Colors.deepOrange : Colors.blue).withValues(alpha: 0.5)),
+                                    leading: Icon(Icons.business, color: isSelected ? AppColors.accentOrange : (isNearby ? AppColors.accentOrange : Colors.blue).withValues(alpha: 0.5)),
                                     title: Text(item['name'] ?? '名称なし', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
                                     subtitle: Text(cleanAddress, style: TextStyle(fontSize: rf(context, 14))),
-                                    trailing: isSelected ? Icon(Icons.check_circle, color: Colors.orange) : Icon(Icons.chevron_right),
+                                    trailing: isSelected ? Icon(Icons.check_circle, color: AppColors.accentOrange) : Icon(Icons.chevron_right),
                                     onTap: () {
                                       final cleanAddress = _cleanResultAddress(item['address'] ?? '');
                                       final payload = "${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})";
@@ -901,7 +901,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(widget.isKeywordMode ? '地域・キーワードの検索' : '地域・施設カテゴリの検索',
-                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentPurple)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -969,11 +969,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             child: Card(
               elevation: isActive ? 4 : 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? AppColors.background : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? AppColors.mainBackground : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
-                  color: isActive ? Colors.deepPurple : (isCompleted ? Colors.deepPurple.withValues(alpha: 0.2) : Colors.transparent),
+                  color: isActive ? AppColors.accentPurple : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
                   width: rs(context, 2),
                 ),
               ),
@@ -986,13 +986,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                       width: rs(context, 24),
                       height: rs(context, 24),
                       decoration: BoxDecoration(
-                        color: isActive ? Colors.orange : (isCompleted ? Colors.deepPurple : Colors.grey.shade400),
+                        color: isActive ? AppColors.accentOrange : (isCompleted ? AppColors.accentPurple : Colors.grey.shade400),
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: isCompleted && !isActive
-                          ? Icon(Icons.check, color: AppColors.background, size: rs(context, 14))
-                          : Text('${index + 1}', style: TextStyle(color: AppColors.background, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
+                          ? Icon(Icons.check, color: AppColors.mainBackground, size: rs(context, 14))
+                          : Text('${index + 1}', style: TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold, fontSize: rf(context, 12))),
                       ),
                     ),
                     SizedBox(width: rs(context, 8)),
@@ -1007,7 +1007,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                             style: TextStyle(
                               fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
-                              color: isActive ? Colors.orange : (isCompleted ? Colors.black87 : Colors.grey),
+                              color: isActive ? AppColors.accentOrange : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -1056,9 +1056,9 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                                            (phase == 1 && item == tempCity) || 
                                            (phase == 2 && item == tempTown);
                         return ListTile(
-                          tileColor: isSelected ? Colors.orange.withValues(alpha: 0.1) : null,
+                          tileColor: isSelected ? AppColors.accentOrange.withValues(alpha: 0.1) : null,
                           title: Text(item, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: isSelected ? Colors.orange.shade900 : Colors.black87)),
-                          trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: isSelected ? Colors.orange : Colors.deepPurple),
+                          trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: isSelected ? AppColors.accentOrange : AppColors.accentPurple),
                           onTap: () => _handleItemSelect(item),
                         );
                       },
@@ -1218,13 +1218,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                     final isSelected = tempCategory == cat;
                     return Card(
                       elevation: isSelected ? 2 : 0,
-                      color: isSelected ? Colors.deepPurple : AppColors.background,
+                      color: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(rs(context, 8)),
-                        side: BorderSide(color: isSelected ? Colors.deepPurple : Colors.grey.shade300),
+                        side: BorderSide(color: isSelected ? AppColors.accentPurple : Colors.grey.shade300),
                       ),
                       child: ListTile(
-                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.background : Colors.black87)),
+                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.mainBackground : Colors.black87)),
                         onTap: () {
                           setState(() {
                             tempCategory = cat;
@@ -1276,12 +1276,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                           child: Container(
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.orange : AppColors.background,
+                              color: isSelected ? AppColors.accentOrange : AppColors.mainBackground,
                               borderRadius: BorderRadius.circular(rs(context, 8)),
-                              border: Border.all(color: isSelected ? Colors.orange : Colors.grey.shade300),
+                              border: Border.all(color: isSelected ? AppColors.accentOrange : Colors.grey.shade300),
                             ),
                             child: Text(gen, 
-                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: isSelected ? AppColors.background : Colors.black87),
+                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: isSelected ? AppColors.mainBackground : Colors.black87),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -1310,7 +1310,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedParent,
+                initialValue: selectedParent,
                 decoration: const InputDecoration(labelText: '親カテゴリ'),
                 items: categoryHierarchy.keys.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                 onChanged: (v) => setDialogState(() => selectedParent = v),
@@ -1329,9 +1329,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                   final keywords = keywordController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
                   if (keywords.isEmpty) keywords.add(genreController.text);
                   
+                  final navigator = Navigator.of(context);
                   await _categoryService.addCategory(selectedParent!, genreController.text, keywords);
                   await _loadCategories();
-                  if (mounted) Navigator.pop(context);
+                  if (!mounted) return;
+                  navigator.pop();
                 }
               },
               child: const Text('登録'),
@@ -1463,7 +1465,7 @@ class _AddressDialField extends StatelessWidget {
             height: kFieldHeight(context),
             padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
             decoration: BoxDecoration(
-              color: isWarning ? Colors.pink.shade50 : AppColors.background,
+              color: isWarning ? Colors.pink.shade50 : AppColors.mainBackground,
               border: Border.all(color: isWarning ? Colors.pink.shade200 : Colors.grey.shade300, width: isWarning ? 2 : 1),
               borderRadius: BorderRadius.circular(rs(context, 8)),
             ),

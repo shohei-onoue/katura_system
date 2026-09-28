@@ -27,6 +27,13 @@ class KEmailKeyboardPad extends StatefulWidget {
 class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
   KEmailKeyboardMode _mode = KEmailKeyboardMode.letters;
   bool _isUpperCase = false;
+  final FocusNode _previewFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _previewFocus.dispose();
+    super.dispose();
+  }
 
   static const List<String> _defaultDomains = [
     '@gmail.com',
@@ -96,11 +103,29 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: rs(context, 10))],
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: rs(context, 10)),
+          BoxShadow(color: Colors.white.withValues(alpha: 0.7), blurRadius: rs(context, 18), spreadRadius: rs(context, 1)),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          TextField(
+            controller: widget.controller,
+            focusNode: _previewFocus,
+            readOnly: true,
+            showCursor: true,
+            autofocus: true,
+            style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.mainBackground,
+              isDense: true,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+            ),
+          ),
+          SizedBox(height: rs(context, 12)),
           if (widget.isEmailMode) ...[
             _buildDomainRow(context),
             SizedBox(height: rs(context, 12)),
@@ -128,12 +153,12 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: domains.length,
-        separatorBuilder: (_, __) => SizedBox(width: rs(context, 8)),
+        separatorBuilder: (_, _) => SizedBox(width: rs(context, 8)),
         itemBuilder: (context, index) {
           final domain = domains[index];
           return ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.background,
+              backgroundColor: AppColors.mainBackground,
               foregroundColor: Colors.black87,
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -155,8 +180,8 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
     return Expanded(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.deepPurple : AppColors.background,
-          foregroundColor: isSelected ? AppColors.background : Colors.black87,
+          backgroundColor: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
+          foregroundColor: isSelected ? AppColors.mainBackground : Colors.black87,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8)), side: BorderSide(color: Colors.grey.shade300)),
           padding: EdgeInsets.zero,
@@ -196,7 +221,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
       height: rs(context, 44),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.mainBackground,
           foregroundColor: Colors.black87,
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 10))),
@@ -217,8 +242,8 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
             height: rs(context, 48),
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _isUpperCase ? Colors.deepPurple : Colors.blueGrey.shade300,
-                foregroundColor: AppColors.background,
+                backgroundColor: _isUpperCase ? AppColors.accentPurple : Colors.blueGrey.shade300,
+                foregroundColor: AppColors.mainBackground,
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 10))),
                 padding: EdgeInsets.zero,
@@ -233,7 +258,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
             height: rs(context, 48),
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.background,
+                backgroundColor: AppColors.mainBackground,
                 foregroundColor: Colors.black87,
                 elevation: 2,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 10)), side: BorderSide(color: Colors.grey.shade300)),
@@ -250,7 +275,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.grey.shade600,
-              foregroundColor: AppColors.background,
+              foregroundColor: AppColors.mainBackground,
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 10))),
               padding: EdgeInsets.zero,
@@ -266,7 +291,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade800,
-              foregroundColor: AppColors.background,
+              foregroundColor: AppColors.mainBackground,
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 10))),
               padding: EdgeInsets.zero,

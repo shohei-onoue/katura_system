@@ -97,7 +97,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       appBar: AppBar(
         title: Text('受注一覧・工程管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
           IconButton(
@@ -112,7 +112,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
         children: [
           Container(
             width: rs(context, 350),
-            color: AppColors.background,
+            color: AppColors.mainBackground,
             padding: EdgeInsets.all(rav(context, 16)),
             child: Column(
               children: [
@@ -132,8 +132,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     _filterOrdersByDay(selectedDay);
                   },
                   calendarStyle: CalendarStyle(
-                    todayDecoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.3), shape: BoxShape.circle),
-                    selectedDecoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                    todayDecoration: BoxDecoration(color: AppColors.accentOrange.withValues(alpha: 0.3), shape: BoxShape.circle),
+                    selectedDecoration: const BoxDecoration(color: AppColors.accentOrange, shape: BoxShape.circle),
                     defaultTextStyle: TextStyle(fontSize: rf(context, 14)),
                     weekendTextStyle: TextStyle(fontSize: rf(context, 14), color: Colors.red),
                   ),
@@ -151,7 +151,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                           margin: EdgeInsets.all(rav(context, 4.0)),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: rs(context, 2)),
+                            border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.5), width: rs(context, 2)),
                           ),
                         );
                       }
@@ -194,7 +194,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   Widget _buildBranchTabs() {
     return Container(
-      color: AppColors.background,
+      color: AppColors.mainBackground,
       padding: EdgeInsets.symmetric(horizontal: rav(context, 12), vertical: rs(context, 6)),
       child: Row(
         children: _branchTabs.map((tab) {
@@ -216,7 +216,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   style: TextStyle(
                     fontSize: rf(context, 13),
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                    color: selected ? AppColors.background : color,
+                    color: selected ? AppColors.mainBackground : color,
                   ),
                 ),
               ),

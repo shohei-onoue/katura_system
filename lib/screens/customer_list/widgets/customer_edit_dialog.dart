@@ -115,12 +115,13 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
               email: emailController.text,
               address: addressController.text,
             );
+            final navigator = Navigator.of(context);
             await widget.customerService.updateCustomer(updatedCustomer);
             if (!mounted) return;
-            Navigator.pop(context);
+            navigator.pop();
             widget.onSaved();
           },
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, foregroundColor: AppColors.background),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.accentOrange, foregroundColor: AppColors.mainBackground),
           child: const Text('保存'),
         ),
       ],

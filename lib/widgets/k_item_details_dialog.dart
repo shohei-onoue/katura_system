@@ -62,7 +62,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
               // ヘッダー
               Row(
                 children: [
-                  Icon(Icons.edit_note, color: Colors.deepPurple, size: rs(context, 24)),
+                  Icon(Icons.edit_note, color: AppColors.accentPurple, size: rs(context, 24)),
                   SizedBox(width: rs(context, 12)),
                   Expanded(
                     child: Text(
@@ -209,7 +209,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
                   Expanded(
                     child: KButton(
                       label: 'カートへ入れる',
-                      color: Colors.deepPurple,
+                      color: AppColors.accentPurple,
                       onPressed: () {
                         Navigator.pop(context, [{
                           'id': widget.menu.id,
@@ -266,8 +266,8 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
           onSelected: (val) {
             if (val) setState(() => _teaOption = opt);
           },
-          selectedColor: Colors.deepPurple,
-          labelStyle: TextStyle(color: isSelected ? AppColors.background : Colors.black87, fontSize: rf(context, 13)),
+          selectedColor: AppColors.accentPurple,
+          labelStyle: TextStyle(color: isSelected ? AppColors.mainBackground : Colors.black87, fontSize: rf(context, 13)),
           padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 10)),
           visualDensity: VisualDensity.standard,
           showCheckmark: false,

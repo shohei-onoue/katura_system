@@ -148,7 +148,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(rs(context, 16)),
         border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: rs(context, 10))],
+        boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: rs(context, 10))],
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -170,7 +170,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
               children: [
                 Expanded(child: _actionButton(context, '送る', Colors.orange.shade800, _finalizeLastChar)),
                 SizedBox(width: rs(context, 12)),
-                Expanded(child: _actionButton(context, '確定', Colors.deepPurple, () { _finalizeLastChar(); widget.onCompleted?.call(); })),
+                Expanded(child: _actionButton(context, '確定', AppColors.accentPurple, () { _finalizeLastChar(); widget.onCompleted?.call(); })),
               ],
             ),
           ],
@@ -184,8 +184,8 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
     return Expanded(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? Colors.deepPurple : AppColors.background,
-          foregroundColor: isSelected ? AppColors.background : Colors.black87,
+          backgroundColor: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
+          foregroundColor: isSelected ? AppColors.mainBackground : Colors.black87,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8)), side: BorderSide(color: Colors.grey.shade300)),
           padding: EdgeInsets.zero,
@@ -257,7 +257,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
 
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.mainBackground,
         foregroundColor: Colors.black87,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
@@ -278,7 +278,7 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey.shade600,
-        foregroundColor: AppColors.background,
+        foregroundColor: AppColors.mainBackground,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
         padding: EdgeInsets.zero,
@@ -295,13 +295,13 @@ class _KJapaneseInputPadState extends State<KJapaneseInputPad> {
 
   Widget _buildSpecialKey(BuildContext context, String label, VoidCallback onPressed, Color color) {
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.background, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))),
+      style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.mainBackground, elevation: 2, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))),
       onPressed: onPressed,
       child: Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _actionButton(BuildContext context, String label, Color color, VoidCallback onPressed) {
-    return SizedBox(height: rs(context, 54), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.background, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))), onPressed: onPressed, child: Text(label, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold))));
+    return SizedBox(height: rs(context, 54), child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: color, foregroundColor: AppColors.mainBackground, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12)))), onPressed: onPressed, child: Text(label, style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold))));
   }
 }

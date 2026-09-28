@@ -151,7 +151,7 @@ class _MainScreenState extends State<MainScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.construction_rounded, size: rs(context, 80), color: Colors.orange.withValues(alpha: 0.3)),
+          Icon(Icons.construction_rounded, size: rs(context, 80), color: AppColors.accentOrange.withValues(alpha: 0.3)),
           SizedBox(height: rs(context, 24)),
           Text('機能準備中', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
         ],

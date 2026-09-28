@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'k_responsive.dart';
@@ -18,7 +19,7 @@ class KDateTimeDisplay extends StatelessWidget {
     required this.label,
     required this.dateTime,
     required this.onTap,
-    this.themeColor = Colors.deepPurple,
+    this.themeColor = AppColors.accentPurple,
     this.isActive = false,
     this.isCompact = false,
     this.height,

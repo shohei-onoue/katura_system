@@ -80,9 +80,9 @@ class _KSidebarState extends State<KSidebar> {
           value: _manageIndices[i],
           child: Row(
             children: [
-              Icon(_manageIcons[i], size: rs(context, 18), color: AppColors.background),
+              Icon(_manageIcons[i], size: rs(context, 18), color: AppColors.mainBackground),
               SizedBox(width: rs(context, 10)),
-              Text(_manageLabels[i], style: const TextStyle(color: AppColors.background, fontWeight: FontWeight.bold)),
+              Text(_manageLabels[i], style: const TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold)),
             ],
           ),
         );
@@ -139,7 +139,7 @@ class _KSidebarState extends State<KSidebar> {
                   errorBuilder: (context, error, stackTrace) => Icon(
                     Icons.restaurant_menu,
                     size: rs(context, 40),
-                    color: Colors.deepOrange,
+                    color: AppColors.accentOrange,
                   ),
                 ),
               ),
@@ -156,7 +156,7 @@ class _KSidebarState extends State<KSidebar> {
       context,
       isSelected: isSelected,
       onTap: () => widget.onDestinationSelected(index),
-      icon: Icon(icon, color: isSelected ? Colors.deepPurple : Colors.black54, size: rs(context, 20)),
+      icon: Icon(icon, color: isSelected ? AppColors.accentPurple : Colors.black54, size: rs(context, 20)),
       label: Text(
         label,
         maxLines: 1,
@@ -165,7 +165,7 @@ class _KSidebarState extends State<KSidebar> {
           fontWeight: FontWeight.bold,
           fontSize: rf(context, 14),
           height: 1.2,
-          color: isSelected ? Colors.deepPurple : Colors.black87,
+          color: isSelected ? AppColors.accentPurple : Colors.black87,
         ),
       ),
     );
@@ -178,7 +178,7 @@ class _KSidebarState extends State<KSidebar> {
       onTap: _showManageMenu,
       icon: Icon(
         _isManageActive ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
-        color: _isManageActive ? Colors.deepPurple : Colors.black54,
+        color: _isManageActive ? AppColors.accentPurple : Colors.black54,
         size: rs(context, 20),
       ),
       label: Container(
@@ -193,11 +193,11 @@ class _KSidebarState extends State<KSidebar> {
                 fontWeight: FontWeight.bold,
                 fontSize: rf(context, 14),
                 height: 1.2,
-                color: _isManageActive ? Colors.deepPurple : Colors.black87,
+                color: _isManageActive ? AppColors.accentPurple : Colors.black87,
               ),
             ),
             const Spacer(),
-            Icon(Icons.keyboard_arrow_down, size: rs(context, 16), color: _isManageActive ? Colors.deepPurple : Colors.black54),
+            Icon(Icons.keyboard_arrow_down, size: rs(context, 16), color: _isManageActive ? AppColors.accentPurple : Colors.black54),
           ],
         ),
       ),
@@ -208,7 +208,7 @@ class _KSidebarState extends State<KSidebar> {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 2)),
       child: Material(
-        color: isSelected ? Colors.deepPurple.withValues(alpha: 0.1) : Colors.transparent,
+        color: isSelected ? AppColors.accentPurple.withValues(alpha: 0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(rs(context, 8)),
         child: InkWell(
           borderRadius: BorderRadius.circular(rs(context, 8)),

@@ -92,7 +92,7 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
 
   Widget _buildMenuBody(BuildContext context) {
     return Material(
-              color: const Color(0xFF000038),
+              color: AppColors.primary,
               elevation: 12,
               borderRadius: BorderRadius.circular(rs(context, 14)),
               child: ConstrainedBox(
@@ -110,7 +110,7 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                       child: Text(
                         '配達元店舗',
                         style: TextStyle(
-                          color: AppColors.background,
+                          color: AppColors.mainBackground,
                           fontWeight: FontWeight.bold,
                           fontSize: rf(context, 15),
                         ),
@@ -138,14 +138,14 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                                 isNearest
                                     ? Icons.radio_button_checked
                                     : Icons.radio_button_unchecked,
-                                color: AppColors.background,
+                                color: AppColors.mainBackground,
                                 size: rs(context, 22),
                               ),
                               SizedBox(width: rs(context, 12)),
                               Text(
                                 b,
                                 style: TextStyle(
-                                  color: AppColors.background,
+                                  color: AppColors.mainBackground,
                                   fontWeight: FontWeight.bold,
                                   fontSize: rf(context, 16),
                                 ),
@@ -155,7 +155,7 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                                 Text(
                                   '（最寄り）',
                                   style: TextStyle(
-                                    color: Colors.orange,
+                                    color: AppColors.accentOrange,
                                     fontWeight: FontWeight.bold,
                                     fontSize: rf(context, 13),
                                   ),

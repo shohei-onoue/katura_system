@@ -12,14 +12,14 @@ class PlanningScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('調理・仕入れ計画', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
       ),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.construction_rounded, size: rs(context, 64), color: Colors.orange),
+            Icon(Icons.construction_rounded, size: rs(context, 64), color: AppColors.accentOrange),
             SizedBox(height: rs(context, 16)),
             Text('準備中',
                 style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.orange.shade800)),

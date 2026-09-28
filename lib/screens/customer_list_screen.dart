@@ -229,13 +229,15 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
           ElevatedButton(
             onPressed: () async {
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
               await _customerService.deleteCustomer(customer.id);
               if (!mounted) return;
-              Navigator.pop(context);
+              navigator.pop();
               _loadCustomers();
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
+              messenger.showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.background),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
             child: const Text('削除する'),
           ),
         ],
@@ -250,7 +252,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       appBar: AppBar(
         title: const Text('顧客管理システム', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
           if (hasQuery)
@@ -318,9 +320,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 Container(
                   width: rs(context, 380),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: AppColors.mainBackground,
                     border: Border(left: BorderSide(color: Colors.grey.shade200)),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: 10)],
                   ),
                   child: _selectedCustomer == null
                       ? const Center(child: Text('顧客を選択してください'))

@@ -239,7 +239,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     final double sideBtnWidth = rav(context, 60);
 
     return Dialog(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.primaryText,
       insetPadding: EdgeInsets.all(rav(context, 12)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
       child: Container(
@@ -256,12 +256,12 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   Icon(Icons.edit_note, color: Colors.deepPurple.shade300, size: rav(context, 24)),
                   SizedBox(width: rs(context, 8)),
                   Text('手書き入力（AI判定）',
-                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.background)),
+                    style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.mainBackground)),
                   const Spacer(),
                   _buildToolToggle(),
                   SizedBox(width: rs(context, 8)),
                   IconButton(
-                    icon: Icon(Icons.close, size: rav(context, 22), color: AppColors.background), 
+                    icon: Icon(Icons.close, size: rav(context, 22), color: AppColors.mainBackground), 
                     onPressed: () => Navigator.pop(context)
                   ),
                 ],
@@ -277,7 +277,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                 margin: EdgeInsets.symmetric(vertical: rav(context, 8)),
                 padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: AppColors.mainBackground,
                   borderRadius: BorderRadius.circular(rs(context, 12)),
                   border: Border.all(color: Colors.grey.shade300, width: rs(context, 1)),
                 ),
@@ -299,9 +299,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                               TextSpan(
                                 text: _pagesTexts[i],
                                 style: TextStyle(
-                                  color: i == _currentPageIndex ? Colors.deepPurple : Colors.black87,
+                                  color: i == _currentPageIndex ? AppColors.accentPurple : Colors.black87,
                                   fontWeight: i == _currentPageIndex ? FontWeight.bold : FontWeight.normal,
-                                  backgroundColor: i == _currentPageIndex ? Colors.deepPurple.withValues(alpha: 0.1) : null,
+                                  backgroundColor: i == _currentPageIndex ? AppColors.accentPurple.withValues(alpha: 0.1) : null,
                                 ),
                               ),
                             if (_baseText.isEmpty && newText.isEmpty && _statusMessage.isEmpty)
@@ -333,7 +333,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: AppColors.mainBackground,
                         border: Border.all(color: Colors.grey.shade400, width: rs(context, 2)),
                         borderRadius: BorderRadius.circular(rs(context, 12)),
                       ),
@@ -371,7 +371,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                     flex: 1,
                     child: KButton(
                       label: hasStrokes ? '戻る' : '1字削除',
-                      color: Colors.orange,
+                      color: AppColors.accentOrange,
                       onPressed: hasStrokes
                           ? _undoStroke
                           : (_baseText.isNotEmpty ? _backspaceBaseText : null),
@@ -397,7 +397,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                         onPressed: combinedText.isNotEmpty ? _insertSpace : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blueGrey,
-                          foregroundColor: AppColors.background,
+                          foregroundColor: AppColors.mainBackground,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(rav(context, 8)),
                           ),
@@ -415,7 +415,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                     flex: 2,
                     child: KButton(
                       label: '完了',
-                      color: Colors.deepPurple,
+                      color: AppColors.accentPurple,
                       onPressed: combinedText != widget.initialText ? () {
                         widget.onTextRecognized(combinedText);
                         Navigator.pop(context);
@@ -435,7 +435,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
     return Container(
       padding: EdgeInsets.all(rs(context, 4)),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.1),
+        color: AppColors.mainBackground.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(rs(context, 10)),
       ),
       child: Row(
@@ -463,9 +463,9 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: rs(context, 18), color: AppColors.background),
+            Icon(icon, size: rs(context, 18), color: AppColors.mainBackground),
             SizedBox(width: rs(context, 6)),
-            Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: AppColors.background)),
+            Text(label, style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: AppColors.mainBackground)),
           ],
         ),
       ),
@@ -492,7 +492,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
           borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Icon(
             icon, 
-            color: onPressed != null ? AppColors.background : Colors.grey.shade800,
+            color: onPressed != null ? AppColors.mainBackground : Colors.grey.shade800,
             size: rav(context, 32),
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
 import '../../../widgets/k_responsive.dart';
@@ -45,10 +46,10 @@ class _OrderListCardState extends State<OrderListCard> {
       color = Colors.green;
     } else if (diff == 0) {
       label = '本日';
-      color = Colors.deepOrange;
+      color = AppColors.accentOrange;
     } else if (diff == 1) {
       label = '前日';
-      color = Colors.orange;
+      color = AppColors.accentOrange;
     } else {
       label = '予定';
       color = Colors.blueGrey;
@@ -170,11 +171,11 @@ class _OrderListCardState extends State<OrderListCard> {
                   padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), rs(context, 12), rs(context, 10)),
                   child: Row(
                     children: [
-                      Icon(Icons.event, size: rs(context, 18), color: Colors.deepOrange),
+                      Icon(Icons.event, size: rs(context, 18), color: AppColors.accentOrange),
                       SizedBox(width: rs(context, 4)),
                       Text(
                         deliveryDateTime,
-                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                       ),
                       SizedBox(width: rs(context, 16)),
                       Icon(Icons.notifications_active_outlined, size: rs(context, 18), color: Colors.blueGrey),
@@ -205,9 +206,9 @@ class _OrderListCardState extends State<OrderListCard> {
                         .map((item) => Container(
                               padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.05),
+                                color: AppColors.accentOrange.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(rs(context, 6)),
-                                border: Border.all(color: Colors.orange.withValues(alpha: 0.1)),
+                                border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.1)),
                               ),
                               child: Text(
                                 "${item['name']} x${item['quantity']}",
@@ -223,7 +224,7 @@ class _OrderListCardState extends State<OrderListCard> {
                       Text('合計金額', style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade700)),
                       Text(
                         '${order.totalCount} 個 / ¥${order.totalPrice}',
-                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                       ),
                     ],
                   ),

@@ -22,7 +22,7 @@ class KMenuCard extends StatefulWidget {
     this.initialQuantity = 0,
     required this.onAddToCart,
     required this.onOpenDetails,
-    this.themeColor = Colors.deepPurple,
+    this.themeColor = AppColors.accentPurple,
   });
 
   @override
@@ -44,7 +44,7 @@ class _KMenuCardState extends State<KMenuCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(
           color: hasSelection ? widget.themeColor : Colors.grey.shade200,
@@ -100,7 +100,7 @@ class _KMenuCardState extends State<KMenuCard> {
                   style: TextStyle(
                     fontSize: rf(context, 16),
                     fontWeight: FontWeight.bold,
-                    color: Colors.deepOrange,
+                    color: AppColors.accentOrange,
                   ),
                 ),
                 SizedBox(height: rs(context, 12)),
@@ -131,8 +131,8 @@ class _KMenuCardState extends State<KMenuCard> {
                                 }
                               : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
-                            foregroundColor: AppColors.background,
+                            backgroundColor: AppColors.accentOrange,
+                            foregroundColor: AppColors.mainBackground,
                             padding: EdgeInsets.zero,
                             elevation: 0,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),

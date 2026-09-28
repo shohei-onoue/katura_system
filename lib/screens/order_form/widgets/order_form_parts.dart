@@ -23,9 +23,9 @@ class PhoneReceivedBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.phone_callback, color: Colors.orange, size: rav(context, 26)),
+        Icon(Icons.phone_callback, color: AppColors.accentOrange, size: rav(context, 26)),
         SizedBox(width: rav(context, 6)),
-        Text(phoneNumber, style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
+        Text(phoneNumber, style: TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
       ],
     );
   }
@@ -114,11 +114,11 @@ class OrderFormCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.mainBackground,
         borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: AppColors.primaryText.withValues(alpha: 0.05),
             blurRadius: rav(context, 10),
           )
         ],
@@ -173,7 +173,7 @@ class CustomerInfoBanner extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(rav(context, 16)),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: AppColors.mainBackground,
           borderRadius: BorderRadius.circular(rav(context, 12)),
           border: Border.all(color: Colors.blueGrey.shade100, width: rs(context, 1.5)),
         ),
@@ -287,13 +287,13 @@ class KInitialRowSelector extends StatelessWidget {
               height: rs(context, 36),
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isSelected ? Colors.deepPurple : AppColors.background,
-                  foregroundColor: isSelected ? AppColors.background : Colors.black87,
+                  backgroundColor: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
+                  foregroundColor: isSelected ? AppColors.mainBackground : Colors.black87,
                   padding: EdgeInsets.zero,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(rs(context, 6)),
-                    side: BorderSide(color: isSelected ? Colors.deepPurple : Colors.grey.shade300),
+                    side: BorderSide(color: isSelected ? AppColors.accentPurple : Colors.grey.shade300),
                   ),
                 ),
                 onPressed: () => onSelected(r),
