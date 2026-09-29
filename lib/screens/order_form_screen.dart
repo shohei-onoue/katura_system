@@ -1177,6 +1177,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final order = OrderModel(
       id: widget.initialOrder?.id ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}', 
       customerName: _nameController.text, 
+      customerId: _currentCustomer?.id ?? widget.initialOrder?.customerId ?? '',
       receiverName: _receiverController.text, 
       facilityName: _facilityController.text, 
       address: _addressController.text, 
@@ -1281,7 +1282,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         deliveryAddresses: ["${_facilityController.text}: ${_addressController.text} (${destMarker?.position.latitude ?? 0}, ${destMarker?.position.longitude ?? 0})"],
         facilityReceivers: {_facilityController.text: [_nameController.text]},
       );
-      await _customerService.createCustomer(newCustomer);
+      final created = await _customerService.createCustomer(newCustomer);
+      order.customerId = created.id;
     }
 
     await _orderService.saveOrder(order);

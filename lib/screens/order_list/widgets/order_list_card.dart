@@ -5,12 +5,14 @@ import '../../../widgets/k_responsive.dart';
 
 class OrderListCard extends StatefulWidget {
   final OrderModel order;
+  final String? displayName; // 顧客管理の最新の名前（なければ受注に保存された名前）
   final Function(OrderModel, String) onEdit;
   final Function(OrderModel) onCancel;
 
   const OrderListCard({
     super.key,
     required this.order,
+    this.displayName,
     required this.onEdit,
     required this.onCancel,
   });
@@ -98,7 +100,7 @@ class _OrderListCardState extends State<OrderListCard> {
                 children: [
                   Flexible(
                     child: Text(
-                      order.customerName,
+                      widget.displayName ?? order.customerName,
                       style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,

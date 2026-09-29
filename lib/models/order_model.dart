@@ -1,6 +1,7 @@
 class OrderModel {
   final String id;
   final String customerName; // 注文者
+  String customerId; // 顧客管理の顧客ID（表示名を最新に保つため。旧データは空）
   final String receiverName; // 受取人
   final String facilityName;
   final String address;
@@ -54,6 +55,7 @@ class OrderModel {
   OrderModel({
     required this.id,
     required this.customerName,
+    this.customerId = '',
     this.receiverName = '',
     this.facilityName = '',
     required this.address,
@@ -104,6 +106,7 @@ class OrderModel {
     return {
       'id': id,
       'customerName': customerName,
+      'customerId': customerId,
       'receiverName': receiverName,
       'facilityName': facilityName,
       'address': address,
@@ -166,6 +169,7 @@ class OrderModel {
     return OrderModel(
       id: map['id'] ?? '',
       customerName: map['customerName'] ?? '',
+      customerId: map['customerId'] ?? '',
       receiverName: map['receiverName'] ?? '',
       facilityName: map['facilityName'] ?? '',
       address: map['address'] ?? '',

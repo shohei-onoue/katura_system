@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/order_model.dart';
+import '../services/customer_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
@@ -17,6 +18,8 @@ class OrderListScreen extends StatefulWidget {
 
 class _OrderListScreenState extends State<OrderListScreen> {
   final _orderService = OrderService();
+  final _customerService = CustomerService();
+  Map<String, String> _displayNames = {}; // 受注ID → 顧客管理の最新の名前
   List<OrderModel> _allOrders = [];
   List<OrderModel> _filteredOrders = [];
   bool _isLoading = true;
@@ -39,8 +42,28 @@ class _OrderListScreenState extends State<OrderListScreen> {
       _isLoading = true;
     });
     final list = await _orderService.getAllOrders(forceRefresh: true);
+    final customers = await _customerService.getAllCustomers();
     if (!mounted) return;
+    final byId = {for (final c in customers) c.id: c.name};
+    // 旧データ（顧客IDなし）は電話番号（数字のみ）で1件だけ一致した顧客の名前を使う
+    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
+    final byPhone = <String, List<String>>{};
+    for (final c in customers) {
+      final d = digits(c.phoneNumber);
+      if (d.isNotEmpty) byPhone.putIfAbsent(d, () => []).add(c.name);
+    }
+    final names = <String, String>{};
+    for (final o in list) {
+      final byIdName = byId[o.customerId];
+      final phoneMatches = byPhone[digits(o.phoneNumber)];
+      if (byIdName != null) {
+        names[o.id] = byIdName;
+      } else if (o.customerId.isEmpty && phoneMatches != null && phoneMatches.length == 1) {
+        names[o.id] = phoneMatches.first;
+      }
+    }
     setState(() {
+      _displayNames = names;
       _allOrders = list.where((order) {
         return order.status != '配送済み' && order.status != 'キャンセル済み';
       }).toList();
@@ -244,6 +267,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       itemBuilder: (context, index) {
         return OrderListCard(
           order: orders[index],
+          displayName: _displayNames[orders[index].id],
           onEdit: (order, section) {
             widget.onEditOrder?.call(order, section);
           },
