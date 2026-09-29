@@ -59,6 +59,10 @@ class _OrderListCardState extends State<OrderListCard> {
     }
   }
 
+  /// 住所の先頭の郵便番号（〒123-4567 / 123-4567 / 1234567）を取り除く
+  String _addressWithoutZip(String address) =>
+      address.replaceFirst(RegExp(r'^\s*〒?\s*\d{3}\s*[-‐－ー−]?\s*\d{4}\s*'), '');
+
   String _itemLabel(dynamic item) {
     final order = widget.order;
     final m = item is Map ? item : const {};
@@ -98,7 +102,9 @@ class _OrderListCardState extends State<OrderListCard> {
               padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), 0, rs(context, 8)),
               child: Row(
                 children: [
-                  Flexible(
+                  // 横幅の比率 顧客名:住所:支店名:編集アイコン = 2:5:2:1
+                  Expanded(
+                    flex: 2,
                     child: Text(
                       widget.displayName ?? order.customerName,
                       style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
@@ -106,32 +112,34 @@ class _OrderListCardState extends State<OrderListCard> {
                       maxLines: 1,
                     ),
                   ),
-                  if (order.address.isNotEmpty) ...[
-                    SizedBox(width: rs(context, 8)),
-                    Flexible(
-                      child: Text(
-                        order.address,
-                        style: TextStyle(fontSize: rf(context, 13), color: Colors.grey[700]),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      _addressWithoutZip(order.address),
+                      style: TextStyle(fontSize: rf(context, 13), color: Colors.grey[700]),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
-                  ],
-                  const Spacer(),
-                  SizedBox(width: rs(context, 8)),
-                  Text(
-                    order.branchName,
-                    style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: _branchColor),
                   ),
-                  SizedBox(width: rs(context, 4)),
-                  // カード右端に密着：右余白0 + アイコン字形の右側の透明部分(約2.7)をTransformでカード端へ押し出す
-                  Transform.translate(
-                    offset: Offset(rs(context, 2.7), 0),
-                    child: InkWell(
-                      onTap: () => _showEditChoice(order),
-                      child: Padding(
-                        padding: EdgeInsets.only(top: rs(context, 6), bottom: rs(context, 6), left: rs(context, 8)),
-                        child: Icon(Icons.edit, size: rs(context, 20), color: Colors.blueGrey),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      order.branchName,
+                      style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: _branchColor),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  // 編集アイコンは割り当てられた幅の中央に配置
+                  Expanded(
+                    flex: 1,
+                    child: Center(
+                      child: InkWell(
+                        onTap: () => _showEditChoice(order),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 8)),
+                          child: Icon(Icons.edit, size: rs(context, 20), color: Colors.blueGrey),
+                        ),
                       ),
                     ),
                   ),
