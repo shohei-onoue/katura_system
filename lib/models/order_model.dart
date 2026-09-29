@@ -43,13 +43,13 @@ class OrderModel {
   final DateTime? scheduledSmsDateTime; // 送信予定日時
   final bool smsSent; // 送信済みフラグ
 
-  final String paymentMethod;
   final String status;
   final String branchName; // 店舗名
   final String remarks;    // 備考（音声・手書き対応）
   final String? deliveryDestinationImageUrl; // 配達先画像（ストリートビューなど）
   final double? latitude;
   final double? longitude;
+  final int vehicleNumber; // 配送車両の号車（0＝未割り当て）
 
   OrderModel({
     required this.id,
@@ -83,13 +83,13 @@ class OrderModel {
     this.preConfirmationSmsTime = '09:00',
     this.scheduledSmsDateTime,
     this.smsSent = false,
-    required this.paymentMethod,
     this.status = '受注済み',
     this.branchName = '岡崎本店',
     this.remarks = '',
     this.deliveryDestinationImageUrl,
     this.latitude,
     this.longitude,
+    this.vehicleNumber = 0,
     String? deliveryDateStrParam,
     int? totalPriceParam,
   }) : deliveryDateStr = deliveryDateStrParam ?? deliveryDate.toIso8601String().split('T')[0],
@@ -114,7 +114,7 @@ class OrderModel {
       'deliveryDateStr': deliveryDateStr,
       'deliveryTime': deliveryTime,
       'deliveryType': deliveryType,
-      'items': items,
+      'items': items.map((e) => Map<String, dynamic>.from(e)).toList(),
       'totalCount': totalCount,
       'packagingType': packagingType,
       'packagingSmallQty': packagingSmallQty,
@@ -134,13 +134,13 @@ class OrderModel {
       'preConfirmationSmsTime': preConfirmationSmsTime,
       'scheduledSmsDateTime': scheduledSmsDateTime?.toUtc().toIso8601String(),
       'smsSent': smsSent,
-      'paymentMethod': paymentMethod,
       'status': status,
       'branchName': branchName,
       'remarks': remarks,
       'deliveryDestinationImageUrl': deliveryDestinationImageUrl,
       'latitude': latitude,
       'longitude': longitude,
+      'vehicleNumber': vehicleNumber,
     };
   }
 
@@ -157,7 +157,6 @@ class OrderModel {
       items: [],
       totalCount: 0,
       packagingType: '紙袋',
-      paymentMethod: '',
       remarks: '',
       deliveryDestinationImageUrl: null,
     );
@@ -180,7 +179,10 @@ class OrderModel {
       totalPriceParam: (map['totalPrice'] as num?)?.toInt(),
       deliveryTime: map['deliveryTime'] ?? '',
       deliveryType: map['deliveryType'] ?? '',
-      items: List<Map<String, dynamic>>.from(map['items'] ?? []),
+      items: ((map['items'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList(),
       totalCount: map['totalCount'] ?? 0,
       packagingType: map['packagingType'] ?? '紙袋',
       packagingSmallQty: map['packagingSmallQty'] ?? 0,
@@ -206,13 +208,13 @@ class OrderModel {
           ? DateTime.parse(map['scheduledSmsDateTime']) 
           : null,
       smsSent: map['smsSent'] ?? false,
-      paymentMethod: map['paymentMethod'] ?? '',
       status: map['status'] ?? '受注済み',
       branchName: map['branchName'] ?? '岡崎本店',
       remarks: map['remarks'] ?? '',
       deliveryDestinationImageUrl: map['deliveryDestinationImageUrl'],
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
+      vehicleNumber: (map['vehicleNumber'] as num?)?.toInt() ?? 0,
     );
   }
 

@@ -15,7 +15,6 @@ class KReceiptPreviewDialog extends StatefulWidget {
   final String recipientHonorific; // 御中 / 様
   final int totalPrice; // 税込合計
   final List<Map<String, dynamic>> items;
-  final String paymentMethod; // 現金 / カード
   final DateTime issueDate;
 
   const KReceiptPreviewDialog({
@@ -25,7 +24,6 @@ class KReceiptPreviewDialog extends StatefulWidget {
     this.recipientHonorific = '御中',
     required this.totalPrice,
     required this.items,
-    required this.paymentMethod,
     required this.issueDate,
   });
 
@@ -163,9 +161,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
 
     final tax = (widget.totalPrice * 8 / 108).round();
 
-    final provisoPayment = widget.paymentMethod.isEmpty
-        ? '上記正に領収いたしました。'
-        : '上記正に【${_esc(widget.paymentMethod)}支払いにて】領収いたしました。';
+    const provisoPayment = '上記正に領収いたしました。';
 
     return '''<!DOCTYPE html>
 <html lang="ja">

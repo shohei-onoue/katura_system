@@ -7,6 +7,7 @@ class BranchModel {
   final double latitude;
   final double longitude;
   final String imageUrl;
+  final int deliveryVehicleCount; // 配送車両数（未設定は0）
 
   const BranchModel({
     required this.id,
@@ -17,6 +18,7 @@ class BranchModel {
     required this.latitude,
     required this.longitude,
     this.imageUrl = '',
+    this.deliveryVehicleCount = 0,
   });
 
   factory BranchModel.fromMap(String id, Map<String, dynamic> map) {
@@ -29,6 +31,7 @@ class BranchModel {
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
       imageUrl: map['imageUrl'] ?? '',
+      deliveryVehicleCount: (map['deliveryVehicleCount'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -41,10 +44,11 @@ class BranchModel {
       'latitude': latitude,
       'longitude': longitude,
       'imageUrl': imageUrl,
+      'deliveryVehicleCount': deliveryVehicleCount,
     };
   }
 
-  BranchModel copyWith({String? name, String? companyName, String? address, String? phone, double? latitude, double? longitude, String? imageUrl}) {
+  BranchModel copyWith({String? name, String? companyName, String? address, String? phone, double? latitude, double? longitude, String? imageUrl, int? deliveryVehicleCount}) {
     return BranchModel(
       id: id,
       name: name ?? this.name,
@@ -54,6 +58,7 @@ class BranchModel {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       imageUrl: imageUrl ?? this.imageUrl,
+      deliveryVehicleCount: deliveryVehicleCount ?? this.deliveryVehicleCount,
     );
   }
 }

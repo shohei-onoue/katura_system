@@ -1,74 +1,49 @@
 ---
 name: figmaout
-description: 指定したファイルの内容をFigmaキャンバス上にノードとして生成・出力します
+description: ユーザーが指示した画面（Flutterの画面・ダイアログ・ウィジェット）を、必要なファイルを全て読み込み、再現度100%でFigmaに表示させる
 inputs:
   - name: file_path
-    description: Figmaへ送信したいファイルのパス
+    description: Figmaに表示したい画面のファイルパス（例 lib/widgets/delivery_schedule_dialog.dart）
     required: true
   - name: file_key
-    description: 出力先となるFigmaファイルのキー（URLの /file/XXXXX/ の部分）
+    description: 出力先のFigmaファイルキー（省略時は環境変数 FIGMA_FILE_KEY）。キーの値は出力・表示しない
     required: false
 ---
 
-# Figma Export Skill
+# Figma出力スキル（再現度100%）
 
-以下の手順で指定されたファイルをFigmaに出力してください。
+指定された画面を、実機で見えるとおりにFigmaへ描く。ソースコードの貼り付けやコメント投稿は行わない。
+Figma REST APIやPythonスクリプトは使わず、FigmaのMCP（`use_figma` など）でノードを直接作る。
 
-1. **環境変数の確認**
-   - 実行前に `FIGMA_ACCESS_TOKEN` が設定されているか確認する。未設定の場合はユーザーに設定を促して中断する。
+## 手順
 
-2. **対象ファイルの解析**
-   - `file_path` で指定されたファイルを読み込む。
-   - ファイル種別（Flutter Widget、Markdown、JSON、テキスト等）を判別し、Figmaノード（Frame, Text, Rectangle 等）の構造にマッピングする。
+1. **準備**
+   - `figma:figma-use` スキルを必ず先に読み込む（`use_figma` の前提）。
+   - 出力先は `file_key` 引数、なければ環境変数 `FIGMA_FILE_KEY`。トークンやキーの値はログ・回答に出さない。
+   - 出力先ファイルが不明な場合は、実行前にユーザーへ確認する。
 
-3. **Figma APIの実行**
-   - 引数で渡された `file_key`（または環境変数 `FIGMA_FILE_KEY`）をターゲットにする。
-   - 下記の補助スクリプト（`scripts/figma_exporter.py`）を実行して、Figma REST API経由で要素を描画する。
+2. **必要なファイルを全て読む**（推測で描かない）
+   - 対象ファイルを全文読む。
+   - importされているプロジェクト内のファイルを辿り、見た目に関わるものは全て読む
+     （子ウィジェット、`k_responsive.dart` の `rs / rf / rav`、`AppColors`、テーマ、共通ボタン `KButton` など）。
+   - 画面が表示するデータの形（モデル、サンプル値、表示条件・分岐）も読み、状態ごとの見た目を把握する。
+   - 実機のスクリーンショットや既存のFigmaデザインがあれば参照する。
 
-実行コマンド例:
-```bash
-python3 scripts/figma_exporter.py --file "$file_path" --target-key "$file_key"
+3. **寸法・色・文字を実値に変換**
+   - `rs()` `rf()` `rav()` は基準端末（I10 Plus タブレット）の画面サイズで計算した実数値に直す。
+   - 色は `AppColors` の実際の値、`withValues(alpha:)` は不透明度として反映する。
+   - フォント、太さ、余白、角丸、枠線、影、アイコン（Material Icons）、配置（Row/Column/Stack/Positioned）を漏れなく反映する。
+   - リスト・繰り返しは、実際の表示条件に合うサンプル内容で複数件描く。
 
----
+4. **Figmaに描画**
+   - 1画面＝1つの最上位フレームにし、レイヤー名は Flutter のウィジェット構造が分かる名前にする。
+   - 可能な限り Auto Layout で構成し、テキストはテキストノードにする（画像化しない）。
+   - 状態違い（選択中・空・エラーなど）がある画面は、別フレームとして並べる。
 
-**2. API連携スクリプトの作成**
+5. **検証（100%の確認）**
+   - 描画後にスクリーンショットを取得し、ソースの各要素（文言・色・寸法・配置・順序）と1つずつ照合する。
+   - 差があれば直して再確認する。差が残る場合は、どこが違うかを正直に報告する。
 
-Figma REST APIは読み取りが中心ですが、Canvasへの直接配置やコメント追加、またはプラグイン連携用エンドポイント（Webhook/REST）を叩くためのスクリプト（`scripts/figma_exporter.py`）を配置します。
-
-```python
-import os
-import sys
-import argparse
-import requests
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--file", required=True, help="対象ファイルパス")
-    parser.add_argument("--target-key", default=os.getenv("FIGMA_FILE_KEY"), help="Figma File Key")
-    args = parser.parse_args()
-
-    token = os.getenv("FIGMA_ACCESS_TOKEN")
-    if not token or not args.target_key:
-        print("Error: FIGMA_ACCESS_TOKEN または Figma File Key が不足しています。")
-        sys.exit(1)
-
-    with open(args.file, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    # Figma Plugin (WebSocket / REST Receiver) または Figma REST API への送信処理
-    # 例: ファイルレビュー用の新規コメントとして構造をポストする場合
-    url = f"https://api.figma.com/v1/files/{args.target_key}/comments"
-    headers = {"X-Figma-Token": token, "Content-Type": "application/json"}
-    payload = {
-        "message": f"Exported from Claude Code ({args.file}):\n\n{content[:500]}...",
-        "client_meta": {"x": 0, "y": 0}
-    }
-
-    res = requests.post(url, headers=headers, json=payload)
-    if res.status_code == 200:
-        print("Figma への出力が完了しました。")
-    else:
-        print(f"送信失敗: {res.status_code} {res.text}")
-
-if __name__ == "__main__":
-    main()
+6. **報告**
+   - 作成したフレーム名とFigmaのリンク、照合結果を簡潔に報告する。
+   - コード（lib/ 配下）は変更しない。

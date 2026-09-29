@@ -64,7 +64,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return Dialog(
           backgroundColor: AppColors.mainBackground,
           insetPadding: const EdgeInsets.all(12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: SingleChildScrollView(
@@ -167,103 +169,109 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: gapTitleField),
                   Center(
-                      child: SizedBox(
-                        width: fieldWidth,
-                        height: fieldHeight,
-                        child: TextField(
+                    child: SizedBox(
+                      width: fieldWidth,
+                      height: fieldHeight,
+                      child: TextField(
+                        controller: _emailController,
+                        readOnly: true,
+                        onTap: () => _openKeyboard(
                           controller: _emailController,
-                          readOnly: true,
-                          onTap: () => _openKeyboard(controller: _emailController, isEmailMode: true),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
+                          isEmailMode: true,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: fieldFont,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondaryText,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'メールアドレスを入力',
+                          hintStyle: TextStyle(
                             fontSize: fieldFont,
                             fontWeight: FontWeight.bold,
                             color: AppColors.secondaryText,
                           ),
-                          decoration: InputDecoration(
-                            hintText: 'メールアドレスを入力',
-                            hintStyle: TextStyle(
-                              fontSize: fieldFont,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondaryText,
+                          filled: true,
+                          fillColor: AppColors.mainBackground,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
-                            filled: true,
-                            fillColor: AppColors.mainBackground,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: gap24),
-                    Center(
-                      child: SizedBox(
-                        width: fieldWidth,
-                        height: fieldHeight,
-                        child: TextField(
+                  ),
+                  SizedBox(height: gap24),
+                  Center(
+                    child: SizedBox(
+                      width: fieldWidth,
+                      height: fieldHeight,
+                      child: TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        readOnly: true,
+                        onTap: () => _openKeyboard(
                           controller: _passwordController,
-                          obscureText: true,
-                          readOnly: true,
-                          onTap: () => _openKeyboard(controller: _passwordController, isEmailMode: false),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
+                          isEmailMode: false,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: fieldFont,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondaryText,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'パスワードを入力',
+                          hintStyle: TextStyle(
                             fontSize: fieldFont,
                             fontWeight: FontWeight.bold,
                             color: AppColors.secondaryText,
                           ),
-                          decoration: InputDecoration(
-                            hintText: 'パスワードを入力',
-                            hintStyle: TextStyle(
-                              fontSize: fieldFont,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondaryText,
+                          filled: true,
+                          fillColor: AppColors.mainBackground,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
-                            filled: true,
-                            fillColor: AppColors.mainBackground,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(fieldRadius),
-                              borderSide: const BorderSide(
-                                color: AppColors.accentOrange,
-                              ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(fieldRadius),
+                            borderSide: const BorderSide(
+                              color: AppColors.accentOrange,
                             ),
                           ),
                         ),
                       ),
                     ),
+                  ),
                   Expanded(
                     child: Align(
                       alignment: Alignment.topCenter,
@@ -280,7 +288,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 backgroundColor: AppColors.accentOrange,
                                 foregroundColor: AppColors.whiteText,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(fieldRadius),
+                                  borderRadius: BorderRadius.circular(
+                                    fieldRadius,
+                                  ),
                                 ),
                               ),
                               child: _isSubmitting
@@ -305,32 +315,47 @@ class _LoginScreenState extends State<LoginScreen> {
                           SizedBox(
                             width: fieldWidth,
                             // 「ログイン状態を維持する」チェックボックスとラベルを横並びで表示
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: checkboxSize,
-                                  height: checkboxSize,
-                                  child: Checkbox(
-                                    value: _keepLoggedIn,
-                                    side: const BorderSide(color: AppColors.primaryText),
-                                    onChanged: (value) {
-                                      setState(() => _keepLoggedIn = value ?? false);
-                                      EmailAuthService().saveKeepLoggedIn(_keepLoggedIn);
-                                    },
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                setState(() => _keepLoggedIn = !_keepLoggedIn);
+                                EmailAuthService().saveKeepLoggedIn(
+                                  _keepLoggedIn,
+                                );
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: checkboxSize,
+                                    height: checkboxSize,
+                                    child: Checkbox(
+                                      value: _keepLoggedIn,
+                                      side: const BorderSide(
+                                        color: AppColors.primaryText,
+                                      ),
+                                      onChanged: (value) {
+                                        setState(
+                                          () => _keepLoggedIn = value ?? false,
+                                        );
+                                        EmailAuthService().saveKeepLoggedIn(
+                                          _keepLoggedIn,
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                                SizedBox(width: gap8),
-                                Text(
-                                  'ログイン状態を維持する',
-                                  style: TextStyle(
-                                    fontSize: checkLabelFont,
-                                    fontWeight: FontWeight.w300,
-                                    color: AppColors.primaryText,
+                                  SizedBox(width: gap8),
+                                  Text(
+                                    'ログイン状態を維持する',
+                                    style: TextStyle(
+                                      fontSize: checkLabelFont,
+                                      fontWeight: FontWeight.w300,
+                                      color: AppColors.primaryText,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -346,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // フッター上部の区切り線を表示
-                  Container(height: 1, color: Color(0xFFE5E5E5)),
+                  Container(height: 1, color: AppColors.secondaryText),
                   SizedBox(height: gap8),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: footerPaddingH),

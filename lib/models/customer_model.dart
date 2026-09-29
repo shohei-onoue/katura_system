@@ -11,6 +11,8 @@ class Customer {
   final List<String> orderHistory;
   final List<String> deliveryAddresses;
   final Map<String, List<String>> facilityReceivers; // 新規追加: 施設ごとの既知の受取人
+  final String? streetViewImageUrl; // 配達場所ストリートビュー画像URL（null可）
+  final String? streetViewImagePath; // Storage上のパス（null可）
 
   Customer({
     required this.id,
@@ -25,6 +27,8 @@ class Customer {
     this.orderHistory = const [],
     this.deliveryAddresses = const [],
     this.facilityReceivers = const {},
+    this.streetViewImageUrl,
+    this.streetViewImagePath,
   });
 
   factory Customer.empty() => Customer(
@@ -48,6 +52,8 @@ class Customer {
     List<String>? orderHistory,
     List<String>? deliveryAddresses,
     Map<String, List<String>>? facilityReceivers,
+    String? streetViewImageUrl,
+    String? streetViewImagePath,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -62,6 +68,8 @@ class Customer {
       orderHistory: orderHistory ?? this.orderHistory,
       deliveryAddresses: deliveryAddresses ?? this.deliveryAddresses,
       facilityReceivers: facilityReceivers ?? this.facilityReceivers,
+      streetViewImageUrl: streetViewImageUrl ?? this.streetViewImageUrl,
+      streetViewImagePath: streetViewImagePath ?? this.streetViewImagePath,
     );
   }
 
@@ -79,6 +87,8 @@ class Customer {
       'orderHistory': orderHistory,
       'deliveryAddresses': deliveryAddresses,
       'facilityReceivers': facilityReceivers,
+      'streetViewImageUrl': streetViewImageUrl,
+      'streetViewImagePath': streetViewImagePath,
     };
   }
 
@@ -99,6 +109,8 @@ class Customer {
             (k, v) => MapEntry(k, List<String>.from(v)),
           ) ??
           {},
+      streetViewImageUrl: map['streetViewImageUrl'] as String?,
+      streetViewImagePath: map['streetViewImagePath'] as String?,
     );
   }
 }

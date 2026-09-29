@@ -1,0 +1,515 @@
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart';
+import 'package:katura_system/utils/app_colors.dart';
+import '../models/order_model.dart';
+import '../services/delivery_schedule_service.dart';
+import '../services/reservation_service.dart';
+import 'k_button.dart';
+import 'k_numeric_input_dialog.dart';
+import 'k_responsive.dart';
+
+/// 配達予定ダイアログ。縦の時間軸（10:00〜20:00）に、その日の配達予定カードを号車ごとの列に並べ、
+/// 空いている時間帯をタップして配達時間を決める。決定すると日時（DateTime）を返す。
+/// カードの下端が配達時間のライン。同じ号車のカード間は点線の矢印でつなぎ、移動時間を表示する。
+/// 将来「配達ルート最適化機能」の内容をここに表示する予定。
+/// 配達予定ダイアログで決めた「号車・日時」。
+class DeliverySlot {
+  final DateTime dateTime;
+  final int vehicleNumber; // 1始まり
+  const DeliverySlot(this.dateTime, this.vehicleNumber);
+}
+
+class DeliveryScheduleDialog extends StatefulWidget {
+  final DateTime date;
+  final List<OrderModel> orders; // 自店舗の注文（日付での絞り込みはこちらで行う）
+  final LatLng? branchPos; // 1件目の出発地点（店舗の位置）
+  final int vehicleCount; // 店舗の配送車両数（号車の列数の下限。0以下は1列）
+  final DeliveryScheduleService service;
+  final List<ReservationSlot> reservations; // 他の注文入力で確保中の予約枠
+  final int initialVehicle; // すでに決まっている号車（0＝なし）
+  final TimeOfDay? initialTime; // すでに決まっている時間（あれば予約枠として最初から表示する）
+
+  const DeliveryScheduleDialog({
+    super.key,
+    required this.date,
+    required this.orders,
+    required this.branchPos,
+    required this.service,
+    this.vehicleCount = 1,
+    this.reservations = const [],
+    this.initialVehicle = 0,
+    this.initialTime,
+  });
+
+  @override
+  State<DeliveryScheduleDialog> createState() => _DeliveryScheduleDialogState();
+}
+
+class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
+  static const int _startHour = 10;
+  static const int _endHour = 20;
+  static const int _cardMinutes = 40; // カードの見た目上の長さ（分）
+
+  late final List<OrderModel> _dayOrders;
+  final Map<String, int> _lanes = {}; // 注文ID → 号車の列番号（0始まり）
+  int _laneCount = 1;
+  Map<String, DeliveryStop> _stops = {}; // 注文ID → 移動情報
+  ({int lane, int minutes})? _pending; // 今回決めた予約枠（列番号は0始まり）
+  String? _expandedId; // 広げているカード（1枚だけ）
+
+  @override
+  void initState() {
+    super.initState();
+    _dayOrders = widget.orders
+        .where((o) =>
+            o.deliveryDate.year == widget.date.year &&
+            o.deliveryDate.month == widget.date.month &&
+            o.deliveryDate.day == widget.date.day &&
+            DeliveryScheduleService.minutesOf(o.deliveryTime) != null)
+        .toList()
+      ..sort((a, b) => DeliveryScheduleService.minutesOf(a.deliveryTime)!.compareTo(DeliveryScheduleService.minutesOf(b.deliveryTime)!));
+
+    // 号車が決まっている注文はその列へ。未割り当ての注文は、時間が重ならない最初の列へ
+    // （カードは [m-40分, m] の範囲を使う）
+    final laneEnds = <int>[];
+    int maxAssigned = 0;
+    for (final o in _dayOrders) {
+      if (o.vehicleNumber > 0) {
+        _lanes[o.id] = o.vehicleNumber - 1;
+        maxAssigned = math.max(maxAssigned, o.vehicleNumber);
+        continue;
+      }
+      final m = DeliveryScheduleService.minutesOf(o.deliveryTime)!;
+      int lane = laneEnds.indexWhere((end) => end <= m - _cardMinutes);
+      if (lane == -1) {
+        laneEnds.add(m);
+        lane = laneEnds.length - 1;
+      } else {
+        laneEnds[lane] = m;
+      }
+      _lanes[o.id] = lane;
+    }
+    for (final r in widget.reservations) {
+      maxAssigned = math.max(maxAssigned, r.vehicleNumber);
+    }
+    _laneCount = math.max(math.max(math.max(laneEnds.length, maxAssigned), widget.vehicleCount), 1);
+    if (widget.initialVehicle > _laneCount) _laneCount = widget.initialVehicle;
+
+    final t = widget.initialTime;
+    if (t != null && widget.initialVehicle > 0) {
+      final m = t.hour * 60 + t.minute;
+      if (m >= _startHour * 60 && m <= _endHour * 60) _pending = (lane: widget.initialVehicle - 1, minutes: m);
+    }
+    _loadStops();
+  }
+
+  /// 号車ごとに、1件目は店舗から・2件目以降は前の配達先からの移動時間を取得する。
+  Future<void> _loadStops() async {
+    try {
+      final result = <String, DeliveryStop>{};
+      for (int lane = 0; lane < _laneCount; lane++) {
+        final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
+        if (group.isEmpty) continue;
+        final stops = await widget.service.buildStops(group, widget.branchPos);
+        for (final s in stops) {
+          result[s.order.id] = s;
+        }
+      }
+      if (!mounted) return;
+      setState(() => _stops = result);
+    } catch (e) {
+      debugPrint('delivery stops error: $e');
+    }
+  }
+
+  Color _branchColor(String branch) {
+    switch (branch) {
+      case '名古屋店':
+        return Colors.green;
+      case '岐阜店':
+        return Colors.purple;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  /// 住所から市区町村のみを取り出す（都道府県は除く。取れなければ空文字）
+  String _cityOf(String address) {
+    final rest = address.replaceFirst(RegExp(r'^(北海道|[^市区町村\d]{2,3}?[都府県])'), '');
+    final m = RegExp(r'^[^\d\s]+?[市区町村]').firstMatch(rest);
+    return m?.group(0) ?? '';
+  }
+
+  /// 号車の表示（全角数字。例: １号車）
+  String _vehicleLabel(int n) {
+    final zen = n.toString().split('').map((c) => String.fromCharCode(c.codeUnitAt(0) - 0x30 + 0xFF10)).join();
+    return '$zen号車';
+  }
+
+  String _hm(int minutes) {
+    final h = (minutes ~/ 60) % 24;
+    return '${h.toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
+  }
+
+  /// 同じ号車の前のカードの下端から次のカードの上端まで、点線の矢印と車アイコン・移動時間を描く。
+  List<Widget> _connector(BuildContext context, OrderModel prev, OrderModel next, double colX, double colW, double Function(int) yOf, double cardH) {
+    final pm = DeliveryScheduleService.minutesOf(prev.deliveryTime)!;
+    final nm = DeliveryScheduleService.minutesOf(next.deliveryTime)!;
+    final double y1 = yOf(pm); // 前のカードの下端
+    final double y2 = yOf(nm) - cardH; // 次のカードの上端
+    if (y2 - y1 < rs(context, 16)) return const []; // すき間が狭いときは描かない
+    final double cx = colX + colW / 2;
+    final double mid = (y1 + y2) / 2;
+    final travel = _stops[next.id]?.travelSeconds;
+    return [
+      Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _DashedArrowPainter(cx, y1, y2)))),
+      // 矢印の縦方向中央に、車アイコンとナビの移動時間（矢印の真ん中に重ねる）
+      Positioned(
+        left: cx - colW / 2,
+        width: colW,
+        top: mid - rs(context, 12),
+        height: rs(context, 24),
+        child: IgnorePointer(
+          child: Center(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 6)),
+              decoration: BoxDecoration(color: AppColors.popupBackground, borderRadius: BorderRadius.circular(rs(context, 12))),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.directions_car, size: rs(context, 20), color: AppColors.primary),
+                  SizedBox(width: rs(context, 4)),
+                  Text(travel == null ? '移動--分' : '移動${(travel / 60).ceil()}分',
+                      style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
+  /// 号車の見出しをタップ → 画面中央の時間入力（HHMM）→ その号車の時間軸に予約枠を置く。
+  Future<void> _pickTime(int lane) async {
+    final current = _pending?.lane == lane ? _pending!.minutes : null;
+    final initial = current == null ? '' : _hm(current).replaceAll(':', '');
+    String? entered;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => KNumericInputDialog(
+        title: '${_vehicleLabel(lane + 1)}　配達時間の入力（$_startHour:00〜$_endHour:00）',
+        initialValue: initial,
+        emptyHint: '例 1030',
+        maxLength: 4,
+        overwrite: true,
+        themeColor: AppColors.primary,
+        onConfirmed: (v) => entered = v,
+      ),
+    );
+    if (entered == null || !mounted) return;
+    final digits = entered!.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
+    final h = int.parse(digits.substring(0, 2));
+    final m = int.parse(digits.substring(2, 4));
+    final minutes = h * 60 + m;
+    if (m > 59 || minutes < _startHour * 60 || minutes > _endHour * 60) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('$_startHour:00〜$_endHour:00の時間を入力してください'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
+        ),
+      );
+      return;
+    }
+    setState(() => _pending = (lane: lane, minutes: minutes));
+  }
+
+  /// 予約枠カード（背景は heatmapGreen）。
+  Widget _reservationCard(BuildContext context, String time) {
+    final style = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primaryText);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 6)),
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(color: AppColors.heatmapGreen, borderRadius: BorderRadius.circular(rs(context, 8))),
+      child: Row(
+        children: [
+          Text(time, style: style),
+          SizedBox(width: rs(context, 12)),
+          Text('予約枠', style: style),
+        ],
+      ),
+    );
+  }
+
+  /// 予定カード。閉じているときは「配達時間 市区町村」だけ。タップで顧客名・住所・注文内容を広げる。
+  Widget _buildCard(BuildContext context, OrderModel o, double cardH) {
+    final open = _expandedId == o.id;
+    final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white);
+    final small = TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500, color: Colors.white);
+    final label = TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: Colors.white70);
+
+    Widget row(String title, String body) => Padding(
+          padding: EdgeInsets.only(top: rs(context, 6)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [Text(title, style: label), Text(body.isEmpty ? '－' : body, style: small)],
+          ),
+        );
+
+    final items = o.items.map((it) {
+      final m = it;
+      final special = m['specialOrder']?.toString() ?? '';
+      return '${m['name']} x${m['quantity']}${special.isEmpty ? '' : ' ($special)'}';
+    }).join('\n');
+
+    return GestureDetector(
+      onTap: () => setState(() => _expandedId = open ? null : o.id), // 1枚だけ広げる（他は閉じる）
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          height: open ? null : cardH,
+          clipBehavior: Clip.hardEdge,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 6)),
+          decoration: BoxDecoration(
+            color: _branchColor(o.branchName),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+            boxShadow: open ? const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))] : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Text(o.deliveryTime, style: white),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(child: Text(_cityOf(o.address), maxLines: 1, overflow: TextOverflow.ellipsis, style: white)),
+                  Icon(open ? Icons.expand_less : Icons.expand_more, size: rs(context, 18), color: Colors.white),
+                ],
+              ),
+              if (open) ...[
+                row('顧客名', o.customerName),
+                row('住所', o.address),
+                row('注文内容', items),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screen = MediaQuery.of(context).size;
+    final double dialogWidth = screen.width < 900 ? screen.width * 0.95 : 850;
+    final double hourH = rs(context, 80);
+    final double labelW = rs(context, 64);
+    final double cardH = _cardMinutes / 60 * hourH;
+    final double baseTop = rs(context, 8) + cardH; // 10:00のライン（その上にカードが乗る余白を確保）
+    final double totalH = hourH * (_endHour - _startHour) + baseTop;
+    double yOf(int minutes) => baseTop + (minutes - _startHour * 60) / 60 * hourH;
+    final double colW = rs(context, 176); // 号車1列の幅（カードは配達時間と市区町村だけなので細くする）
+    final double stackH = totalH + rs(context, 16);
+    final double colGap = rs(context, 12);
+    double colX(int lane) => labelW + rs(context, 24) + lane * (colW + colGap);
+
+    return Dialog(
+      backgroundColor: AppColors.popupBackground,
+      insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
+      child: Container(
+        width: dialogWidth,
+        height: screen.height * 0.9,
+        padding: EdgeInsets.all(rav(context, 24)),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Text(
+                  '配達予定  ${DateFormat('M/d(E)', 'ja_JP').format(widget.date)}　${_dayOrders.length}件',
+                  style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+              ],
+            ),
+            SizedBox(height: rs(context, 8)),
+            SizedBox(height: rs(context, 12)),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.only(left: rs(context, 33.67), top: rs(context, 13.02)),
+                  child: SizedBox(
+                    height: stackH,
+                    child: Stack(
+                      children: [
+                        // 時間の横線（ラベルの行の中央に線）
+                        IgnorePointer(
+                          child: Stack(
+                            children: [
+                              for (int h = _startHour; h <= _endHour; h++)
+                                Positioned(
+                                  top: baseTop + (h - _startHour) * hourH,
+                                  left: 0,
+                                  right: 0,
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: labelW,
+                                        child: Text('$h:00', style: TextStyle(fontSize: rf(context, 13), color: AppColors.secondaryText)),
+                                      ),
+                                      Expanded(child: Divider(height: 1, color: Colors.grey.shade300)),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // 号車の見出し
+                        for (int lane = 0; lane < _laneCount; lane++)
+                          Positioned(
+                            top: rs(context, 20),
+                            left: colX(lane),
+                            width: colW,
+                            height: rs(context, 21),
+                            child: GestureDetector(
+                              onTap: () => _pickTime(lane),
+                              child: Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.secondaryText,
+                                  borderRadius: BorderRadius.circular(rs(context, 8)),
+                                ),
+                                child: Text(_vehicleLabel(lane + 1),
+                                    style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white)),
+                              ),
+                            ),
+                          ),
+                        // 号車ごとのカード間の点線矢印（カードより下のレイヤー）
+                        for (int lane = 0; lane < _laneCount; lane++)
+                          ...() {
+                            final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
+                            return [
+                              for (int i = 0; i + 1 < group.length; i++)
+                                ..._connector(context, group[i], group[i + 1], colX(lane), colW, yOf, cardH),
+                            ];
+                          }(),
+                        // 予定カード（下端＝配達時間のライン。タップで上に広げて詳細を表示。広げたカードは手前）
+                        // 予約枠（他の注文入力中のもの＋今回決めたもの）
+                        for (final r in widget.reservations)
+                          if (DeliveryScheduleService.minutesOf(r.time) != null)
+                            Positioned(
+                              bottom: stackH - yOf(DeliveryScheduleService.minutesOf(r.time)!),
+                              left: colX(r.vehicleNumber - 1),
+                              width: colW,
+                              height: cardH,
+                              child: _reservationCard(context, r.time),
+                            ),
+                        if (_pending != null)
+                          Positioned(
+                            bottom: stackH - yOf(_pending!.minutes),
+                            left: colX(_pending!.lane),
+                            width: colW,
+                            height: cardH,
+                            child: _reservationCard(context, _hm(_pending!.minutes)),
+                          ),
+                        for (final o in [..._dayOrders.where((o) => o.id != _expandedId), ..._dayOrders.where((o) => o.id == _expandedId)])
+                          Positioned(
+                            bottom: stackH - yOf(DeliveryScheduleService.minutesOf(o.deliveryTime)!),
+                            left: colX(_lanes[o.id]!),
+                            width: colW,
+                            child: _buildCard(context, o, cardH),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: rs(context, 16)),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: rs(context, 54),
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey, width: rs(context, 2)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('戻る', style: TextStyle(fontSize: rf(context, 18), color: Colors.blueGrey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ),
+                SizedBox(width: rs(context, 24)),
+                Expanded(
+                  child: SizedBox(
+                    height: rs(context, 54),
+                    child: KButton(
+                      label: _pending == null ? '号車の見出しをタップして時間を入力' : '${_vehicleLabel(_pending!.lane + 1)} ${_hm(_pending!.minutes)} で決定',
+                      onPressed: _pending == null
+                          ? null
+                          : () {
+                              final p = _pending!;
+                              Navigator.pop(
+                                context,
+                                DeliverySlot(
+                                  DateTime(widget.date.year, widget.date.month, widget.date.day, p.minutes ~/ 60, p.minutes % 60),
+                                  p.lane + 1,
+                                ),
+                              );
+                            },
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 縦の点線＋先端の三角矢印（Figmaの「Line 1」＝太さ3・破線5.58/5.58・矢じり長さ15×幅17.32）。
+class _DashedArrowPainter extends CustomPainter {
+  final double x;
+  final double y1; // 始点（上）
+  final double y2; // 矢印の先端（下）
+  _DashedArrowPainter(this.x, this.y1, this.y2);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const dash = 5.5833;
+    const period = 11.1667;
+    const arrowLen = 15.0;
+    const arrowHalf = 8.66025;
+    const thick = 3.0;
+    final len = y2 - y1;
+    final paint = Paint()..color = Colors.black;
+    // 先頭は半分の長さの点線から始まる
+    for (double s = -dash / 2; s < len; s += period) {
+      final a = math.max(s, 0.0);
+      final b = math.min(s + dash, len);
+      if (b > a) canvas.drawRect(Rect.fromLTRB(x - thick / 2, y1 + a, x + thick / 2, y1 + b), paint);
+    }
+    final tri = Path()
+      ..moveTo(x - arrowHalf, y2 - arrowLen)
+      ..lineTo(x + arrowHalf, y2 - arrowLen)
+      ..lineTo(x, y2)
+      ..close();
+    canvas.drawPath(tri, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedArrowPainter old) => old.x != x || old.y1 != y1 || old.y2 != y2;
+}

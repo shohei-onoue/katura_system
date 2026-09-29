@@ -15,6 +15,8 @@ class PhoneConfirmStep extends StatelessWidget {
   final TextEditingController phonePrefixController;
   final VoidCallback onNext;
   final Function(Customer) onSelectCustomer;
+  /// 顧客ID → 前回の配達日（注文データから算出）
+  final Map<String, DateTime> lastOrderDates;
 
   const PhoneConfirmStep({
     super.key,
@@ -27,6 +29,7 @@ class PhoneConfirmStep extends StatelessWidget {
     required this.phonePrefixController,
     required this.onNext,
     required this.onSelectCustomer,
+    this.lastOrderDates = const {},
   });
 
   @override
@@ -127,8 +130,12 @@ class PhoneConfirmStep extends StatelessWidget {
       final d = DateTime(int.parse(m.group(1)!), int.parse(m.group(2)!), int.parse(m.group(3)!));
       if (latest == null || d.isAfter(latest)) latest = d;
     }
+    // 注文データから求めた前回配達日を優先（orderHistory は書き込まれていないため）
+    final fromOrders = lastOrderDates[customer.id];
+    if (fromOrders != null && (latest == null || fromOrders.isAfter(latest))) latest = fromOrders;
     if (latest == null) return const SizedBox.shrink();
-    final int days = DateTime.now().difference(latest).inDays;
+    final now = DateTime.now();
+    final int days = DateTime(now.year, now.month, now.day).difference(DateTime(latest.year, latest.month, latest.day)).inDays;
     final Color c = days >= 365
         ? Colors.grey
         : days >= 180
@@ -183,7 +190,10 @@ class PhoneConfirmStep extends StatelessWidget {
                 ),
                 child: ListTile(
                   title: Text(customer.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
-                  subtitle: Text('${customer.companyName} / ${customer.phoneNumber}', style: TextStyle(fontSize: rf(context, 12))),
+                  subtitle: Text(
+                    '${customer.companyName} / ${customer.phoneNumber}',
+                    style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentText),
+                  ),
                   trailing: _buildLastOrderBadge(context, customer),
                   onTap: () => onSelectCustomer(customer),
                 ),

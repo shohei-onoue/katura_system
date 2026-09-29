@@ -58,7 +58,6 @@ class OrderFormSidebar extends StatefulWidget {
   final String preConfirmationSmsTime;
   final DateTime? scheduledSmsDateTime;
   final String phoneDisplay;
-  final String paymentMethod;
   final String preConfirmationRecipient;
   final VoidCallback? onShowInvoice;
 
@@ -122,7 +121,6 @@ class OrderFormSidebar extends StatefulWidget {
     this.preConfirmationSmsTime = '',
     this.scheduledSmsDateTime,
     this.phoneDisplay = '',
-    this.paymentMethod = '',
     this.preConfirmationRecipient = '',
     this.onShowInvoice,
     required this.onPhoneInput,
@@ -358,14 +356,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 ),
                 SizedBox(height: rs(context, 8)),
                 _buildDecisionCard(
-                  title: '支払方法・金額',
+                  title: '金額',
                   icon: Icons.payments_outlined,
                   color: AppColors.accentOrange,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFieldLike(widget.paymentMethod.isEmpty ? '未選択' : widget.paymentMethod),
-                      SizedBox(height: rs(context, 8)),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

@@ -1,10 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../widgets/delivery_schedule_dialog.dart';
+import '../services/delivery_schedule_service.dart';
+import '../services/reservation_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/customer_model.dart';
 import '../models/menu_model.dart';
 import '../models/order_model.dart';
 import '../services/customer_service.dart';
+import '../services/street_view_image_service.dart';
 import '../services/menu_service.dart';
 import '../services/staff_service.dart';
 import '../services/order_service.dart';
@@ -28,10 +32,11 @@ import 'package:katura_system/utils/app_colors.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final OrderModel? initialOrder;
+  final String initialSection; // 編集開始位置：配達先 / 日程 / 注文内容
   final VoidCallback? onSaveSuccess;
   final VoidCallback? onCancel;
 
-  const OrderFormScreen({super.key, this.initialOrder, this.onSaveSuccess, this.onCancel});
+  const OrderFormScreen({super.key, this.initialOrder, this.initialSection = '', this.onSaveSuccess, this.onCancel});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -69,15 +74,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   DateTime _selectedTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day, 11, 0);
   
   final int _timePickerInterval = 15;
-  final TimeOfDay _timePickerMin = const TimeOfDay(hour: 11, minute: 0);
-  final TimeOfDay _timePickerMax = const TimeOfDay(hour: 12, minute: 0);
+  final ReservationService _reservationService = ReservationService();
+  String? _reservationId; // 確保中の予約枠ID（注文確定・中止で削除）
+  int _deliveryVehicleNumber = 0; // 配達する号車（0＝未選択）
+  late final DeliveryScheduleService _scheduleService = DeliveryScheduleService(_customerService.getGoogleMapsService());
+  final TimeOfDay _timePickerMin = const TimeOfDay(hour: 10, minute: 0);
+  final TimeOfDay _timePickerMax = const TimeOfDay(hour: 20, minute: 0);
 
   // ゴミ回収用
   final int _trashTimePickerInterval = 15;
   final TimeOfDay _trashTimePickerMin = const TimeOfDay(hour: 9, minute: 0);
   final TimeOfDay _trashTimePickerMax = const TimeOfDay(hour: 18, minute: 0);
 
-  String _paymentMethod = ''; // 未選択がデフォルト
   String _branchName = '岡崎本店';
   Customer? _currentCustomer;
 
@@ -101,6 +109,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _preConfirmationRecipientController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
+  Map<String, DateTime> _lastOrderDates = {}; // 候補顧客ID → 前回の配達日
   List<OrderModel> _customerOrderHistory = [];
   List<OrderModel> _companyOrderHistory = [];
   OrderModel? _selectedHistoryItem;
@@ -141,7 +150,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String? _estimatedDeliveryDuration;
   static const LatLng _initialCenter = LatLng(34.9563, 137.1685);
   Map<String, LatLng> _branchCoordinates = {};
-  final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '注文内容', '支払・完了'];
+  Map<String, int> _branchVehicleCounts = {}; // 店舗名 → 配送車両数
+  final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '注文内容', '完了'];
 
   bool _isDeliveryDateSelected = true;
   bool _isDeliveryTimeSelected = true;
@@ -170,6 +180,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _trashPickupLocationController.addListener(_scheduleRebuild);
     _preConfirmationRecipientController.addListener(_scheduleRebuild);
     _loadData().then((_) {
+      if (!mounted) return;
       if (widget.initialOrder != null) {
         _populateForm(widget.initialOrder!);
       } else {
@@ -223,6 +234,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _menus = menus; _prefList = prefs; _cityList = cities; _townList = ['（すべて）', ...towns];
         if (branches.isNotEmpty) {
           _branchCoordinates = {for (final b in branches) b.name: LatLng(b.latitude, b.longitude)};
+          _branchVehicleCounts = {for (final b in branches) b.name: b.deliveryVehicleCount};
           if (!_branchCoordinates.containsKey(_branchName)) _branchName = _branchCoordinates.keys.first;
         }
         if (_searchPrefecture.isNotEmpty && !_prefList.contains(_searchPrefecture)) _searchPrefecture = _prefList.isNotEmpty ? _prefList.first : ''; if (_searchCity.isNotEmpty && !_cityList.contains(_searchCity)) _searchCity = _cityList.isNotEmpty ? _cityList.first : ''; _searchTown = '（すべて）';
@@ -294,10 +306,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _selectedFacilityAddress = order.address;
       _selectedDestPos = null;
       _deliveryLocationController.text = order.deliveryLocation;
+      _deliveryVehicleNumber = order.vehicleNumber;
       _deliveryDate = order.deliveryDate; 
       _receptionDate = order.receptionDate; 
       _deliveryType = order.deliveryType; 
-      _paymentMethod = order.paymentMethod; 
       _branchName = order.branchName;
       
       _orderSource = order.orderSource;
@@ -325,13 +337,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryTimeSelected = true;
       _isDeliveryTypeSelected = true;
       // 受注一覧からの編集は「注文内容」ステップから開始し、直後に配達日時ダイヤログを表示する
-      _currentStep = 3;
+      _currentStep = widget.initialSection == '配達先' ? 2 : 3;
       _maxStepReached = _stepLabels.length - 1;
     });
     // 受注一覧からの編集では顧客が未ロードのため、電話番号から引き当てて
     // 配達先履歴カードの表示・保存時の顧客更新（新規顧客の重複作成防止）を有効にする
     _hydrateCustomerForEdit(order);
     // 入力済みの配達日時をダイヤログで確認・修正できるようにする
+    if (widget.initialSection == '配達先' || widget.initialSection == '注文内容') return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _showDeliveryDateDialog(withPreview: order.deliveryType == '配送');
@@ -407,7 +420,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _resetForm() {
+    // 注文中止：予約枠を消す
+    _reservationService.delete(_reservationId);
+    _reservationId = null;
     setState(() {
+      _deliveryVehicleNumber = 0;
       _phoneController.clear();
       _phonePrefixController.clear();
       _isCompletingPhone = false;
@@ -441,7 +458,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryTypeSelected = false;
       _deliveryType = '';
       _orderSource = '';
-      _paymentMethod = '';
       _packagingType = '';
       _preConfirmationMethod = '';
       _preConfirmationPhoneType = '';
@@ -539,7 +555,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     });
 
     final picked = await _showDeliveryDateDialog(withPreview: _deliveryType == '配送');
-    if (picked && mounted) _updateStep(1);
+    // 既存顧客は顧客確認ステップ（1）を飛ばして配達先の確定（2）へ。新規顧客は登録のため1へ。
+    if (picked && mounted) _updateStep(_currentCustomer != null ? 2 : 1);
   }
 
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
@@ -559,21 +576,79 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _deliveryDate.year, _deliveryDate.month, _deliveryDate.day,
       _selectedTime.hour, _selectedTime.minute,
     );
-    final result = await showDialog<DateTime>(
-      context: context,
-      builder: (_) => KDateTimeSelectionDialog(
-        initialDateTime: initial,
-        minTime: _timePickerMin,
-        maxTime: _timePickerMax,
-        interval: _timePickerInterval,
-        previewOrders: preview,
-      ),
-    );
+    DateTime? result;
+    int? pickedVehicle;
+    if (withPreview) {
+      // 配送：カレンダーで日付を選ぶ → 配達予定ダイアログで号車と時間を決める（戻るとカレンダーへ）
+      final scheduleOrders = preview
+          .where((o) => o.branchName == _branchName && o.id != widget.initialOrder?.id)
+          .toList();
+      while (result == null) {
+        final day = await showDialog<DateTime>(
+          context: context,
+          builder: (_) => KDateTimeSelectionDialog(
+            initialDateTime: initial,
+            previewOrders: preview,
+            calendarOnly: true,
+          ),
+        );
+        if (!mounted || day == null) return false;
+        // 他の注文入力で確保中の予約枠（自分の予約枠は除く）
+        final reservations = (await _reservationService.listByDate(_branchName, day)).where((r) => r.id != _reservationId).toList();
+        if (!mounted) return false;
+        final sameDay = DateUtils.isSameDay(day, initial);
+        final slot = await showDialog<DeliverySlot>(
+          context: context,
+          builder: (_) => DeliveryScheduleDialog(
+            date: day,
+            orders: scheduleOrders,
+            reservations: reservations,
+            branchPos: _branchCoordinates[_branchName],
+            vehicleCount: _branchVehicleCounts[_branchName] ?? 1,
+            service: _scheduleService,
+            initialVehicle: sameDay ? _deliveryVehicleNumber : 0,
+            initialTime: sameDay ? TimeOfDay(hour: initial.hour, minute: initial.minute) : null,
+          ),
+        );
+        if (!mounted) return false;
+        if (slot != null) {
+          result = slot.dateTime;
+          pickedVehicle = slot.vehicleNumber;
+        }
+      }
+    } else {
+      result = await showDialog<DateTime>(
+        context: context,
+        builder: (_) => KDateTimeSelectionDialog(
+          initialDateTime: initial,
+          minTime: _timePickerMin,
+          maxTime: _timePickerMax,
+          enforceTimeRange: true,
+          interval: _timePickerInterval,
+        ),
+      );
+    }
     if (!mounted || result == null) return false;
+    final picked = result;
+
+    if (pickedVehicle != null) {
+      // 前の予約枠を消して、今回の号車・日時で予約枠を確保する（注文確定か中止で消える）
+      await _reservationService.delete(_reservationId);
+      final hh = picked.hour.toString().padLeft(2, '0');
+      final mm = picked.minute.toString().padLeft(2, '0');
+      _reservationId = await _reservationService.create(
+        branchName: _branchName,
+        date: picked,
+        time: '$hh:$mm',
+        vehicleNumber: pickedVehicle,
+      );
+      if (!mounted) return false;
+    }
 
     setState(() {
-      _deliveryDate = result;
-      _selectedTime = result;
+      if (pickedVehicle != null) _deliveryVehicleNumber = pickedVehicle;
+      _deliveryDate = picked;
+      _selectedTime = picked;
       _isDeliveryDateSelected = true;
       _isDeliveryTimeSelected = true;
     });
@@ -613,7 +688,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (cleanDigits.length >= 4) {
       _isLoadingNotifier.value = true;
       final candidates = await _customerService.searchByPhoneSuffix(cleanDigits);
+      final lastDates = await _calcLastOrderDates(candidates);
       if (mounted) {
+        _lastOrderDates = lastDates;
         if (candidates.length == 1 && cleanDigits.length >= 10) {
           _selectCustomer(candidates.first);
         } else {
@@ -629,11 +706,41 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       }
       return;
     }
+    if (!mounted) return;
     setState(() {
       _currentCustomer = null;
       _phoneSearchCandidates = [];
       _isLoadingNotifier.value = false;
     });
+  }
+
+  /// 候補顧客ごとに「今日以前で一番新しい配達日」を注文データから求める。
+  Future<Map<String, DateTime>> _calcLastOrderDates(List<Customer> candidates) async {
+    if (candidates.isEmpty) return {};
+    try {
+      final orders = await _orderService.getAllOrders();
+      final today = DateTime.now();
+      final todayOnly = DateTime(today.year, today.month, today.day);
+      String digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+      String norm(String s) => s.replaceAll(RegExp(r'\s+'), '');
+      final result = <String, DateTime>{};
+      for (final c in candidates) {
+        final p = digits(c.phoneNumber);
+        final n = norm(c.name);
+        DateTime? latest;
+        for (final o in orders) {
+          if (digits(o.phoneNumber) != p || norm(o.customerName) != n) continue;
+          final d = DateTime(o.deliveryDate.year, o.deliveryDate.month, o.deliveryDate.day);
+          if (d.isAfter(todayOnly)) continue;
+          if (latest == null || d.isAfter(latest)) latest = d;
+        }
+        if (latest != null) result[c.id] = latest;
+      }
+      return result;
+    } catch (e) {
+      debugPrint('lastOrderDates error: $e');
+      return {};
+    }
   }
 
   void _selectCustomer(Customer customer) async {
@@ -821,7 +928,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
     // 履歴エントリに保存されたストリートビュー画像URL（[IMG:...]）があれば復元する
     final imgMatch = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(fullAddr);
-    _pendingStreetViewImageUrl = imgMatch?.group(1);
+    _pendingStreetViewImageUrl = imgMatch?.group(1) ?? _currentCustomer?.streetViewImageUrl;
 
     final matchingOrder = _customerOrderHistory.followedBy(_companyOrderHistory).firstWhere((o) => o.facilityName == facilityNamePart || fullAddr.contains(o.address), orElse: () => OrderModel.empty());
     LatLng? pos = _parseCoordsFromAddress(fullAddr);
@@ -1044,7 +1151,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (_packagingType.isEmpty) return '梱包方法を選択してください';
     if (_preConfirmationMethod.isEmpty) return '事前連絡方法を選択してください';
     if (_preConfirmationPhoneType.isEmpty) return '事前連絡の連絡先番号を選択してください';
-    if (_paymentMethod.isEmpty) return '支払方法を選択してください';
     return null;
   }
 
@@ -1100,10 +1206,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       preConfirmationSmsTime: _preConfirmationSmsTime,
       scheduledSmsDateTime: _scheduledSmsDateTime ?? _calculateScheduledSmsDateTime(),
       smsSent: false,
-      paymentMethod: _paymentMethod, 
       status: '受注済み',
       branchName: _branchName, 
       remarks: _remarksController.text,
+      vehicleNumber: _deliveryVehicleNumber,
       deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
       latitude: _markers.any((m) => m.markerId.value == 'dest') 
           ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.latitude : null,
@@ -1111,6 +1217,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.longitude : null,
     );
     
+    if (_currentCustomer != null && _currentCustomer!.id.isNotEmpty &&
+        _pendingStreetViewImageUrl != null &&
+        _pendingStreetViewImageUrl != _currentCustomer!.streetViewImageUrl) {
+      try {
+        final saved = await StreetViewImageService().saveFromUrl(_currentCustomer!, _pendingStreetViewImageUrl!);
+        if (saved != null) _currentCustomer = saved;
+      } catch (e) { debugPrint('Street View Customer Save Error: $e'); }
+    }
+
     if (_currentCustomer != null) {
       bool customerUpdated = false;
       Customer updatedCustomer = _currentCustomer!;
@@ -1121,11 +1236,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         final double destLng = destMarker?.position.longitude ?? order.longitude ?? 0;
         final idx = updatedCustomer.deliveryAddresses.indexWhere((a) => a.contains(_addressController.text));
         // 今回調整していなければ既存エントリのストリートビュー画像を引き継ぐ
-        String? keepImg = imageUrl;
-        if (keepImg == null && idx != -1) {
+        String? keepImg;
+        if (idx != -1) {
           keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
         }
-        String displayEntry = "${_facilityController.text}: ${_addressController.text} ($destLat, $destLng)";
+        keepImg ??= imageUrl;
+        String displayEntry = "${_facilityController.text}:${_addressController.text} ($destLat, $destLng)";
         if (keepImg != null) displayEntry += " [IMG:$keepImg]";
         final newList = List<String>.from(updatedCustomer.deliveryAddresses);
         if (idx == -1) {
@@ -1169,6 +1285,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
 
     await _orderService.saveOrder(order);
+    // 注文確定：予約枠を消す（この注文が予定カードに切り替わる）
+    await _reservationService.delete(_reservationId);
+    _reservationId = null;
 
     // 事前連絡が「電話」の場合、設定画面で登録した折り返し番号あてにSMSを送信する
     if (_preConfirmationMethod == '電話' && _preConfirmationCallbackPhone.trim().isNotEmpty) {
@@ -1334,7 +1453,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 preConfirmationSmsTime: _preConfirmationSmsTime,
                 scheduledSmsDateTime: _scheduledSmsDateTime,
                 phoneDisplay: _phoneController.text,
-                paymentMethod: _paymentMethod,
                 preConfirmationRecipient: _preConfirmationRecipientController.text,
                 onShowInvoice: _showInvoicePreviewDialog,
                 customerName: _nameController.text,
@@ -1451,7 +1569,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       preConfirmationSmsTime: _preConfirmationSmsTime,
       scheduledSmsDateTime: _scheduledSmsDateTime,
       phoneDisplay: _phoneController.text,
-      paymentMethod: _paymentMethod,
       preConfirmationRecipient: _preConfirmationRecipientController.text,
       onShowInvoice: _showInvoicePreviewDialog,
       customerName: _nameController.text,
@@ -1523,7 +1640,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               _startPostPhoneFlow();
             }
           },
-          onSelectCustomer: _selectCustomer
+          onSelectCustomer: _selectCustomer,
+          lastOrderDates: _lastOrderDates,
       );
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController,
@@ -1667,7 +1785,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       );
       case 4: return FinalizeStep(
           branchName: _branchName,
-          paymentMethod: _paymentMethod,
           preConfirmationRecipientController: _preConfirmationRecipientController,
           recipientHistory: _currentCustomer?.facilityReceivers[_facilityController.text] ?? const [],
           packagingType: _packagingType,
@@ -1693,7 +1810,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           trashPickupLocationDetail: _trashPickupLocationController.text,
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
-          onPaymentChanged: (v) => setState(() => _paymentMethod = v),
           onPreConfirmationMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
           onPreConfirmationPhoneTypeChanged: (v) => setState(() => _preConfirmationPhoneType = v),
           onPreConfirmationPhoneNumberChanged: (v) => setState(() {
@@ -1727,7 +1843,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         recipientHonorific: hasFacility ? '御中' : '様',
         totalPrice: _totalPrice,
         items: _confirmedItems,
-        paymentMethod: _paymentMethod,
         issueDate: DateTime.now(),
       ),
     );
@@ -1787,7 +1902,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                               style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentOrange)),
                         ],
                       ),
-                      Text('支払方法：${_paymentMethod.isEmpty ? '未選択' : _paymentMethod}', style: TextStyle(fontSize: rf(context, 13))),
                     ],
                   ),
                 ),
@@ -1831,6 +1945,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   void dispose() {
+    _reservationService.delete(_reservationId); // 保存されずに閉じられたら予約枠を消す
     _mapController = null;
     _phoneController.dispose();
     _nameController.dispose();

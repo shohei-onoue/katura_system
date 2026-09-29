@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_choice_group.dart';
-import '../../../../widgets/k_tile_selector.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_shared_quantity_input.dart';
@@ -13,7 +12,6 @@ import 'package:katura_system/utils/app_colors.dart';
 
 class FinalizeStep extends StatelessWidget {
   final String branchName;
-  final String paymentMethod;
   final String packagingType;
   final int packagingSmallQty;
   final TextEditingController packagingOtherController;
@@ -41,7 +39,6 @@ class FinalizeStep extends StatelessWidget {
 
   final Function(String) onPackagingTypeChanged;
   final Function(int) onPackagingSmallQtyChanged;
-  final Function(String) onPaymentChanged;
   final Function(String) onPreConfirmationMethodChanged;
   final Function(String) onPreConfirmationPhoneTypeChanged;
   final Function(String) onPreConfirmationPhoneNumberChanged;
@@ -55,7 +52,6 @@ class FinalizeStep extends StatelessWidget {
   const FinalizeStep({
     super.key,
     required this.branchName,
-    required this.paymentMethod,
     required this.packagingType,
     required this.packagingSmallQty,
     required this.packagingOtherController,
@@ -81,7 +77,6 @@ class FinalizeStep extends StatelessWidget {
     this.recipientHistory = const [],
     required this.onPackagingTypeChanged,
     required this.onPackagingSmallQtyChanged,
-    required this.onPaymentChanged,
     required this.onPreConfirmationMethodChanged,
     required this.onPreConfirmationPhoneTypeChanged,
     required this.onPreConfirmationPhoneNumberChanged,
@@ -96,7 +91,7 @@ class FinalizeStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return OrderFormCard(
-      title: '梱包・支払・確認設定',
+      title: '梱包・確認設定',
       icon: Icons.check_circle,
       trailing: PhoneReceivedBadge(phoneNumber: phoneDisplay),
       child: Column(
@@ -116,22 +111,13 @@ class FinalizeStep extends StatelessWidget {
           Divider(height: rs(context, 1)),
           SizedBox(height: rs(context, 12)),
 
-          // 4. 支払
+          // 4. 領収書
           _buildFormRow(
             context: context,
-            label: '支払方法',
-            buttons: KTileSelector(
-              label: '',
-              selectedValue: paymentMethod,
-              items: [
-                KTileItem(label: '現金', value: '現金'),
-                KTileItem(label: 'カード', value: 'カード')
-              ],
-              onSelected: onPaymentChanged
-            ),
+            label: '領収書',
+            buttons: const SizedBox.shrink(),
             details: LayoutBuilder(
               builder: (context, c) {
-                // 支払方法ボタン（KTileSelector: 3列・childAspectRatio 2.5）と同寸
                 final tileW = (c.maxWidth - rs(context, 16)) / 3;
                 final tileH = tileW / 2.5;
                 return Row(

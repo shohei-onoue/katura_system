@@ -7,7 +7,7 @@ import 'order_list/widgets/order_list_card.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class OrderListScreen extends StatefulWidget {
-  final Function(OrderModel)? onEditOrder;
+  final Function(OrderModel, String)? onEditOrder;
 
   const OrderListScreen({super.key, this.onEditOrder});
 
@@ -38,7 +38,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     setState(() {
       _isLoading = true;
     });
-    final list = await _orderService.getAllOrders();
+    final list = await _orderService.getAllOrders(forceRefresh: true);
     if (!mounted) return;
     setState(() {
       _allOrders = list.where((order) {
@@ -55,8 +55,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: AppColors.popupBackground,
-          title: const Text('受注のキャンセル'),
-          content: Text('${order.customerName} 様の受注をキャンセルしますか？'),
+          title: const Text('予約キャンセルの確認'),
+          content: Text('${order.customerName} 様の予約をキャンセルし、登録内容を削除します。元に戻せません。よろしいですか？'),
           actions: [
             TextButton(
               onPressed: () {
@@ -77,7 +77,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     );
 
     if (confirmed == true) {
-      await _orderService.updateOrderStatus(order.id, 'キャンセル済み');
+      await _orderService.deleteOrder(order.id);
       _loadOrders();
     }
   }
@@ -244,8 +244,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
       itemBuilder: (context, index) {
         return OrderListCard(
           order: orders[index],
-          onEdit: (order) {
-            widget.onEditOrder?.call(order);
+          onEdit: (order, section) {
+            widget.onEditOrder?.call(order, section);
           },
           onCancel: (order) {
             _cancelOrder(order);

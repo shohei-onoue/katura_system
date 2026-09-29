@@ -45,8 +45,14 @@ class OrderService {
         return results.map((row) => OrderModel.fromMap(jsonDecode(row['data'] as String))).toList();
       }
     }
-    final snapshot = await _orderCollection.get();
-    final list = snapshot.docs.map((doc) => OrderModel.fromMap(doc.data() as Map<String, dynamic>)).toList();
+    final List<OrderModel> list;
+    try {
+      final snapshot = await _orderCollection.get();
+      list = snapshot.docs.map((doc) => OrderModel.fromMap(doc.data() as Map<String, dynamic>)).toList();
+    } catch (_) {
+      final results = _localDb!.select('SELECT data FROM orders ORDER BY deliveryDate DESC');
+      return results.map((row) => OrderModel.fromMap(jsonDecode(row['data'] as String))).toList();
+    }
     
     _localDb!.execute('BEGIN TRANSACTION');
     final batch = _localDb!.prepare('INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)');

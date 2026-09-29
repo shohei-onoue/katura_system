@@ -4,13 +4,13 @@ import 'package:intl/intl.dart';
 import '../models/order_model.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
-import 'k_numeric_dial_pad.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class KDateTimeSelectionDialog extends StatefulWidget {
   final DateTime initialDateTime;
   final TimeOfDay minTime;
   final TimeOfDay maxTime;
+  final bool enforceTimeRange; // trueなら minTime〜maxTime の範囲外は確定できない
   final int interval;
   final String title;
   final Color themeColor;
@@ -22,17 +22,23 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   /// 空のときは何も表示しない。
   final List<OrderModel> previewOrders;
 
+  /// trueのときはカレンダーだけを表示し、日付をタップするとその日付(00:00)を返して閉じる。
+  /// 時間は呼び出し側（配達予定ダイアログ）で決める。
+  final bool calendarOnly;
+
   const KDateTimeSelectionDialog({
     super.key,
     required this.initialDateTime,
     this.minTime = const TimeOfDay(hour: 0, minute: 0),
     this.maxTime = const TimeOfDay(hour: 23, minute: 59),
+    this.enforceTimeRange = false,
     this.interval = 15,
-    this.title = '配達日時の設定',
+    this.title = '配達日時',
     this.themeColor = AppColors.primary,
     this.highlightDate,
     this.highlightLabel = '配達日',
     this.previewOrders = const [],
+    this.calendarOnly = false,
   });
 
   @override
@@ -41,11 +47,13 @@ class KDateTimeSelectionDialog extends StatefulWidget {
 
 class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   late DateTime _tempDate;
+  bool _calendarOpen = false;
   late String _timeBuffer; // 4桁の数字保持用 (例: "1430")
 
   @override
   void initState() {
     super.initState();
+    _calendarOpen = widget.calendarOnly;
     _tempDate = DateTime(
       widget.initialDateTime.year,
       widget.initialDateTime.month,
@@ -56,29 +64,6 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                   widget.initialDateTime.minute.toString().padLeft(2, '0');
   }
 
-  void _onInput(String digit) {
-    setState(() {
-      _timeBuffer = (_timeBuffer + digit);
-      if (_timeBuffer.length > 4) {
-        _timeBuffer = _timeBuffer.substring(_timeBuffer.length - 4);
-      }
-    });
-  }
-
-  void _onBackspace() {
-    setState(() {
-      if (_timeBuffer.isNotEmpty) {
-        _timeBuffer = '0${_timeBuffer.substring(0, _timeBuffer.length - 1)}';
-      }
-    });
-  }
-
-  void _onClear() {
-    setState(() {
-      _timeBuffer = "0000";
-    });
-  }
-
   String get _displayTime {
     return "${_timeBuffer.substring(0, 2)}:${_timeBuffer.substring(2, 4)}";
   }
@@ -86,7 +71,10 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   bool _isValidTime() {
     final hour = int.parse(_timeBuffer.substring(0, 2));
     final minute = int.parse(_timeBuffer.substring(2, 4));
-    return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+    if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return false;
+    if (!widget.enforceTimeRange) return true;
+    final t = hour * 60 + minute;
+    return t >= widget.minTime.hour * 60 + widget.minTime.minute && t <= widget.maxTime.hour * 60 + widget.maxTime.minute;
   }
 
   /// 住所文字列から市区町村部分を抜き出す（取れなければ施設名で代替）。
@@ -98,14 +86,13 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
 
   /// カレンダー下部：選択日の受注を「市区町村＋顧客名＋時間」で簡易表示する。
   Widget _buildOrderPreview(BuildContext context) {
-    if (widget.previewOrders.isEmpty) return const SizedBox.shrink();
     final sameDay = widget.previewOrders
         .where((o) => isSameDay(o.deliveryDate, _tempDate))
         .toList()
       ..sort((a, b) => a.deliveryTime.compareTo(b.deliveryTime));
 
     return Padding(
-      padding: EdgeInsets.only(top: rs(context, 10)),
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -119,7 +106,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
             Text('受注なし', style: TextStyle(fontSize: rf(context, 12), color: Colors.grey))
           else
             ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: rs(context, 160)),
+              constraints: BoxConstraints(maxHeight: rs(context, 400)),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: sameDay.length,
@@ -177,8 +164,8 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
             Row(
               children: [
                 Text(widget.title, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.themeColor)),
-                const Spacer(),
-                Container(
+                if (!widget.calendarOnly) SizedBox(width: rs(context, 16)),
+                if (!widget.calendarOnly) Container(
                   padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                   decoration: BoxDecoration(
                     color: isValid ? widget.themeColor.withValues(alpha: 0.08) : Colors.red.shade50,
@@ -188,12 +175,22 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.event, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
-                      SizedBox(width: rs(context, 8)),
-                      Text(
-                        "$formattedDate  ",
-                        style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? AppColors.primaryText : Colors.red),
+                      InkWell(
+                        onTap: () => setState(() => _calendarOpen = !_calendarOpen),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.event, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
+                            SizedBox(width: rs(context, 8)),
+                            Text(
+                              formattedDate,
+                              style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isValid ? AppColors.primaryText : Colors.red),
+                            ),
+                            Icon(_calendarOpen ? Icons.expand_less : Icons.expand_more, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
+                          ],
+                        ),
                       ),
+                      SizedBox(width: rs(context, 12)),
                       Icon(Icons.access_time, size: rs(context, 18), color: isValid ? widget.themeColor : Colors.red),
                       SizedBox(width: rs(context, 8)),
                       Text(
@@ -203,23 +200,28 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                     ],
                   ),
                 ),
-                SizedBox(width: rs(context, 8)),
+                const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
             SizedBox(height: rs(context, 24)),
             
             Flexible(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 左側: カレンダーエリア
-                  Expanded(
-                    flex: 55,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // カレンダー: 日付タップでメニュー状に展開
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: _calendarOpen
+                          ? Padding(
+                              padding: EdgeInsets.only(bottom: rs(context, 16)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                       Container(
                       padding: EdgeInsets.all(rs(context, 12)),
                       decoration: BoxDecoration(
@@ -252,6 +254,9 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) {
                           setState(() => _tempDate = selectedDay);
+                          if (widget.calendarOnly) {
+                            Navigator.pop(context, DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
+                          }
                         },
                         rowHeight: rs(context, 50),
                         calendarBuilders: CalendarBuilders(
@@ -290,7 +295,6 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                       ),
                     ),
-                      _buildOrderPreview(context),
                       if (widget.highlightDate != null)
                         Padding(
                           padding: EdgeInsets.only(top: rs(context, 8)),
@@ -310,31 +314,20 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             ],
                           ),
                         ),
-                    ],
-                  )),
-
-                  SizedBox(width: rs(context, 24)),
-                  VerticalDivider(width: rs(context, 1)),
-                  SizedBox(width: rs(context, 24)),
-                  
-                  // 右側: 時間入力エリア (テンキーのみ)
-                  Expanded(
-                    flex: 45,
-                    child: Center(
-                      child: KNumericDialPad(
-                        onInput: _onInput,
-                        onBackspace: _onBackspace,
-                        onClear: _onClear,
-                      ),
+                                ],
+                              ),
+                            )
+                          : const SizedBox(width: double.infinity),
                     ),
-                  ),
-                ],
+                    if (!widget.calendarOnly) _buildOrderPreview(context),
+                  ],
+                ),
               ),
             ),
             
-            SizedBox(height: rs(context, 24)),
+            if (!widget.calendarOnly) SizedBox(height: rs(context, 24)),
             
-            Row(
+            if (!widget.calendarOnly) Row(
               children: [
                 Expanded(
                   child: SizedBox(

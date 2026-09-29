@@ -70,10 +70,11 @@ class BranchService {
     required double longitude,
     String companyName = '',
     String imageUrl = '',
+    int deliveryVehicleCount = 0,
   }) async {
     final doc = _branchCollection.doc();
     final branch = BranchModel(
-        id: doc.id, name: name, companyName: companyName, address: address, phone: phone, latitude: latitude, longitude: longitude, imageUrl: imageUrl);
+        id: doc.id, name: name, companyName: companyName, address: address, phone: phone, latitude: latitude, longitude: longitude, imageUrl: imageUrl, deliveryVehicleCount: deliveryVehicleCount);
     await doc.set(branch.toMap());
     return branch;
   }

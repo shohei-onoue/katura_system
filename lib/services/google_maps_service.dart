@@ -93,25 +93,49 @@ class GoogleMapsService {
 
   /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（表示用文字列。例："25分"）を取得する
   Future<String?> getEstimatedDuration(LatLng origin, LatLng destination) async {
-    final urlStr = 'https://maps.googleapis.com/maps/api/distancematrix/json'
-        '?origins=${origin.latitude},${origin.longitude}'
-        '&destinations=${destination.latitude},${destination.longitude}'
-        '&mode=driving&language=ja&key=$_apiKey';
+    final sec = await getDurationSeconds(origin, destination);
+    if (sec == null) return null;
+    final min = (sec / 60).ceil();
+    return min >= 60 ? '${min ~/ 60}時間${min % 60}分' : '$min分';
+  }
+
+  /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（秒）を取得する。失敗時は null。
+  /// Routes API（Google公式の新しい経路API）を使う。旧Distance Matrix APIは新規プロジェクトでは使えないため。
+  Future<int?> getDurationSeconds(LatLng origin, LatLng destination) async {
+    const urlStr = 'https://routes.googleapis.com/directions/v2:computeRoutes';
     final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final body = json.encode({
+      'origin': {'location': {'latLng': {'latitude': origin.latitude, 'longitude': origin.longitude}}},
+      'destination': {'location': {'latLng': {'latitude': destination.latitude, 'longitude': destination.longitude}}},
+      'travelMode': 'DRIVE',
+      'languageCode': 'ja',
+    });
 
     try {
-      final response = await http.get(url);
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': _apiKey,
+          'X-Goog-FieldMask': 'routes.duration',
+        },
+        body: body,
+      );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 'OK') {
-          final element = data['rows'][0]['elements'][0];
-          if (element['status'] == 'OK') {
-            return element['duration']['text'] as String;
-          }
+        final routes = data['routes'] as List?;
+        if (routes != null && routes.isNotEmpty) {
+          // 例: "1234s"
+          final d = routes.first['duration']?.toString() ?? '';
+          final sec = int.tryParse(d.replaceAll('s', ''));
+          if (sec != null) return sec;
         }
+        debugPrint('Routes API: 経路なし ${response.body}');
+      } else {
+        debugPrint('Routes API HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
-      debugPrint('Distance Matrix Error: $e');
+      debugPrint('Routes API Error: $e');
     }
     return null;
   }

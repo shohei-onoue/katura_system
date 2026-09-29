@@ -269,18 +269,21 @@ class _BranchRowData {
   final TextEditingController companyController;
   final TextEditingController addressController;
   final TextEditingController phoneController;
+  final TextEditingController vehicleController;
 
   _BranchRowData(this.branch, {this.editing = false})
       : nameController = TextEditingController(text: branch.name),
         companyController = TextEditingController(text: branch.companyName),
         addressController = TextEditingController(text: branch.address),
-        phoneController = TextEditingController(text: branch.phone);
+        phoneController = TextEditingController(text: branch.phone),
+        vehicleController = TextEditingController(text: branch.deliveryVehicleCount.toString());
 
   void dispose() {
     nameController.dispose();
     companyController.dispose();
     addressController.dispose();
     phoneController.dispose();
+    vehicleController.dispose();
   }
 }
 
@@ -336,7 +339,8 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     final company = row.companyController.text.trim();
     final address = row.addressController.text.trim();
     final phone = row.phoneController.text.trim();
-    if (name == row.branch.name && company == row.branch.companyName && address == row.branch.address && phone == row.branch.phone && row.branch.id.isNotEmpty) {
+    final vehicleCount = int.tryParse(row.vehicleController.text.trim()) ?? 0;
+    if (name == row.branch.name && company == row.branch.companyName && address == row.branch.address && phone == row.branch.phone && vehicleCount == row.branch.deliveryVehicleCount && row.branch.id.isNotEmpty) {
       return;
     }
     if (row.branch.id.isEmpty) {
@@ -348,11 +352,12 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
         latitude: row.branch.latitude,
         longitude: row.branch.longitude,
         imageUrl: row.branch.imageUrl,
+        deliveryVehicleCount: vehicleCount,
       );
       if (!mounted) return;
       setState(() => row.branch = created);
     } else {
-      final updated = row.branch.copyWith(name: name, companyName: company, address: address, phone: phone);
+      final updated = row.branch.copyWith(name: name, companyName: company, address: address, phone: phone, deliveryVehicleCount: vehicleCount);
       await _branchService.updateBranch(updated);
       if (!mounted) return;
       setState(() => row.branch = updated);
@@ -446,6 +451,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           name: row.nameController.text.trim(),
           address: row.branch.address,
           phone: row.phoneController.text.trim(),
+          deliveryVehicleCount: int.tryParse(row.vehicleController.text.trim()) ?? 0,
           latitude: row.branch.latitude,
           longitude: row.branch.longitude,
           imageUrl: row.branch.imageUrl,
@@ -617,6 +623,43 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     );
   }
 
+  /// 配送車両数入力（数字のみ・電話番号と同じダイヤル入力）
+  Widget _vehicleField(_BranchRowData row) {
+    return SizedBox(
+      height: rs(context, 44),
+      child: InkWell(
+        onTap: () => showDialog(
+          context: context,
+          builder: (_) => KNumericInputDialog(
+            title: '配送車両数の入力',
+            emptyHint: '台数を入力してください',
+            maxLength: 3,
+            onConfirmed: (v) {
+              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+              setState(() => row.vehicleController.text = digits);
+              _autoSave(row);
+            },
+          ),
+        ),
+        child: Container(
+          alignment: Alignment.centerLeft,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+          decoration: BoxDecoration(
+            color: AppColors.mainBackground,
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+          ),
+          child: Text(
+            row.vehicleController.text.isEmpty ? '台数を入力' : row.vehicleController.text,
+            style: (Theme.of(context).textTheme.bodyLarge ?? const TextStyle()).copyWith(
+              color: row.vehicleController.text.isEmpty ? Colors.grey.shade400 : Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 住所入力（受注入力「配達先の確定」の「住所検索」と同じダイヤログ）
   Widget _addressField(_BranchRowData row) {
     return SizedBox(
@@ -735,6 +778,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
         _labeledField('社名', _penField(row, row.companyController)),
         _labeledField('住所', _addressField(row)),
         _labeledField('電話番号', _dialField(row)),
+        _labeledField('配送車両数', _vehicleField(row)),
         SizedBox(height: rs(context, 4)),
         Align(
           alignment: Alignment.centerRight,
