@@ -47,6 +47,41 @@ class CustomerService {
     _localDb!.execute('CREATE INDEX IF NOT EXISTS idx_ord_date ON orders(deliveryDate)');
   }
 
+  // customerId -> 顧客管理の最新名（取得失敗/未登録は null をキャッシュ）
+  static final Map<String, Future<String?>> _nameCache = {};
+
+  /// customers/{id}/name を返す。id空・未登録・失敗時は null（呼び出し側で受注保存名へフォールバック）。
+  Future<String?> getCustomerNameById(String? customerId) {
+    final id = customerId?.trim() ?? '';
+    if (id.isEmpty) return Future.value(null);
+    return _nameCache.putIfAbsent(id, () async {
+      try {
+        final doc = await _customerCollection.doc(id).get();
+        final name = (doc.data() as Map<String, dynamic>?)?['name'];
+        return (name is String && name.isNotEmpty) ? name : null;
+      } catch (e) {
+        debugPrint('CustomerService: name fetch failed ($id): $e');
+        _nameCache.remove(id); // 失敗は次回再試行
+        return null;
+      }
+    });
+  }
+
+  /// 複数IDを一括解決。結果は {customerId: name}（取得できたものだけ）。
+  Future<Map<String, String>> getCustomerNamesByIds(Iterable<String?> ids) async {
+    final unique = ids.whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+    final result = <String, String>{};
+    await Future.wait(unique.map((id) async {
+      final n = await getCustomerNameById(id);
+      if (n != null) result[id] = n;
+    }));
+    return result;
+  }
+
+  /// 顧客名変更時などにキャッシュを破棄する。
+  static void clearCustomerNameCache([String? customerId]) =>
+      customerId == null ? _nameCache.clear() : _nameCache.remove(customerId);
+
   AddressService getAddressService() => _addressService;
   GoogleMapsService getGoogleMapsService() => _googleMapsService;
 
@@ -96,6 +131,7 @@ class CustomerService {
       'INSERT OR REPLACE INTO customers (id, data, name, phoneNumber, companyName) VALUES (?, ?, ?, ?, ?)',
       [updatedCustomer.id, jsonEncode(updatedCustomer.toMap()), updatedCustomer.name, updatedCustomer.phoneNumber, updatedCustomer.companyName]
     );
+    clearCustomerNameCache(updatedCustomer.id);
   }
 
   Future<Customer> createCustomer(Customer customer) async {
@@ -107,6 +143,7 @@ class CustomerService {
       'INSERT OR REPLACE INTO customers (id, data, name, phoneNumber, companyName) VALUES (?, ?, ?, ?, ?)',
       [docId, jsonEncode(finalCustomer.toMap()), finalCustomer.name, finalCustomer.phoneNumber, finalCustomer.companyName]
     );
+    clearCustomerNameCache(docId);
     return finalCustomer;
   }
 
@@ -114,6 +151,7 @@ class CustomerService {
     await _customerCollection.doc(id).delete();
     await _initLocalDb();
     _localDb!.execute('DELETE FROM customers WHERE id = ?', [id]);
+    clearCustomerNameCache(id);
   }
 
 }

@@ -23,7 +23,7 @@ class ReservationSlot {
 
 class ReservationService {
   /// 取り消されずに残った予約枠を無視するための有効時間
-  static const Duration _ttl = Duration(hours: 3);
+  static const Duration _ttl = Duration(minutes: 30);
 
   final CollectionReference _col =
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('reservations');
@@ -71,14 +71,17 @@ class ReservationService {
       for (final doc in snap.docs) {
         final m = doc.data() as Map<String, dynamic>;
         if (m['branchName'] != branchName) continue;
-        final created = DateTime.tryParse(m['createdAt']?.toString() ?? '') ?? now;
-        if (now.difference(created) > _ttl) continue;
+        final created = DateTime.tryParse(m['createdAt']?.toString() ?? '');
+        if (created == null || now.difference(created) > _ttl) continue; // 作成日時が読めない古いデータは無視
+        if (created.isAfter(now.add(const Duration(minutes: 5)))) continue; // 未来の作成日時（不正データ）は期限切れにならないので無視
+        final vehicle = (m['vehicleNumber'] as num?)?.toInt() ?? 0;
+        if (vehicle < 1) continue; // 号車不明を1号車扱いにしない
         result.add(ReservationSlot(
           id: doc.id,
           branchName: branchName,
           date: DateTime(date.year, date.month, date.day),
           time: m['time']?.toString() ?? '',
-          vehicleNumber: (m['vehicleNumber'] as num?)?.toInt() ?? 1,
+          vehicleNumber: vehicle,
           createdAt: created,
         ));
       }

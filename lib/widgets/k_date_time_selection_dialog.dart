@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../models/order_model.dart';
+import '../services/customer_service.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'package:katura_system/utils/app_colors.dart';
@@ -54,11 +55,25 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   late DateTime _tempDate;
   bool _calendarOpen = false;
   late String _timeBuffer; // 4桁の数字保持用 (例: "1430")
+  Map<String, String> _customerNames = {};
+
+  String _nameOf(OrderModel o) => _customerNames[o.customerId] ?? o.customerName;
+
+  Future<void> _loadCustomerNames() async {
+    final ids = widget.relatedOrders.map((o) => o.customerId).where((id) => id.isNotEmpty).toSet();
+    if (ids.isEmpty) return;
+    try {
+      final names = await CustomerService().getCustomerNamesByIds(ids);
+      if (!mounted) return;
+      setState(() => _customerNames = names);
+    } catch (_) {}
+  }
 
   @override
   void initState() {
     super.initState();
     _calendarOpen = widget.calendarOnly;
+    _loadCustomerNames();
     _tempDate = DateTime(
       widget.initialDateTime.year,
       widget.initialDateTime.month,
@@ -176,21 +191,68 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   /// 選択日と同じ日に配達される関連注文があれば確認ポップアップを出す。
   /// 戻り値: true=そのまま進む / false=やめる（日付を選び直す）。
   Future<bool> _confirmDuplicate(DateTime day) async {
-    final count = widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).length;
-    if (count == 0) return true;
+    final dups = widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).toList()
+      ..sort((a, b) => a.deliveryTime.compareTo(b.deliveryTime));
+    if (dups.isEmpty) return true;
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        content: Text('同日に他の注文が$count件あります',
-            style: const TextStyle(color: AppColors.snackbarRed, fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.popupBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+          side: const BorderSide(color: AppColors.snackbarRed),
+        ),
+        title: const Center(
+          child: Text('- 重複注意 -',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.snackbarRed, fontWeight: FontWeight.bold)),
+        ),
+        content: SizedBox(
+          width: rs(ctx, 360),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final o in dups)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: rs(ctx, 6)),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: rs(ctx, 10), vertical: rs(ctx, 8)),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: BorderRadius.circular(rs(ctx, 8)),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(o.deliveryTime,
+                              style: TextStyle(fontSize: rf(ctx, 12), fontWeight: FontWeight.bold, color: widget.themeColor)),
+                          SizedBox(width: rs(ctx, 8)),
+                          Expanded(
+                            child: Text(
+                                '${o.facilityName.isNotEmpty ? o.facilityName : _areaLabel(o)}　${_nameOf(o)}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(ctx, 12), fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('やめる（日付を選び直す）'),
+            child: const Text('中止'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('それでも注文する'),
+            child: const Text('注文'),
           ),
         ],
       ),
@@ -241,7 +303,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: widget.themeColor)),
-                            Text(o.customerName,
+                            Text(_nameOf(o),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600)),
