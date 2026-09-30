@@ -247,9 +247,10 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   /// 予定カード。閉じているときは「配達時間 市区町村」だけ。タップで顧客名・住所・注文内容を広げる。
   Widget _buildCard(BuildContext context, OrderModel o, double cardH) {
     final open = _expandedId == o.id;
-    final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white);
-    final small = TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500, color: Colors.white);
-    final label = TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: Colors.white70);
+    final Color fg = open ? AppColors.primaryText : Colors.white;
+    final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: fg);
+    final small = TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500, color: fg);
+    final label = TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: AppColors.primaryText.withValues(alpha: 0.7));
 
     Widget row(String title, String body) => Padding(
           padding: EdgeInsets.only(top: rs(context, 6)),
@@ -276,7 +277,8 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
           clipBehavior: Clip.hardEdge,
           padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 6)),
           decoration: BoxDecoration(
-            color: _branchColor(o.branchName),
+            color: open ? AppColors.popupBackground : _branchColor(o.branchName),
+            border: open ? Border.all(color: Colors.blueAccent, width: 2) : null,
             borderRadius: BorderRadius.circular(rs(context, 8)),
             boxShadow: open ? const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))] : null,
           ),
@@ -290,7 +292,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                   Text(o.deliveryTime, style: white),
                   SizedBox(width: rs(context, 12)),
                   Expanded(child: Text(_cityOf(o.address), maxLines: 1, overflow: TextOverflow.ellipsis, style: white)),
-                  Icon(open ? Icons.expand_less : Icons.expand_more, size: rs(context, 18), color: Colors.white),
+                  Icon(open ? Icons.expand_less : Icons.expand_more, size: rs(context, 18), color: fg),
                 ],
               ),
               if (open) ...[
