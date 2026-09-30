@@ -429,6 +429,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _phoneController.clear();
       _phonePrefixController.clear();
       _isCompletingPhone = false;
+      _pendingIntake = false;
       _nameController.clear();
       _furiganaController.clear();
       _receiverController.clear();
