@@ -5,12 +5,14 @@ import 'package:intl/intl.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import '../models/order_model.dart';
 import '../services/delivery_schedule_service.dart';
+import '../services/customer_service.dart';
 import '../services/order_service.dart';
 import '../services/reservation_service.dart';
 import 'k_button.dart';
 import 'k_numeric_input_dialog.dart';
 import 'k_route_map_dialog.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 /// 配達予定ダイアログ。縦の時間軸（9:00〜20:00）に、その日の配達予定カードを号車ごとの列に並べ、
 /// 空いている時間帯をタップして配達時間を決める。決定すると日時（DateTime）を返す。
@@ -32,6 +34,7 @@ class DeliveryScheduleDialog extends StatefulWidget {
   final List<ReservationSlot> reservations; // 他の注文入力で確保中の予約枠
   final int initialVehicle; // すでに決まっている号車（0＝なし）
   final TimeOfDay? initialTime; // すでに決まっている時間（あれば予約枠として最初から表示する）
+  final bool allowTimePick; // false＝空白タップで時間入力をしない（閲覧のみ）
 
   const DeliveryScheduleDialog({
     super.key,
@@ -43,6 +46,7 @@ class DeliveryScheduleDialog extends StatefulWidget {
     this.reservations = const [],
     this.initialVehicle = 0,
     this.initialTime,
+    this.allowTimePick = true,
   });
 
   @override
@@ -58,7 +62,10 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   final Map<String, int> _lanes = {}; // 注文ID → 号車の列番号（0始まり）
   int _laneCount = 1;
   Map<String, DeliveryStop> _stops = {}; // 注文ID → 移動情報
+  Map<String, String> _names = {}; // 注文ID → 顧客管理の最新の顧客名
   final OrderService _orderService = OrderService();
+  final GlobalKey<ScaffoldMessengerState> _messengerKey = GlobalKey<ScaffoldMessengerState>();
+  final Set<String> _lateIds = {}; // 移動時間で間に合わない予定カードのID（赤色で表示）
   ({int lane, int minutes})? _pending; // 今回決めた予約枠（列番号は0始まり）
 
   @override
@@ -105,6 +112,17 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       if (m >= _startHour * 60 && m <= _endHour * 60) _pending = (lane: widget.initialVehicle - 1, minutes: m);
     }
     _loadStops();
+    _loadNames();
+  }
+
+  /// 顧客名は受注に保存された名前ではなく、顧客管理の最新の名前（ふりがなのみの顧客も含む）を使う。
+  Future<void> _loadNames() async {
+    try {
+      final names = await CustomerService().resolveOrderNames(_dayOrders);
+      if (mounted) setState(() => _names = names);
+    } catch (e) {
+      debugPrint('delivery names error: $e');
+    }
   }
 
   /// 号車ごとに、1件目は店舗から・2件目以降は前の配達先からの移動時間を取得する。
@@ -162,6 +180,9 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     return m?.group(0) ?? '';
   }
 
+  /// カードの上を空ける量。隣り合うカードの間にも必ず移動時間の表示場所ができる。
+  double _cardInset(BuildContext context) => rs(context, 32);
+
   /// 号車の表示（全角数字。例: １号車）
   String _vehicleLabel(int n) {
     final zen = n.toString().split('').map((c) => String.fromCharCode(c.codeUnitAt(0) - 0x30 + 0xFF10)).join();
@@ -178,7 +199,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final pm = DeliveryScheduleService.minutesOf(prev.deliveryTime)!;
     final nm = DeliveryScheduleService.minutesOf(next.deliveryTime)!;
     final double y1 = yOf(pm); // 前のカードの下端
-    final double y2 = yOf(nm - _cardMinutes); // 次のカードの上端
+    final double y2 = yOf(nm - _cardMinutes) + _cardInset(context); // 次のカードの上端
     if (y2 - y1 < rs(context, 16)) return const []; // すき間が狭いときは描かない
     final double cx = colX + colW / 2;
     final double mid = (y1 + y2) / 2;
@@ -323,15 +344,47 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   /// カードを別の号車の列へ移す（保存に失敗したら元に戻す）。
   Future<void> _moveToLane(OrderModel o, int lane) async {
     final before = _lanes[o.id]!;
-    setState(() => _lanes[o.id] = lane);
+    setState(() {
+      _lanes[o.id] = lane;
+      _lateIds.remove(o.id);
+    });
     try {
       await _orderService.updateVehicleNumber(o.id, lane + 1);
-      _loadStops();
+      await _loadStops();
+      if (!mounted) return;
+      final shortage = _shortageAfterMove(o, lane);
+      if (shortage > 0) {
+        setState(() => _lateIds.add(o.id));
+        _showNotice('移動時間が足りません（$shortage分不足）');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _lanes[o.id] = before);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('号車の変更を保存できませんでした')));
+      _showNotice('号車の変更を保存できませんでした');
     }
+  }
+
+  /// 移した [o] の前後の区間で、移動時間が間隔を超える最大の不足分（分）。間に合うなら0。
+  int _shortageAfterMove(OrderModel o, int lane) {
+    final group = _dayOrders.where((x) => _lanes[x.id] == lane).toList();
+    final i = group.indexWhere((x) => x.id == o.id);
+    int shortage = 0;
+    int gap(OrderModel from, OrderModel to) {
+      final sec = _stops[to.id]?.travelSeconds;
+      if (sec == null) return 0;
+      final spare = DeliveryScheduleService.minutesOf(to.deliveryTime)! - DeliveryScheduleService.minutesOf(from.deliveryTime)! - (sec / 60).ceil();
+      return spare < 0 ? -spare : 0;
+    }
+    if (i > 0) shortage = math.max(shortage, gap(group[i - 1], o));
+    if (i >= 0 && i + 1 < group.length) shortage = math.max(shortage, gap(o, group[i + 1]));
+    return shortage;
+  }
+
+  /// ダイアログ下部にスナックバーを出す。
+  void _showNotice(String text) {
+    _messengerKey.currentState
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
   }
 
   /// 予約枠カード（背景は heatmapGreen）。
@@ -359,7 +412,10 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       child: Container(
         height: cardH,
         padding: EdgeInsets.symmetric(horizontal: rs(context, 10)),
-        decoration: BoxDecoration(color: _branchColor(o.branchName), borderRadius: BorderRadius.circular(rs(context, 8))),
+        decoration: BoxDecoration(
+          color: _lateIds.contains(o.id) ? Colors.red : _branchColor(o.branchName),
+          borderRadius: BorderRadius.circular(rs(context, 8)),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -430,7 +486,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                       IconButton(icon: const Icon(Icons.close, color: AppColors.dialogText), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
-                  row('顧客名', o.customerName),
+                  row('顧客名', withHonorific(_names[o.id] ?? o.customerName)),
                   row('住所', _cleanAddress(o).replaceFirstMapped(RegExp(r'^(〒\d{3}-\d{4}) '), (m) => '${m[1]}\n')),
                   row('注文内容', items),
                 ],
@@ -446,10 +502,11 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final double dialogWidth = screen.width < 900 ? screen.width * 0.95 : 850;
-    final double hourH = rs(context, 120); // 10分＝約20（カードを10分単位で置けるよう間隔を広く）
+    final double hourH = rs(context, 160); // 10分＝約27（カードを10分単位で置けるよう間隔を広く）
     final double labelW = rs(context, 64);
-    final double cardH = _cardMinutes / 60 * hourH;
-    final double baseTop = rs(context, 8) + cardH; // 10:00のライン（その上にカードが乗る余白を確保）
+    final double slotH = _cardMinutes / 60 * hourH;
+    final double cardH = slotH - _cardInset(context); // 見えるカードの高さ（上を空けて移動時間の場所を作る）
+    final double baseTop = rs(context, 8) + slotH; // 10:00のライン（その上にカードが乗る余白を確保）
     final double totalH = hourH * (_endHour - _startHour) + baseTop;
     double yOf(int minutes) => baseTop + (minutes - _startHour * 60) / 60 * hourH;
     final double colW = rs(context, 176); // 号車1列の幅（カードは配達時間と市区町村だけなので細くする）
@@ -461,9 +518,15 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       backgroundColor: AppColors.popupBackground,
       insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 16)),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rav(context, 16))),
-      child: Container(
+      child: SizedBox(
         width: dialogWidth,
         height: screen.height * 0.9,
+        // スナックバーをダイアログ下部に出すため、ダイアログ専用の Scaffold を置く
+        child: ScaffoldMessenger(
+          key: _messengerKey,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Container(
         padding: EdgeInsets.all(rav(context, 24)),
         child: Column(
           children: [
@@ -548,7 +611,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                               onAcceptWithDetails: (d) => _moveToLane(d.data, lane),
                               builder: (context, candidate, _) => GestureDetector(
                                 behavior: HitTestBehavior.opaque,
-                                onTap: () => _pickTime(lane),
+                                onTap: widget.allowTimePick ? () => _pickTime(lane) : null,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     color: candidate.isEmpty ? null : AppColors.primary.withValues(alpha: 0.08),
@@ -572,7 +635,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                         for (final r in widget.reservations)
                           if (DeliveryScheduleService.minutesOf(r.time) != null)
                             Positioned(
-                              top: yOf(DeliveryScheduleService.minutesOf(r.time)! - _cardMinutes),
+                              top: yOf(DeliveryScheduleService.minutesOf(r.time)! - _cardMinutes) + _cardInset(context),
                               left: colX(r.vehicleNumber - 1),
                               width: colW,
                               height: cardH,
@@ -580,7 +643,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                             ),
                         if (_pending != null)
                           Positioned(
-                            top: yOf(_pending!.minutes - _cardMinutes),
+                            top: yOf(_pending!.minutes - _cardMinutes) + _cardInset(context),
                             left: colX(_pending!.lane),
                             width: colW,
                             height: cardH,
@@ -588,7 +651,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                           ),
                         for (final o in _dayOrders)
                           Positioned(
-                            top: yOf(DeliveryScheduleService.minutesOf(o.deliveryTime)! - _cardMinutes),
+                            top: yOf(DeliveryScheduleService.minutesOf(o.deliveryTime)! - _cardMinutes) + _cardInset(context),
                             left: colX(_lanes[o.id]!),
                             width: colW,
                             child: _buildCard(context, o, cardH),
@@ -641,12 +704,15 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
             ),
           ],
         ),
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-/// 縦の点線＋先端の三角矢印（Figmaの「Line 1」＝太さ3・破線5.58/5.58・矢じり長さ15×幅17.32）。
+/// 縦の破線（太さ3・破線5.58/5.58）。
 class _DashedArrowPainter extends CustomPainter {
   final double x;
   final double y1; // 始点（上）
@@ -657,8 +723,6 @@ class _DashedArrowPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     const dash = 5.5833;
     const period = 11.1667;
-    const arrowLen = 15.0;
-    const arrowHalf = 8.66025;
     const thick = 3.0;
     final len = y2 - y1;
     final paint = Paint()..color = Colors.black;
@@ -668,12 +732,6 @@ class _DashedArrowPainter extends CustomPainter {
       final b = math.min(s + dash, len);
       if (b > a) canvas.drawRect(Rect.fromLTRB(x - thick / 2, y1 + a, x + thick / 2, y1 + b), paint);
     }
-    final tri = Path()
-      ..moveTo(x - arrowHalf, y2 - arrowLen)
-      ..lineTo(x + arrowHalf, y2 - arrowLen)
-      ..lineTo(x, y2)
-      ..close();
-    canvas.drawPath(tri, paint);
   }
 
   @override

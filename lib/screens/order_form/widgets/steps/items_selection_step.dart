@@ -9,6 +9,7 @@ import 'package:katura_system/utils/app_colors.dart';
 
 class ItemsSelectionStep extends StatefulWidget {
   final List<MenuModel> menus;
+  final Set<String> lastOrderMenuIds; // 顧客の前回注文のメニューID（枠をオレンジにする）
   final List<Map<String, dynamic>> confirmedItems;
   final Map<String, int> selectedQuantities;
   final double riceAmount;
@@ -23,6 +24,7 @@ class ItemsSelectionStep extends StatefulWidget {
   const ItemsSelectionStep({
     super.key,
     required this.menus,
+    this.lastOrderMenuIds = const {},
     required this.confirmedItems,
     required this.selectedQuantities,
     required this.riceAmount,
@@ -155,6 +157,7 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                       return KMenuCard(
                         key: ValueKey(menu.id),
                         menu: menu,
+                        isLastOrdered: widget.lastOrderMenuIds.contains(menu.id),
                         onAddToCart: (qty) {
                           if (qty <= 0) return;
                           widget.onAddItem([

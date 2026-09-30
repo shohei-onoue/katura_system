@@ -171,7 +171,7 @@ class GoogleMapsService {
           'X-Goog-FieldMask': 'routes.duration',
         },
         body: body,
-      );
+      ).timeout(const Duration(seconds: 8)); // 応答が無いときは8秒で失敗扱い
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final routes = data['routes'] as List?;

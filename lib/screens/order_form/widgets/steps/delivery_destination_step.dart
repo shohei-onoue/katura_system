@@ -163,7 +163,8 @@ class DeliveryDestinationStep extends StatelessWidget {
                   Expanded(
                     child: Builder(
                       builder: (context) {
-                        final bool ready = facilityControllerText.isNotEmpty &&
+                        // 企業名なし（目印として登録）の場合は、備考に「〜が目印」があれば進める
+                        final bool ready = (facilityControllerText.isNotEmpty || remarksController.text.contains('が目印')) &&
                             addressControllerText.isNotEmpty &&
                             receiverController.text.isNotEmpty;
                         return KButton(
@@ -692,7 +693,10 @@ class FacilitySearchForm extends StatelessWidget {
                                     trailing: isSelected ? Icon(Icons.check_circle, color: AppColors.accentOrange) : Icon(Icons.chevron_right),
                                     onTap: () {
                                       final cleanAddress = _cleanResultAddress(item['address'] ?? '');
-                                      final payload = "${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})";
+                                      var payload = "${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})";
+                                      // キーワード検索の結果は、入力したキーワードを添えて親へ渡す（企業名かの確認に使う）
+                                      final kw = keywordQueryController.text.trim();
+                                      if (searchTabIndex == 1 && kw.isNotEmpty) payload += '[KW:$kw]';
                                       // 1タップで確実に閉じてから選択を伝搬する
                                       Navigator.of(dialogContext).pop();
                                       onAddressSelected(payload);

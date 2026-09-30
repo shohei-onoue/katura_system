@@ -15,6 +15,8 @@ class KMenuCard extends StatefulWidget {
   /// カートへ追加されたら true を返す。
   final Future<bool> Function(int quantity) onOpenDetails;
   final Color themeColor;
+  /// 顧客の前回の注文に含まれるメニュー（外枠をオレンジにする）
+  final bool isLastOrdered;
 
   const KMenuCard({
     super.key,
@@ -23,6 +25,7 @@ class KMenuCard extends StatefulWidget {
     required this.onAddToCart,
     required this.onOpenDetails,
     this.themeColor = AppColors.accentPurple,
+    this.isLastOrdered = false,
   });
 
   @override
@@ -47,8 +50,8 @@ class _KMenuCardState extends State<KMenuCard> {
         color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(
-          color: hasSelection ? widget.themeColor : Colors.grey.shade200,
-          width: hasSelection ? 2 : 1,
+          color: widget.isLastOrdered ? AppColors.accentOrange : (hasSelection ? widget.themeColor : Colors.grey.shade200),
+          width: (hasSelection || widget.isLastOrdered) ? 2 : 1,
         ),
         boxShadow: [
           if (hasSelection)

@@ -6,6 +6,7 @@ import '../services/customer_service.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class KDateTimeSelectionDialog extends StatefulWidget {
   final DateTime initialDateTime;
@@ -57,13 +58,12 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   late String _timeBuffer; // 4桁の数字保持用 (例: "1430")
   Map<String, String> _customerNames = {};
 
-  String _nameOf(OrderModel o) => _customerNames[o.customerId] ?? o.customerName;
+  String _nameOf(OrderModel o) => withHonorific(_customerNames[o.id] ?? o.customerName);
 
   Future<void> _loadCustomerNames() async {
-    final ids = widget.relatedOrders.map((o) => o.customerId).where((id) => id.isNotEmpty).toSet();
-    if (ids.isEmpty) return;
+    if (widget.relatedOrders.isEmpty) return;
     try {
-      final names = await CustomerService().getCustomerNamesByIds(ids);
+      final names = await CustomerService().resolveOrderNames(widget.relatedOrders);
       if (!mounted) return;
       setState(() => _customerNames = names);
     } catch (_) {}
@@ -146,7 +146,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: widget.themeColor)),
                         SizedBox(width: rs(context, 8)),
                         Expanded(
-                          child: Text('${_areaLabel(o)}　${o.customerName}',
+                          child: Text('${_areaLabel(o)}　${_nameOf(o)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600)),
@@ -446,7 +446,23 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           }
                         },
                         rowHeight: rs(context, 50),
+                        // 「関連する注文」がある日は、日付の下に赤丸を表示する
+                        eventLoader: (day) => widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).toList(),
                         calendarBuilders: CalendarBuilders(
+                          markerBuilder: (context, day, events) => events.isEmpty
+                              ? null
+                              : Positioned(
+                                  bottom: rs(context, 2),
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Container(
+                                      width: rs(context, 7),
+                                      height: rs(context, 7),
+                                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                    ),
+                                  ),
+                                ),
                           defaultBuilder: (context, day, focusedDay) {
                             if (widget.highlightDate != null && isSameDay(day, widget.highlightDate)) {
                               return Center(

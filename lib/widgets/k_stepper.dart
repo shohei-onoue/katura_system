@@ -8,6 +8,7 @@ class KStepper extends StatelessWidget {
   final bool isFinalStepAvailable; // 追加: 商品が入っている場合などに最終ステップを活性化
   final List<String> steps;
   final Function(int) onStepTapped;
+  final Set<int> hiddenSteps; // 表示しないステップ（番号は表示中のものだけで振り直す）
 
   const KStepper({
     super.key,
@@ -16,10 +17,12 @@ class KStepper extends StatelessWidget {
     this.isFinalStepAvailable = false,
     required this.steps,
     required this.onStepTapped,
+    this.hiddenSteps = const {},
   });
 
   @override
   Widget build(BuildContext context) {
+    final visible = [for (int i = 0; i < steps.length; i++) if (!hiddenSteps.contains(i)) i];
     return Container(
       padding: EdgeInsets.symmetric(horizontal: rav(context, 12)),
       decoration: const BoxDecoration(
@@ -32,7 +35,8 @@ class KStepper extends StatelessWidget {
         height: kStepBarHeight(context),
         child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: List.generate(steps.length, (index) {
+        children: List.generate(visible.length, (pos) {
+          final index = visible[pos];
           final isLast = index == steps.length - 1;
           final isClickable = index <= maxReachedStep || (isLast && isFinalStepAvailable);
           final isCompleted = index <= maxReachedStep && index != currentStep; // 修正: 実際に到達・通過済みのものだけチェックマーク
@@ -91,7 +95,7 @@ class KStepper extends StatelessWidget {
                               child: isCompleted
                                   ? Icon(Icons.check, color: AppColors.mainBackground, size: rav(context, 14))
                                   : Text(
-                                      '${index + 1}',
+                                      '${pos + 1}',
                                       style: TextStyle(
                                         color: AppColors.mainBackground,
                                         fontWeight: FontWeight.bold,

@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqlite3/common.dart';
 import '../models/customer_model.dart';
+import '../models/order_model.dart';
 import 'address_service.dart';
 import 'google_maps_service.dart';
 import 'database_factory.dart';
@@ -57,8 +58,12 @@ class CustomerService {
     return _nameCache.putIfAbsent(id, () async {
       try {
         final doc = await _customerCollection.doc(id).get();
-        final name = (doc.data() as Map<String, dynamic>?)?['name'];
-        return (name is String && name.isNotEmpty) ? name : null;
+        final data = doc.data() as Map<String, dynamic>?;
+        final name = data?['name'];
+        if (name is String && name.trim().isNotEmpty) return name;
+        // ふりがなのみで登録された顧客は、ふりがなを顧客名として扱う
+        final furigana = data?['furigana'];
+        return (furigana is String && furigana.trim().isNotEmpty) ? furigana : null;
       } catch (e) {
         debugPrint('CustomerService: name fetch failed ($id): $e');
         _nameCache.remove(id); // 失敗は次回再試行
@@ -76,6 +81,31 @@ class CustomerService {
       if (n != null) result[id] = n;
     }));
     return result;
+  }
+
+  /// 受注ごとの表示用の顧客名を一括で解決する。結果は {受注ID: 顧客名}（解決できた受注だけ）。
+  /// 顧客IDで顧客管理から引き、旧データ（顧客IDなし）は電話番号（数字のみ）で1件だけ一致した顧客を使う。
+  /// 受注の顧客名を表示する画面は、受注に保存された名前ではなく必ずこれを使う。
+  Future<Map<String, String>> resolveOrderNames(Iterable<OrderModel> orders) async {
+    final customers = await getAllCustomers();
+    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
+    final byId = {for (final c in customers) c.id: c.name};
+    final byPhone = <String, List<String>>{};
+    for (final c in customers) {
+      final d = digits(c.phoneNumber);
+      if (d.isNotEmpty) byPhone.putIfAbsent(d, () => []).add(c.name);
+    }
+    final names = <String, String>{};
+    for (final o in orders) {
+      final byIdName = byId[o.customerId];
+      final phoneMatches = byPhone[digits(o.phoneNumber)];
+      if (byIdName != null && byIdName.isNotEmpty) {
+        names[o.id] = byIdName;
+      } else if (o.customerId.isEmpty && phoneMatches != null && phoneMatches.length == 1 && phoneMatches.first.isNotEmpty) {
+        names[o.id] = phoneMatches.first;
+      }
+    }
+    return names;
   }
 
   /// 顧客名変更時などにキャッシュを破棄する。

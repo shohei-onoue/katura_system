@@ -12,6 +12,7 @@ import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_multimodal_text_field.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
@@ -224,7 +225,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.popupBackground,
         title: const Text('顧客データの削除'),
-        content: Text('${customer.name} 様のデータを削除してもよろしいですか？\nこの操作は取り消せません。'),
+        content: Text('${withHonorific(customer.name)}のデータを削除してもよろしいですか？\nこの操作は取り消せません。'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
           ElevatedButton(
@@ -399,7 +400,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   final c = colleagues[i];
                   return ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
-                    title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(withHonorific(c.name), style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(c.phoneNumber),
                     onTap: () {
                       Navigator.pop(context);

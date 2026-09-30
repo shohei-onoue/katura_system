@@ -2,6 +2,7 @@ import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class CustomerDataTable extends StatelessWidget {
   final List<Customer> customers;
@@ -118,7 +119,7 @@ class CustomerDataTable extends StatelessWidget {
                           SizedBox(
                             width: nameWidth,
                             child: Text(
-                              customer.name,
+                              withHonorific(customer.name),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: rf(context, 13),

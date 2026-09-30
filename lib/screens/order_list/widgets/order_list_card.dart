@@ -2,6 +2,7 @@ import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
 import '../../../widgets/k_responsive.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class OrderListCard extends StatefulWidget {
   final OrderModel order;
@@ -110,7 +111,7 @@ class _OrderListCardState extends State<OrderListCard> {
                   Expanded(
                     flex: 2,
                     child: Text(
-                      widget.displayName ?? order.customerName,
+                      withHonorific(widget.displayName ?? order.customerName),
                       style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,

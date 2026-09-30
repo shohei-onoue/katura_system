@@ -7,6 +7,7 @@ import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class OrderListScreen extends StatefulWidget {
   final Function(OrderModel, String)? onEditOrder;
@@ -56,26 +57,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
       });
     }
     final list = await _orderService.getAllOrders(forceRefresh: true);
-    final customers = await _customerService.getAllCustomers();
+    final names = await _customerService.resolveOrderNames(list);
     if (!mounted) return;
-    final byId = {for (final c in customers) c.id: c.name};
-    // 旧データ（顧客IDなし）は電話番号（数字のみ）で1件だけ一致した顧客の名前を使う
-    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
-    final byPhone = <String, List<String>>{};
-    for (final c in customers) {
-      final d = digits(c.phoneNumber);
-      if (d.isNotEmpty) byPhone.putIfAbsent(d, () => []).add(c.name);
-    }
-    final names = <String, String>{};
-    for (final o in list) {
-      final byIdName = byId[o.customerId];
-      final phoneMatches = byPhone[digits(o.phoneNumber)];
-      if (byIdName != null) {
-        names[o.id] = byIdName;
-      } else if (o.customerId.isEmpty && phoneMatches != null && phoneMatches.length == 1) {
-        names[o.id] = phoneMatches.first;
-      }
-    }
     setState(() {
       _displayNames = names;
       _allOrders = list.where(OrderService.isActive).toList();
@@ -92,7 +75,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
         builder: (context) => AlertDialog(
           backgroundColor: AppColors.popupBackground,
           title: const Text('当日キャンセルの確認'),
-          content: Text('${order.customerName} 様の予約は当日のため、キャンセル料は100％になります。よろしいですか？'),
+          content: Text('${withHonorific(_displayNames[order.id] ?? order.customerName)}の予約は当日のため、キャンセル料は100％になります。よろしいですか？'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('戻る')),
             TextButton(
@@ -115,7 +98,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
         return AlertDialog(
           backgroundColor: AppColors.popupBackground,
           title: const Text('予約キャンセルの確認'),
-          content: Text('${order.customerName} 様の予約をキャンセルし、登録内容を削除します。元に戻せません。よろしいですか？'),
+          content: Text('${withHonorific(_displayNames[order.id] ?? order.customerName)}の予約をキャンセルし、登録内容を削除します。元に戻せません。よろしいですか？'),
           actions: [
             TextButton(
               onPressed: () {

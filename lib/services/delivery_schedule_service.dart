@@ -18,7 +18,7 @@ class DeliveryScheduleService {
   DeliveryScheduleService(this._maps);
 
   /// 区間（"緯度,経度>緯度,経度"）→ 移動秒数
-  final Map<String, int> _legCache = {};
+  static final Map<String, int> _legCache = {}; // static＝画面を閉じても保持（アプリ終了まで）
 
   String _key(LatLng a, LatLng b) => '${a.latitude},${a.longitude}>${b.latitude},${b.longitude}';
 
@@ -48,18 +48,20 @@ class DeliveryScheduleService {
     }
     items.sort((a, b) => a.key.compareTo(b.key));
 
-    final stops = <DeliveryStop>[];
+    // 区間ごとの取得を先に並べ、まとめて同時に実行する（キャッシュ済みの区間はAPIを叩かない）
+    final futures = <Future<int?>>[];
+    final dests = <LatLng?>[];
     LatLng? prev = branchPos;
     for (final e in items) {
       final o = e.value;
       // 緯度経度が未設定（null または 0,0）の注文は位置不明として扱う
       final hasPos = o.latitude != null && o.longitude != null && !(o.latitude == 0 && o.longitude == 0);
       final dest = hasPos ? LatLng(o.latitude!, o.longitude!) : null;
-      int? sec;
-      if (prev != null && dest != null) sec = await travelSeconds(prev, dest);
-      stops.add(DeliveryStop(o, e.key, sec));
+      futures.add(prev != null && dest != null ? travelSeconds(prev, dest) : Future.value(null));
+      dests.add(dest);
       prev = dest; // 緯度経度が無い場合は次の区間も求められない（null）
     }
-    return stops;
+    final secs = await Future.wait(futures);
+    return [for (int i = 0; i < items.length; i++) DeliveryStop(items[i].value, items[i].key, secs[i])];
   }
 }

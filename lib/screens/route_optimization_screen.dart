@@ -93,6 +93,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         branchPos: branch == null ? null : LatLng(branch.latitude, branch.longitude),
         vehicleCount: branch?.deliveryVehicleCount ?? 1,
         service: _scheduleService,
+        allowTimePick: false,
       ),
     );
     // ここでは閲覧のみ（この画面から受注を作らないため、決定結果は使わない）。

@@ -95,7 +95,8 @@ class Customer {
   factory Customer.fromMap(Map<String, dynamic> map) {
     return Customer(
       id: map['id'] ?? '',
-      name: map['name'] ?? '',
+      // ふりがなのみで登録された顧客は、ふりがなを顧客名として扱う
+      name: (map['name'] ?? '').toString().trim().isEmpty ? (map['furigana'] ?? '') : map['name'],
       furigana: map['furigana'] ?? '',
       companyName: map['companyName'] ?? '',
       phoneNumber: map['phoneNumber'] ?? '',

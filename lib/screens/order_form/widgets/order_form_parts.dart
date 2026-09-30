@@ -3,6 +3,7 @@ import '../../../models/customer_model.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_button.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 /// 受注フォーム全ステップで共通の色・高さトークン
 class OrderFormTokens {
@@ -192,7 +193,7 @@ class CustomerInfoBanner extends StatelessWidget {
                     Text(customer!.furigana, 
                       style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, height: rs(context, 1.1))),
                   Text(
-                    customer!.name,
+                    withHonorific(customer!.name),
                     style: TextStyle(
                       fontSize: rf(context, 28),
                       fontWeight: FontWeight.bold,

@@ -68,6 +68,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   int _currentStep = 0;
   int _maxStepReached = 0;
+  String? _scheduledCustomerId; // 受注区分・配達日時を設定済みの顧客ID（同じ顧客なら戻っても再入力しない）
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   String _deliveryType = ''; // 未選択がデフォルト。受注区分ダイアログで選択する
@@ -109,6 +110,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _preConfirmationRecipientController = TextEditingController();
 
   List<Customer> _phoneSearchCandidates = [];
+  Set<String> _lastOrderMenuIds = {}; // 顧客の前回の注文に含まれるメニューID（商品選択で枠色を変える）
   Map<String, DateTime> _lastOrderDates = {}; // 候補顧客ID → 前回の配達日
   List<OrderModel> _customerOrderHistory = [];
   List<OrderModel> _companyOrderHistory = [];
@@ -153,6 +155,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Map<String, int> _branchVehicleCounts = {}; // 店舗名 → 配送車両数
   final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '注文内容', '完了'];
 
+  bool _newCustomerFlow = false; // 新規顧客のときだけ「顧客確認」ステップを表示する
   bool _pendingIntake = false; // 新規顧客：顧客情報入力の後に受注区分・配達日時を入力する
   bool _isDeliveryDateSelected = true;
   bool _isDeliveryTimeSelected = true;
@@ -430,6 +433,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _phonePrefixController.clear();
       _isCompletingPhone = false;
       _pendingIntake = false;
+      _newCustomerFlow = false;
       _nameController.clear();
       _furiganaController.clear();
       _receiverController.clear();
@@ -449,6 +453,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _preConfirmationRecipientController.clear();
       _currentStep = 0;
       _maxStepReached = 0;
+      _scheduledCustomerId = null;
       _currentCustomer = null;
       _confirmedItems = [];
       _selectedQuantities.clear();
@@ -534,6 +539,39 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _maxStepReached = newStep;
       }
     });
+    if (newStep == 3) _loadLastOrderMenuIds();
+  }
+
+  /// 顧客の前回（今日以前で一番新しい配達日）の注文に含まれるメニューIDを求める。
+  Future<void> _loadLastOrderMenuIds() async {
+    final c = _currentCustomer;
+    if (c == null) {
+      if (_lastOrderMenuIds.isNotEmpty) setState(() => _lastOrderMenuIds = {});
+      return;
+    }
+    try {
+      final orders = await _orderService.getAllOrders();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      String digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+      String norm(String s) => s.replaceAll(RegExp(r'\s+'), '');
+      OrderModel? latest;
+      for (final o in orders) {
+        final same = o.customerId.isNotEmpty
+            ? o.customerId == c.id
+            : digits(o.phoneNumber) == digits(c.phoneNumber) && norm(o.customerName) == norm(c.name);
+        if (!same) continue;
+        final d = DateTime(o.deliveryDate.year, o.deliveryDate.month, o.deliveryDate.day);
+        if (d.isAfter(today)) continue;
+        if (latest == null || d.isAfter(latest.deliveryDate)) latest = o;
+      }
+      if (!mounted) return;
+      setState(() => _lastOrderMenuIds = {
+            for (final i in latest?.items ?? const <Map<String, dynamic>>[]) i['id'].toString(),
+          });
+    } catch (e) {
+      debugPrint('lastOrderMenuIds error: $e');
+    }
   }
 
   /// 番号確認「次へ」。既往顧客は受注区分・受け渡し方法 → 配達日時 → 配達先の確定（2）へ。
@@ -541,10 +579,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _startPostPhoneFlow() async {
     if (_currentCustomer == null) {
       _pendingIntake = true;
+      setState(() => _newCustomerFlow = true);
       _updateStep(1);
       return;
     }
-    if (await _runIntakeAndSchedule() && mounted) _updateStep(2);
+    if (_newCustomerFlow) setState(() => _newCustomerFlow = false);
+    // すでに設定済みで顧客も変わっていなければ、ダイアログを出さずに次へ
+    if (_scheduledCustomerId == _currentCustomer!.id) {
+      _updateStep(2);
+      return;
+    }
+    if (await _runIntakeAndSchedule() && mounted) {
+      _scheduledCustomerId = _currentCustomer?.id;
+      _updateStep(2);
+    }
   }
 
   /// 受注区分・受け渡し方法 → 配達日時のダイヤログ。日時まで確定できたら true。
@@ -590,8 +638,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final company = norm(customer.companyName);
     final destName = norm(_selectedFacilityName);
     final destAddr = norm(_selectedFacilityAddress);
+    // 関連する注文は過去1週間まで遡る（それ以前は除外）
+    final now = DateTime.now();
+    final oldest = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
     return all.where((o) {
       if (o.id == widget.initialOrder?.id) return false;
+      if (o.deliveryDate.isBefore(oldest)) return false;
       if (digits(o.phoneNumber) == phone && norm(o.customerName) == name) return false;
       final sameCompany = company.isNotEmpty && norm(o.facilityName) == company;
       final sameDest = (destName.isNotEmpty && norm(o.facilityName) == destName) ||
@@ -868,6 +920,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _currentCustomer == null &&
         (_nameController.text.isNotEmpty || _furiganaController.text.isNotEmpty)) {
       _isLoadingNotifier.value = true;
+      // ふりがなのみの登録は、ふりがなを顧客名として扱う
+      if (_nameController.text.trim().isEmpty) _nameController.text = _furiganaController.text;
       final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
       final facility = _facilityController.text;
       final address = _addressController.text;
@@ -952,6 +1006,30 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Future<void> _onAddressSelectedFromList(String fullAddr) async {
+    // キーワード検索の結果：入力したキーワードが企業名かを確認する
+    bool? keywordIsCompany;
+    String keyword = '';
+    final kwMatch = RegExp(r'\[KW:([^\]]*)\]').firstMatch(fullAddr);
+    if (kwMatch != null) {
+      keyword = kwMatch.group(1)!.trim();
+      fullAddr = fullAddr.replaceFirst(kwMatch.group(0)!, '').trim();
+      keywordIsCompany = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          title: Text('「$keyword」は企業名ですか？'),
+          content: const Text('「いいえ」の場合は、最寄りの目印として備考に登録します。'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('はい')),
+          ],
+        ),
+      );
+      if (keywordIsCompany == null || !mounted) return;
+      // 施設名：はい＝キーワードを企業名に／いいえ＝企業名なし（住所と座標のみ）
+      final ps = fullAddr.split(': ');
+      if (ps.length > 1) fullAddr = '${keywordIsCompany ? keyword : ''}: ${ps.sublist(1).join(': ')}';
+    }
     final parts = fullAddr.split(': ');
     final facilityNamePart = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
     final addressOnlyPart = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
@@ -986,7 +1064,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final imgMatch = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(fullAddr);
     _pendingStreetViewImageUrl = imgMatch?.group(1) ?? _currentCustomer?.streetViewImageUrl;
 
-    final matchingOrder = _customerOrderHistory.followedBy(_companyOrderHistory).firstWhere((o) => o.facilityName == facilityNamePart || fullAddr.contains(o.address), orElse: () => OrderModel.empty());
+    final matchingOrder = _customerOrderHistory.followedBy(_companyOrderHistory).firstWhere((o) => (facilityNamePart.isNotEmpty && o.facilityName == facilityNamePart) || fullAddr.contains(o.address), orElse: () => OrderModel.empty());
     LatLng? pos = _parseCoordsFromAddress(fullAddr);
     if (pos == null || (pos.latitude == 0 && pos.longitude == 0)) {
       // 施設名を含めると誤マッチしやすいため住所のみでジオコードする
@@ -1006,7 +1084,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
     final Offset? branchAnchor = _pendingBranchAnchor;
     _pendingBranchAnchor = null;
-    setState(() { if (matchingOrder.id.isNotEmpty) _selectedHistoryItem = matchingOrder; if (pos != null) _updateMap(pos, facilityNamePart, branchAnchor: branchAnchor); _addressController.text = addressOnlyPart; _facilityController.text = facilityNamePart; if (matchingOrder.id.isNotEmpty) { _receiverController.text = matchingOrder.receiverName; _deliveryLocationController.text = matchingOrder.deliveryLocation; } });
+    setState(() { if (matchingOrder.id.isNotEmpty) _selectedHistoryItem = matchingOrder; if (pos != null) _updateMap(pos, facilityNamePart, branchAnchor: branchAnchor); _addressController.text = addressOnlyPart; _facilityController.text = facilityNamePart; if (matchingOrder.id.isNotEmpty) { _receiverController.text = _isEditingOrder ? matchingOrder.receiverName : (_currentCustomer?.name ?? _nameController.text); _deliveryLocationController.text = matchingOrder.deliveryLocation; } });
+
+    if (kwMatch != null && pos != null) {
+      // 住所・座標に加えて、ストリートビュー画像も自動で保存対象にする
+      _pendingStreetViewImageUrl = StreetViewImageService.buildStaticUrl(pos.latitude, pos.longitude);
+      if (keywordIsCompany == false) {
+        // 目印扱い：代表地点として位置は概算とし、備考に「○○が目印」を記述
+        final mark = '$keywordが目印';
+        final cur = _remarksController.text.trim();
+        setState(() {
+          _isApproximateLocation = true;
+          if (!cur.contains(mark)) _remarksController.text = cur.isEmpty ? mark : '$cur $mark';
+        });
+      }
+    }
   }
 
   LatLng? _parseCoordsFromAddress(String fullAddr) {
@@ -1420,6 +1512,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   maxReachedStep: _maxStepReached,
                   isFinalStepAvailable: _confirmedItems.isNotEmpty,
                   steps: _stepLabels,
+                  hiddenSteps: _newCustomerFlow ? const {} : const {1},
                   onStepTapped: (s) {
                     // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
                     bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 4;
@@ -1434,11 +1527,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   }
                 )),
                   Expanded(
-                    child: RepaintBoundary(
-                      child: _currentStep == 3
-                          // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
-                          ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
-                          : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: RepaintBoundary(
+                            child: _phonePopupOpen
+                                // 番号確認は下のポップアップで行う（ここは待機表示）
+                                ? Center(child: Text('下４桁を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16), fontWeight: FontWeight.bold)))
+                                : _currentStep == 3
+                                    // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
+                                    ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
+                                    : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
+                          ),
+                        ),
+                        if (_phonePopupOpen) Positioned.fill(child: _buildPhonePopup(context)),
+                      ],
                     ),
                   ),
                 ],
@@ -1672,6 +1775,44 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
+  /// 下4桁を入力したら（または電話番号の完成中は）、番号確認をポップアップで表示する。
+  /// 右のダイヤルパッドは操作できるよう、ポップアップは左側（メイン領域）だけを覆う。
+  bool get _phonePopupOpen =>
+      _currentStep == 0 && (_isCompletingPhone || _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length >= 4);
+
+  Widget _buildPhonePopup(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.35),
+      alignment: Alignment.center,
+      padding: EdgeInsets.all(rs(context, 24)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: rs(context, 900)),
+        child: Stack(
+          children: [
+            Material(
+              color: Colors.transparent,
+              child: SingleChildScrollView(child: _buildStepContent()),
+            ),
+            Positioned(
+              top: rs(context, 4),
+              right: rs(context, 4),
+              child: IconButton(
+                tooltip: '入力をやり直す',
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () {
+                  setState(() => _isCompletingPhone = false);
+                  _phonePrefixController.clear();
+                  _phoneController.clear();
+                  _lookupCustomer('');
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStepContent() {
     final phoneDisplay = _phoneController.text;
     switch (_currentStep) {
@@ -1804,6 +1945,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       case 3: return ItemsSelectionStep(
           phoneNumberText: _phoneController.text,
           menus: _menus,
+          lastOrderMenuIds: _lastOrderMenuIds,
           confirmedItems: _confirmedItems, 
           selectedQuantities: _selectedQuantities, 
           riceAmount: _calculateRiceAmount(), 

@@ -4,6 +4,7 @@ import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../order_form_parts.dart';
+import 'package:katura_system/utils/name_format.dart';
 
 class PhoneConfirmStep extends StatelessWidget {
   final TextEditingController phoneController;
@@ -189,7 +190,7 @@ class PhoneConfirmStep extends StatelessWidget {
                   side: BorderSide(color: Colors.grey.shade300),
                 ),
                 child: ListTile(
-                  title: Text(customer.name, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
+                  title: Text(withHonorific(customer.name), style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
                   subtitle: Text(
                     '${customer.companyName} / ${customer.phoneNumber}',
                     style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentText),
