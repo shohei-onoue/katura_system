@@ -99,6 +99,57 @@ class GoogleMapsService {
     return min >= 60 ? '${min ~/ 60}時間${min % 60}分' : '$min分';
   }
 
+  /// 出発地から、経由地を順に通って最後の地点までの経路（Routes API）。失敗時は null。
+  /// [stops] は LatLng か住所(String)。最後が目的地、それ以外は経由地。
+  /// 返り値: 経路線(encodedPolyline)・合計メートル・合計秒・各地点の座標（出発地→各stopの順）
+  Future<({String polyline, int meters, int seconds, List<LatLng> points, List<({String polyline, int seconds})> legs})?> getRoute(LatLng origin, List<Object> stops) async {
+    if (stops.isEmpty) return null;
+    const urlStr = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    Map<String, dynamic> wp(Object p) => p is LatLng
+        ? {'location': {'latLng': {'latitude': p.latitude, 'longitude': p.longitude}}}
+        : {'address': p.toString()};
+    final body = json.encode({
+      'origin': wp(origin),
+      'destination': wp(stops.last),
+      if (stops.length > 1) 'intermediates': stops.sublist(0, stops.length - 1).map(wp).toList(),
+      'travelMode': 'DRIVE',
+      'languageCode': 'ja',
+    });
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': _apiKey,
+          'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.startLocation,routes.legs.endLocation,routes.legs.polyline.encodedPolyline,routes.legs.duration',
+        },
+        body: body,
+      );
+      if (response.statusCode != 200) {
+        debugPrint('Routes API HTTP ${response.statusCode}: ${response.body}');
+        return null;
+      }
+      final routes = json.decode(response.body)['routes'] as List?;
+      if (routes == null || routes.isEmpty) return null;
+      final r = routes.first as Map<String, dynamic>;
+      LatLng ll(Map m) => LatLng((m['latLng']['latitude'] as num).toDouble(), (m['latLng']['longitude'] as num).toDouble());
+      final legs = (r['legs'] as List).cast<Map<String, dynamic>>();
+      return (
+        polyline: r['polyline']['encodedPolyline'] as String,
+        meters: (r['distanceMeters'] as num?)?.toInt() ?? 0,
+        seconds: int.tryParse(r['duration'].toString().replaceAll('s', '')) ?? 0,
+        points: [ll(legs.first['startLocation']), ...legs.map((l) => ll(l['endLocation']))],
+        legs: legs
+            .map((l) => (polyline: l['polyline']['encodedPolyline'] as String, seconds: int.tryParse(l['duration'].toString().replaceAll('s', '')) ?? 0))
+            .toList(),
+      );
+    } catch (e) {
+      debugPrint('Routes API Error: $e');
+      return null;
+    }
+  }
+
   /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（秒）を取得する。失敗時は null。
   /// Routes API（Google公式の新しい経路API）を使う。旧Distance Matrix APIは新規プロジェクトでは使えないため。
   Future<int?> getDurationSeconds(LatLng origin, LatLng destination) async {

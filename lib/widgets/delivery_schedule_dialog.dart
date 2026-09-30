@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import '../models/order_model.dart';
 import '../services/delivery_schedule_service.dart';
+import '../services/order_service.dart';
 import '../services/reservation_service.dart';
 import 'k_button.dart';
 import 'k_numeric_input_dialog.dart';
+import 'k_route_map_dialog.dart';
 import 'k_responsive.dart';
 
 /// 配達予定ダイアログ。縦の時間軸（9:00〜20:00）に、その日の配達予定カードを号車ごとの列に並べ、
@@ -56,6 +58,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   final Map<String, int> _lanes = {}; // 注文ID → 号車の列番号（0始まり）
   int _laneCount = 1;
   Map<String, DeliveryStop> _stops = {}; // 注文ID → 移動情報
+  final OrderService _orderService = OrderService();
   ({int lane, int minutes})? _pending; // 今回決めた予約枠（列番号は0始まり）
 
   @override
@@ -134,9 +137,27 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     }
   }
 
+  /// 住所に混ざった社名・施設名を取り除き、（郵便番号）＋都道府県以降だけにする。
+  String _cleanAddress(OrderModel o) {
+    var a = o.address.replaceAll('　', ' ').trim();
+    final zip = RegExp(r'〒?\s*\d{3}-?\d{4}').firstMatch(a);
+    var zipPrefix = '';
+    if (zip != null) {
+      final d = zip.group(0)!.replaceAll(RegExp(r'[^0-9]'), '');
+      zipPrefix = '〒${d.substring(0, 3)}-${d.substring(3)} ';
+      a = (a.substring(0, zip.start) + a.substring(zip.end)).trim();
+    }
+    if (o.facilityName.trim().isNotEmpty) a = a.replaceAll(o.facilityName.trim(), '');
+    a = a.replaceFirst(RegExp(r'^\[[^\]]*\]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final pref = RegExp(r'(北海道|東京都|大阪府|京都府|[^\s]{2,3}県)').firstMatch(a);
+    if (pref != null) a = a.substring(pref.start); // 都道府県より前は社名として捨てる
+    return (zipPrefix + a).trim();
+  }
+
   /// 住所から市区町村のみを取り出す（都道府県は除く。取れなければ空文字）
-  String _cityOf(String address) {
-    final rest = address.replaceFirst(RegExp(r'^(北海道|[^市区町村\d]{2,3}?[都府県])'), '');
+  String _cityOf(OrderModel o) {
+    final noZip = _cleanAddress(o).replaceFirst(RegExp(r'^\s*〒\s*\d{3}-?\d{4}\s*'), '');
+    final rest = noZip.replaceFirst(RegExp(r'^(北海道|[^市区町村\d]{2,3}?[都府県])'), '');
     final m = RegExp(r'^[^\d\s]+?[市区町村]').firstMatch(rest);
     return m?.group(0) ?? '';
   }
@@ -162,6 +183,9 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final double cx = colX + colW / 2;
     final double mid = (y1 + y2) / 2;
     final travel = _stops[next.id]?.travelSeconds;
+    final travelMin = travel == null ? null : (travel / 60).ceil();
+    // 余裕時間＝前の配達時間から次の配達時間までの間隔 − 移動時間（マイナスなら間に合わない）
+    final spare = travelMin == null ? null : nm - pm - travelMin;
     return [
       Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _DashedArrowPainter(cx, y1, y2)))),
       // 矢印の縦方向中央に、車アイコンとナビの移動時間（矢印の真ん中に重ねる）
@@ -175,14 +199,22 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: rs(context, 6)),
               decoration: BoxDecoration(color: AppColors.popupBackground, borderRadius: BorderRadius.circular(rs(context, 12))),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.directions_car, size: rs(context, 20), color: AppColors.primary),
-                  SizedBox(width: rs(context, 4)),
-                  Text(travel == null ? '移動--分' : '移動${(travel / 60).ceil()}分',
-                      style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primary)),
-                ],
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.directions_car, size: rs(context, 20), color: AppColors.primary),
+                    SizedBox(width: rs(context, 4)),
+                    Text(travelMin == null ? '移動--分' : '移動$travelMin分',
+                        style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    if (spare != null) ...[
+                      SizedBox(width: rs(context, 6)),
+                      Text(spare >= 0 ? '余裕$spare分' : '不足${-spare}分',
+                          style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: spare >= 0 ? AppColors.secondaryText : Colors.red)),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -213,17 +245,93 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final h = int.parse(digits.substring(0, 2));
     final m = int.parse(digits.substring(2, 4));
     final minutes = h * 60 + m;
-    if (m % 15 != 0 || minutes < _startHour * 60 || minutes > _endHour * 60) {
+    if (m % 10 != 0 || minutes < _startHour * 60 || minutes > _endHour * 60) {
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('$_startHour:00〜$_endHour:00の間で、15分単位（00・15・30・45）で入力してください'),
+          title: Text('$_startHour:00〜$_endHour:00の間で、10分単位（00・10・20・30・40・50）で入力してください'),
           actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
         ),
       );
       return;
     }
     setState(() => _pending = (lane: lane, minutes: minutes));
+  }
+
+  /// 号車の見出しタップ → 確認ポップアップ（API節約のため）→ Googleマップでナビを開く。
+  /// 出発地は店舗、最後の配達先が目的地、それ以外の配達先は経由地。
+  Future<void> _confirmRoute(int lane) async {
+    final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
+    if (group.isEmpty || widget.branchPos == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(group.isEmpty ? 'この号車には配達予定がありません' : '店舗の位置が取得できないため、ルートを表示できません'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
+        ),
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final btn = TextButton.styleFrom(foregroundColor: AppColors.dialogTextButton);
+        return AlertDialog(
+          backgroundColor: AppColors.dialogBackground,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+          title: Text('${lane + 1}号車のルートを表示しますか？', textAlign: TextAlign.center),
+          titleTextStyle: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.dialogLabel),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            TextButton(style: btn, onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+            TextButton(style: btn, onPressed: () => Navigator.pop(ctx, true), child: const Text('表示する')),
+          ],
+        );
+      },
+    );
+    if (ok != true || !mounted) return;
+    Object point(OrderModel o) => (o.latitude != null && o.longitude != null) ? LatLng(o.latitude!, o.longitude!) : _cleanAddress(o);
+    await showDialog<void>(
+      context: context,
+      builder: (_) => KRouteMapDialog(
+        title: '- ${lane + 1}号車 -　配送ルート',
+        origin: widget.branchPos!,
+        stops: [
+          for (final o in group)
+            KRouteStop(location: point(o), time: o.deliveryTime, place: _cityOf(o), color: _branchColor(o.branchName)),
+        ],
+      ),
+    );
+  }
+
+  /// [o] を [lane] の列へ移せるか（同じ列の他の予定・予約枠と30分以内で重ならない）。
+  bool _canDrop(OrderModel o, int lane) {
+    if (_lanes[o.id] == lane) return false;
+    final m = DeliveryScheduleService.minutesOf(o.deliveryTime)!;
+    bool clash(int other) => (other - m).abs() < _cardMinutes;
+    for (final x in _dayOrders) {
+      if (x.id != o.id && _lanes[x.id] == lane && clash(DeliveryScheduleService.minutesOf(x.deliveryTime)!)) return false;
+    }
+    for (final r in widget.reservations) {
+      final rm = DeliveryScheduleService.minutesOf(r.time);
+      if (r.vehicleNumber - 1 == lane && rm != null && clash(rm)) return false;
+    }
+    if (_pending != null && _pending!.lane == lane && clash(_pending!.minutes)) return false;
+    return true;
+  }
+
+  /// カードを別の号車の列へ移す（保存に失敗したら元に戻す）。
+  Future<void> _moveToLane(OrderModel o, int lane) async {
+    final before = _lanes[o.id]!;
+    setState(() => _lanes[o.id] = lane);
+    try {
+      await _orderService.updateVehicleNumber(o.id, lane + 1);
+      _loadStops();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _lanes[o.id] = before);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('号車の変更を保存できませんでした')));
+    }
   }
 
   /// 予約枠カード（背景は heatmapGreen）。
@@ -246,7 +354,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   /// 予定カード。「|」・配達時間・市区町村を上下中央に並べる。タップで詳細ダイアログ。
   Widget _buildCard(BuildContext context, OrderModel o, double cardH) {
     final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white);
-    return GestureDetector(
+    final card = GestureDetector(
       onTap: () => _showDetail(context, o),
       child: Container(
         height: cardH,
@@ -259,17 +367,27 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
             SizedBox(width: rs(context, 8)),
             Text(o.deliveryTime, style: white),
             SizedBox(width: rs(context, 12)),
-            Expanded(child: Text(_cityOf(o.address), maxLines: 1, overflow: TextOverflow.ellipsis, style: white)),
+            Expanded(child: Text(_cityOf(o), maxLines: 1, overflow: TextOverflow.ellipsis, style: white)),
           ],
         ),
       ),
+    );
+    // 長押ししてドラッグすると、別の号車の列へ移せる（ふつうのタップは詳細表示のまま）
+    return LongPressDraggable<OrderModel>(
+      data: o,
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(width: rs(context, 176), child: Opacity(opacity: 0.85, child: card)),
+      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: card),
+      child: card,
     );
   }
 
   /// 予定カードの詳細（顧客名・住所・注文内容）を配達予定ダイアログの中央に表示。
   void _showDetail(BuildContext context, OrderModel o) {
-    final small = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: AppColors.primaryText);
-    final label = TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.primaryText.withValues(alpha: 0.7));
+    final small = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.w500, color: AppColors.dialogText);
+    final label = TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.dialogLabel);
     Widget row(String title, String body) => Padding(
           padding: EdgeInsets.only(top: rs(context, 10)),
           child: Column(
@@ -284,8 +402,11 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
-        backgroundColor: AppColors.popupBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+        backgroundColor: AppColors.dialogBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(rs(context, 12)),
+          side: BorderSide(color: AppColors.dialogLine, width: 2),
+        ),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: rs(context, 420)),
           child: Padding(
@@ -297,12 +418,20 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text('${o.deliveryTime}　${_cityOf(o.address)}', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primary))),
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('配達時間', style: label),
+                            Text(o.deliveryTime, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.dialogText)),
+                          ],
+                        ),
+                      ),
+                      IconButton(icon: const Icon(Icons.close, color: AppColors.dialogText), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
                   row('顧客名', o.customerName),
-                  row('住所', o.address),
+                  row('住所', _cleanAddress(o).replaceFirstMapped(RegExp(r'^(〒\d{3}-\d{4}) '), (m) => '${m[1]}\n')),
                   row('注文内容', items),
                 ],
               ),
@@ -317,7 +446,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
     final double dialogWidth = screen.width < 900 ? screen.width * 0.95 : 850;
-    final double hourH = rs(context, 80);
+    final double hourH = rs(context, 120); // 10分＝約20（カードを10分単位で置けるよう間隔を広く）
     final double labelW = rs(context, 64);
     final double cardH = _cardMinutes / 60 * hourH;
     final double baseTop = rs(context, 8) + cardH; // 10:00のライン（その上にカードが乗る余白を確保）
@@ -354,7 +483,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
             Padding(
               padding: EdgeInsets.only(left: rs(context, 33.67), top: rs(context, 13.02)),
               child: SizedBox(
-                height: rs(context, 21),
+                height: rs(context, 42),
                 child: Stack(
                   children: [
                     for (int lane = 0; lane < _laneCount; lane++)
@@ -362,11 +491,14 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                         top: 0,
                         left: colX(lane),
                         width: colW,
-                        height: rs(context, 21),
-                        child: Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(color: AppColors.secondaryText, borderRadius: BorderRadius.circular(rs(context, 8))),
-                          child: Text(_vehicleLabel(lane + 1), style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white)),
+                        height: rs(context, 42),
+                        child: GestureDetector(
+                          onTap: () => _confirmRoute(lane),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(color: AppColors.secondaryText, borderRadius: BorderRadius.circular(rs(context, 8))),
+                            child: Text(_vehicleLabel(lane + 1), style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: Colors.white)),
+                          ),
                         ),
                       ),
                   ],
@@ -411,9 +543,19 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                             bottom: 0,
                             left: colX(lane),
                             width: colW,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => _pickTime(lane),
+                            child: DragTarget<OrderModel>(
+                              onWillAcceptWithDetails: (d) => _canDrop(d.data, lane),
+                              onAcceptWithDetails: (d) => _moveToLane(d.data, lane),
+                              builder: (context, candidate, _) => GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => _pickTime(lane),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: candidate.isEmpty ? null : AppColors.primary.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(rs(context, 8)),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         // 号車ごとのカード間の点線矢印（カードより下のレイヤー）

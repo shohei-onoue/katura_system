@@ -40,11 +40,20 @@ class AppColors {
   static const Color heatmapBlue = Colors.blueAccent;
   static const Color heatmapRed = Colors.redAccent;
 
-  // スナックバー
-  static const Color snackbarRed = Colors.redAccent;
-
   // ボタン
   static const Color acceptButton = Colors.deepPurple;
   static const Color rejectButton = Colors.grey;
   static const Color cancelButton = Colors.red;
+
+  // スナックバー
+  static const Color snackbarRed = Colors.redAccent;
+  static const Color snackbarYellow = Colors.yellowAccent;
+
+  // ダイヤログ
+  static const Color dialogBackground = Colors.white;
+  static const Color dialogText = Colors.black;
+  static const Color dialogLine = Colors.blueAccent;
+  static const Color dialogBlackLine = Colors.black;
+  static const Color dialogLabel = accentOrange;
+  static const Color dialogTextButton = Colors.deepPurple;
 }

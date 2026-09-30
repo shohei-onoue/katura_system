@@ -624,7 +624,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (withPreview) {
       // 配送：カレンダーで日付を選ぶ → 配達予定ダイアログで号車と時間を決める（戻るとカレンダーへ）
       final scheduleOrders = preview
-          .where((o) => o.branchName == _branchName && o.id != widget.initialOrder?.id)
+          .where((o) => OrderService.isActive(o) && o.branchName == _branchName && o.id != widget.initialOrder?.id)
           .toList();
       while (result == null) {
         final day = await showDialog<DateTime>(

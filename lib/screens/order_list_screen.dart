@@ -78,9 +78,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     }
     setState(() {
       _displayNames = names;
-      _allOrders = list.where((order) {
-        return order.status != '配送済み' && order.status != 'キャンセル済み' && order.status != '当日キャンセル';
-      }).toList();
+      _allOrders = list.where(OrderService.isActive).toList();
       _filterOrdersByDay(_selectedDay!);
       _isLoading = false;
     });

@@ -74,7 +74,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   }
 
   List<OrderModel> get _branchOrders =>
-      _orders.where((o) => o.branchName == _branchName && o.deliveryType == '配送').toList();
+      _orders.where((o) => OrderService.isActive(o) && o.branchName == _branchName && o.deliveryType == '配送').toList();
 
   BranchModel? get _selectedBranch => _branches.where((b) => b.name == _branchName).isEmpty
       ? null

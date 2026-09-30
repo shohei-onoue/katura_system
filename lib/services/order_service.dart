@@ -11,6 +11,10 @@ class OrderService {
 
   CommonDatabase? _localDb;
 
+  /// 受注一覧・配達予定・配送ルートで共通の「有効な受注」の条件（配送済み・キャンセル系は除く）。
+  static bool isActive(OrderModel o) =>
+      o.status != '配送済み' && o.status != 'キャンセル済み' && o.status != '当日キャンセル';
+
   /// データベースの一本化 (katura_cache.db)
   Future<void> _initLocalDb() async {
     if (_localDb != null) return;
@@ -93,6 +97,18 @@ class OrderService {
     if (res.isNotEmpty) {
       final map = jsonDecode(res.first['data'] as String) as Map<String, dynamic>;
       map['status'] = status;
+      _localDb!.execute('UPDATE orders SET data = ? WHERE id = ?', [jsonEncode(map), orderId]);
+    }
+  }
+
+  /// 配送車両の号車だけを更新する（配達予定ダイアログのドラッグ&ドロップ用）。
+  Future<void> updateVehicleNumber(String orderId, int vehicleNumber) async {
+    await _orderCollection.doc(orderId).update({'vehicleNumber': vehicleNumber});
+    await _initLocalDb();
+    final res = _localDb!.select('SELECT data FROM orders WHERE id = ?', [orderId]);
+    if (res.isNotEmpty) {
+      final map = jsonDecode(res.first['data'] as String) as Map<String, dynamic>;
+      map['vehicleNumber'] = vehicleNumber;
       _localDb!.execute('UPDATE orders SET data = ? WHERE id = ?', [jsonEncode(map), orderId]);
     }
   }
