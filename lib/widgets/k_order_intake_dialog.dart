@@ -50,13 +50,14 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
     super.dispose();
   }
 
-  bool get _canSubmit => _orderSource.isNotEmpty && _handover.isNotEmpty;
+  bool get _canSubmit =>
+      _handover.isNotEmpty && (_handover == '引取り' || _orderSource.isNotEmpty);
 
   void _submit() {
     if (!_canSubmit) return;
     Navigator.pop(context, {
-      'orderSource': _orderSource,
-      'orderSourceOther': _otherController.text,
+      'orderSource': _handover == '引取り' ? '' : _orderSource,
+      'orderSourceOther': (_handover == '引取り' || _orderSource != 'その他') ? '' : _otherController.text,
       'deliveryType': _handover == '引取り' ? '引取' : '配送',
     });
   }
@@ -87,28 +88,6 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
             ),
             SizedBox(height: rs(context, 16)),
 
-            _sectionHeader(context, '受注区分'),
-            SizedBox(height: rs(context, 8)),
-            KChoiceGroup<String>(
-              label: '',
-              selectedValue: _orderSource,
-              showLabel: false,
-              items: _orderSources.map((s) => KChoiceItem(label: s, value: s)).toList(),
-              onSelected: (v) => setState(() => _orderSource = v),
-            ),
-            if (_orderSource == 'その他') ...[
-              SizedBox(height: rs(context, 10)),
-              KMultimodalTextField(
-                label: '',
-                hintText: '受注区分（詳細）を入力',
-                showLabel: false,
-                controller: _otherController,
-                height: rs(context, 50),
-                maxLines: 1,
-              ),
-            ],
-            SizedBox(height: rs(context, 20)),
-
             _sectionHeader(context, '受け渡し方法'),
             SizedBox(height: rs(context, 8)),
             KChoiceGroup<String>(
@@ -121,6 +100,29 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
               ],
               onSelected: (v) => setState(() => _handover = v),
             ),
+            if (_handover == '配達') ...[
+              SizedBox(height: rs(context, 20)),
+              _sectionHeader(context, '受注区分'),
+              SizedBox(height: rs(context, 8)),
+              KChoiceGroup<String>(
+                label: '',
+                selectedValue: _orderSource,
+                showLabel: false,
+                items: _orderSources.map((s) => KChoiceItem(label: s, value: s)).toList(),
+                onSelected: (v) => setState(() => _orderSource = v),
+              ),
+              if (_orderSource == 'その他') ...[
+                SizedBox(height: rs(context, 10)),
+                KMultimodalTextField(
+                  label: '',
+                  hintText: '受注区分（詳細）を入力',
+                  showLabel: false,
+                  controller: _otherController,
+                  height: rs(context, 50),
+                  maxLines: 1,
+                ),
+              ],
+            ],
             SizedBox(height: rs(context, 28)),
 
             Row(

@@ -153,6 +153,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Map<String, int> _branchVehicleCounts = {}; // 店舗名 → 配送車両数
   final List<String> _stepLabels = ['番号確認', '顧客確認', '配達先の確定', '注文内容', '完了'];
 
+  bool _pendingIntake = false; // 新規顧客：顧客情報入力の後に受注区分・配達日時を入力する
   bool _isDeliveryDateSelected = true;
   bool _isDeliveryTimeSelected = true;
   bool _isDeliveryTypeSelected = true;
@@ -534,9 +535,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     });
   }
 
-  /// 番号確認「次へ」→ 受注区分・受け渡し方法 → 配達日時 の一連のダイヤログ。
-  /// 日時まで確定できたら顧客確認ステップ（1）へ進む。
+  /// 番号確認「次へ」。既往顧客は受注区分・受け渡し方法 → 配達日時 → 配達先の確定（2）へ。
+  /// 新規顧客は先に顧客情報入力（1）へ進み、その後に受注区分・配達日時を入力する。
   Future<void> _startPostPhoneFlow() async {
+    if (_currentCustomer == null) {
+      _pendingIntake = true;
+      _updateStep(1);
+      return;
+    }
+    if (await _runIntakeAndSchedule() && mounted) _updateStep(2);
+  }
+
+  /// 受注区分・受け渡し方法 → 配達日時のダイヤログ。日時まで確定できたら true。
+  Future<bool> _runIntakeAndSchedule() async {
     final intake = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => KOrderIntakeDialog(
@@ -545,7 +556,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         initialDeliveryType: _deliveryType,
       ),
     );
-    if (!mounted || intake == null) return;
+    if (!mounted || intake == null) return false;
 
     setState(() {
       _orderSource = intake['orderSource'] as String;
@@ -555,8 +566,37 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     });
 
     final picked = await _showDeliveryDateDialog(withPreview: _deliveryType == '配送');
-    // 既存顧客は顧客確認ステップ（1）を飛ばして配達先の確定（2）へ。新規顧客は登録のため1へ。
-    if (picked && mounted) _updateStep(_currentCustomer != null ? 2 : 1);
+    return picked && mounted;
+  }
+
+  /// 対応中顧客の所属企業の他顧客の注文、および同じ配達先の他顧客の注文を返す（重複なし）。
+  Future<List<OrderModel>> _computeRelatedOrders(List<OrderModel> loaded) async {
+    final customer = _currentCustomer;
+    if (customer == null) return const [];
+    var all = loaded;
+    if (all.isEmpty) {
+      try {
+        all = await _orderService.getAllOrders();
+      } catch (e) {
+        debugPrint('relatedOrders load error: $e');
+        return const [];
+      }
+    }
+    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
+    String norm(String v) => v.replaceAll(RegExp(r'\s+'), '');
+    final phone = digits(customer.phoneNumber);
+    final name = norm(customer.name);
+    final company = norm(customer.companyName);
+    final destName = norm(_selectedFacilityName);
+    final destAddr = norm(_selectedFacilityAddress);
+    return all.where((o) {
+      if (o.id == widget.initialOrder?.id) return false;
+      if (digits(o.phoneNumber) == phone && norm(o.customerName) == name) return false;
+      final sameCompany = company.isNotEmpty && norm(o.facilityName) == company;
+      final sameDest = (destName.isNotEmpty && norm(o.facilityName) == destName) ||
+          (destAddr.isNotEmpty && norm(o.address) == destAddr);
+      return sameCompany || sameDest;
+    }).toList();
   }
 
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
@@ -565,7 +605,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     List<OrderModel> preview = const [];
     if (withPreview) {
       try {
-        preview = await _orderService.getAllOrders();
+        preview = await _orderService.getAllOrders(forceRefresh: true);
       } catch (e) {
         debugPrint('previewOrders load error: $e');
       }
@@ -576,6 +616,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _deliveryDate.year, _deliveryDate.month, _deliveryDate.day,
       _selectedTime.hour, _selectedTime.minute,
     );
+    final related = await _computeRelatedOrders(preview);
+    if (!mounted) return false;
     DateTime? result;
     int? pickedVehicle;
     if (withPreview) {
@@ -589,6 +631,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           builder: (_) => KDateTimeSelectionDialog(
             initialDateTime: initial,
             previewOrders: preview,
+            relatedOrders: related,
             calendarOnly: true,
           ),
         );
@@ -625,6 +668,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           maxTime: _timePickerMax,
           enforceTimeRange: true,
           interval: _timePickerInterval,
+          relatedOrders: related,
         ),
       );
     }
@@ -743,7 +787,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
   }
 
-  void _selectCustomer(Customer customer) async {
+  /// 候補カードのタップ：顧客を選択したら番号確認ステップを飛ばして配達区分ポップアップへ。
+  Future<void> _onCandidateTapped(Customer customer) async {
+    await _selectCustomer(customer);
+    if (!mounted || _currentCustomer?.id != customer.id) return;
+    await _startPostPhoneFlow();
+  }
+
+  Future<void> _selectCustomer(Customer customer) async {
     // 同一顧客の再選択ならフィールドをクリアしない。
     // ステップ遷移は番号確認の「次へ」（_startPostPhoneFlow）に任せる。
     if (_currentCustomer?.id == customer.id) {
@@ -841,6 +892,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _currentCustomer = created;
         _isLoadingNotifier.value = false;
       });
+    }
+    if (_pendingIntake) {
+      if (!await _runIntakeAndSchedule() || !mounted) return;
+      _pendingIntake = false;
     }
     _updateStep(2);
   }
@@ -1147,7 +1202,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   /// 未選択の選択ボタンがあれば理由を返す（全て選択済みなら null）
   String? _validateSelections() {
     if (_deliveryType.isEmpty) return '配送方法を選択してください';
-    if (_orderSource.isEmpty) return '受注区分を選択してください';
+    if (_deliveryType == '配送' && _orderSource.isEmpty) return '受注区分を選択してください';
     if (_packagingType.isEmpty) return '梱包方法を選択してください';
     if (_preConfirmationMethod.isEmpty) return '事前連絡方法を選択してください';
     if (_preConfirmationPhoneType.isEmpty) return '事前連絡の連絡先番号を選択してください';
@@ -1642,7 +1697,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               _startPostPhoneFlow();
             }
           },
-          onSelectCustomer: _selectCustomer,
+          onSelectCustomer: _onCandidateTapped,
           lastOrderDates: _lastOrderDates,
       );
       case 1: return CustomerConfirmationStep(

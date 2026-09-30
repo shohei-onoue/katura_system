@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/order_model.dart';
@@ -23,6 +24,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   List<OrderModel> _allOrders = [];
   List<OrderModel> _filteredOrders = [];
   bool _isLoading = true;
+  String? _expandedOrderId; // 展開中の受注（1枚だけ）
   
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
@@ -35,12 +37,24 @@ class _OrderListScreenState extends State<OrderListScreen> {
     super.initState();
     _selectedDay = _focusedDay;
     _loadOrders();
+    // 受注入力での確定など、受注が変わったら自動で更新する（最初の1回は上の読み込みと重複するため飛ばす）
+    _ordersSub = _orderService.watchOrders().skip(1).listen((_) => _loadOrders(showLoading: false));
   }
 
-  Future<void> _loadOrders() async {
-    setState(() {
-      _isLoading = true;
-    });
+  StreamSubscription<List<OrderModel>>? _ordersSub;
+
+  @override
+  void dispose() {
+    _ordersSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadOrders({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
     final list = await _orderService.getAllOrders(forceRefresh: true);
     final customers = await _customerService.getAllCustomers();
     if (!mounted) return;
@@ -65,7 +79,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     setState(() {
       _displayNames = names;
       _allOrders = list.where((order) {
-        return order.status != '配送済み' && order.status != 'キャンセル済み';
+        return order.status != '配送済み' && order.status != 'キャンセル済み' && order.status != '当日キャンセル';
       }).toList();
       _filterOrdersByDay(_selectedDay!);
       _isLoading = false;
@@ -73,6 +87,30 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Future<void> _cancelOrder(OrderModel order) async {
+    // 当日キャンセルはキャンセル料100%を確認し、削除せず履歴（status）として残す
+    if (isSameDay(order.deliveryDate, DateTime.now())) {
+      final agreed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: AppColors.popupBackground,
+          title: const Text('当日キャンセルの確認'),
+          content: Text('${order.customerName} 様の予約は当日のため、キャンセル料は100％になります。よろしいですか？'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('戻る')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('了承'),
+            ),
+          ],
+        ),
+      );
+      if (agreed == true) {
+        await _orderService.updateOrderStatus(order.id, '当日キャンセル');
+        _loadOrders();
+      }
+      return;
+    }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -268,6 +306,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
         return OrderListCard(
           order: orders[index],
           displayName: _displayNames[orders[index].id],
+          expanded: _expandedOrderId == orders[index].id,
+          onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == orders[index].id ? null : orders[index].id),
           onEdit: (order, section) {
             widget.onEditOrder?.call(order, section);
           },

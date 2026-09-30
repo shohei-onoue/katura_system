@@ -66,6 +66,26 @@ class OrderService {
     return list;
   }
 
+  /// Firestoreの受注を監視し、変更のたびに全件を流す（ローカルキャッシュも同期）。
+  Stream<List<OrderModel>> watchOrders() {
+    return _orderCollection.snapshots().asyncMap((snapshot) async {
+      final list = snapshot.docs.map((doc) => OrderModel.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      try {
+        await _initLocalDb();
+        _localDb!.execute('BEGIN TRANSACTION');
+        _localDb!.execute('DELETE FROM orders');
+        final batch = _localDb!.prepare('INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)');
+        for (final order in list) {
+          batch.execute([order.id, jsonEncode(order.toMap()), order.deliveryDate.toIso8601String(), DateTime.now().millisecondsSinceEpoch]);
+        }
+        batch.close();
+        _localDb!.execute('COMMIT');
+      } catch (_) {}
+      list.sort((a, b) => b.deliveryDate.compareTo(a.deliveryDate));
+      return list;
+    });
+  }
+
   Future<void> updateOrderStatus(String orderId, String status) async {
     await _orderCollection.doc(orderId).update({'status': status});
     await _initLocalDb();

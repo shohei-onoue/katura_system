@@ -22,6 +22,10 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   /// 空のときは何も表示しない。
   final List<OrderModel> previewOrders;
 
+  /// 対応中顧客の所属企業の他顧客の注文、および同じ配達先の他顧客の注文。
+  /// 表示は後続のデザイン対応で実装（現状は受け口のみ）。
+  final List<OrderModel> relatedOrders;
+
   /// trueのときはカレンダーだけを表示し、日付をタップするとその日付(00:00)を返して閉じる。
   /// 時間は呼び出し側（配達予定ダイアログ）で決める。
   final bool calendarOnly;
@@ -38,6 +42,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.highlightDate,
     this.highlightLabel = '配達日',
     this.previewOrders = const [],
+    this.relatedOrders = const [],
     this.calendarOnly = false,
   });
 
@@ -142,6 +147,119 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     );
   }
 
+  bool get _showRelated => widget.calendarOnly || widget.relatedOrders.isNotEmpty;
+
+  /// カレンダーの右に関連注文カード領域を並べる（7:3）。狭い画面では下に縦積み。
+  Widget _withRelated(BuildContext context, Widget calendar) {
+    if (!_showRelated) return calendar;
+    final narrow = MediaQuery.of(context).size.width < 700;
+    if (narrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          calendar,
+          SizedBox(height: rs(context, 12)),
+          SizedBox(height: rs(context, 260), child: _buildRelatedPanel(context)),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 7, child: calendar),
+        SizedBox(width: rs(context, 12)),
+        Expanded(flex: 3, child: SizedBox(height: rs(context, 420), child: _buildRelatedPanel(context))),
+      ],
+    );
+  }
+
+  /// 選択日と同じ日に配達される関連注文があれば確認ポップアップを出す。
+  /// 戻り値: true=そのまま進む / false=やめる（日付を選び直す）。
+  Future<bool> _confirmDuplicate(DateTime day) async {
+    final count = widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).length;
+    if (count == 0) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text('同日に他の注文が$count件あります',
+            style: const TextStyle(color: AppColors.snackbarRed, fontWeight: FontWeight.bold)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('やめる（日付を選び直す）'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('それでも注文する'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Widget _buildRelatedPanel(BuildContext context) {
+    final list = [...widget.relatedOrders]
+      ..sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
+    return Container(
+      padding: EdgeInsets.all(rs(context, 8)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(rs(context, 12)),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('関連する注文 ${list.length}件',
+              style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.secondaryText)),
+          SizedBox(height: rs(context, 6)),
+          Expanded(
+            child: list.isEmpty
+                ? Center(
+                    child: Text('該当する注文はありません',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: rf(context, 12), color: Colors.grey)))
+                : ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (context, index) => SizedBox(height: rs(context, 6)),
+                    itemBuilder: (context, i) {
+                      final o = list[i];
+                      final place = o.facilityName.isNotEmpty ? o.facilityName : _areaLabel(o);
+                      final isDup = isSameDay(o.deliveryDate, _tempDate);
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 6)),
+                        decoration: BoxDecoration(
+                          color: isDup ? AppColors.heatmapRed.withValues(alpha: 0.5) : Colors.white,
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(rs(context, 8)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${DateFormat('M/d(E)', 'ja_JP').format(o.deliveryDate)} ${o.deliveryTime}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: widget.themeColor)),
+                            Text(o.customerName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600)),
+                            Text(place,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 11), color: AppColors.secondaryText)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
@@ -219,7 +337,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                       child: _calendarOpen
                           ? Padding(
                               padding: EdgeInsets.only(bottom: rs(context, 16)),
-                              child: Column(
+                              child: _withRelated(context, Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                       Container(
@@ -252,10 +370,17 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           todayTextStyle: TextStyle(color: widget.themeColor, fontWeight: FontWeight.bold),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
-                        onDaySelected: (selectedDay, focusedDay) {
+                        onDaySelected: (selectedDay, focusedDay) async {
+                          final prevDate = _tempDate;
                           setState(() => _tempDate = selectedDay);
+                          final proceed = await _confirmDuplicate(selectedDay);
+                          if (!mounted) return;
+                          if (!proceed) {
+                            setState(() => _tempDate = prevDate);
+                            return;
+                          }
                           if (widget.calendarOnly) {
-                            Navigator.pop(context, DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
+                            Navigator.of(this.context).pop(DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
                           }
                         },
                         rowHeight: rs(context, 50),
@@ -315,7 +440,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           ),
                         ),
                                 ],
-                              ),
+                              )),
                             )
                           : const SizedBox(width: double.infinity),
                     ),

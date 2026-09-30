@@ -8,6 +8,8 @@ class OrderListCard extends StatefulWidget {
   final String? displayName; // 顧客管理の最新の名前（なければ受注に保存された名前）
   final Function(OrderModel, String) onEdit;
   final Function(OrderModel) onCancel;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   const OrderListCard({
     super.key,
@@ -15,6 +17,8 @@ class OrderListCard extends StatefulWidget {
     this.displayName,
     required this.onEdit,
     required this.onCancel,
+    required this.expanded,
+    required this.onToggle,
   });
 
   @override
@@ -46,7 +50,7 @@ class _OrderListCardState extends State<OrderListCard> {
     }
   }
 
-  bool _expanded = false;
+  bool get _expanded => widget.expanded;
 
   Color get _branchColor {
     switch (widget.order.branchName) {
@@ -95,7 +99,7 @@ class _OrderListCardState extends State<OrderListCard> {
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: widget.onToggle,
             child: Container(
               width: double.infinity,
               color: _branchColor.withValues(alpha: 0.18),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
@@ -41,12 +42,24 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   void initState() {
     super.initState();
     _load();
+    // 受注が変わったら自動で反映する
+    _ordersSub = _orderService.watchOrders().listen((orders) {
+      if (mounted) setState(() => _orders = orders);
+    });
+  }
+
+  StreamSubscription<List<OrderModel>>? _ordersSub;
+
+  @override
+  void dispose() {
+    _ordersSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {
     try {
       final branches = await _branchService.getAllBranches();
-      final orders = await _orderService.getAllOrders();
+      final orders = await _orderService.getAllOrders(forceRefresh: true);
       if (!mounted) return;
       setState(() {
         _branches = branches;

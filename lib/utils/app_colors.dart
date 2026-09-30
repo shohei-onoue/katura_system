@@ -40,6 +40,9 @@ class AppColors {
   static const Color heatmapBlue = Colors.blueAccent;
   static const Color heatmapRed = Colors.redAccent;
 
+  // スナックバー
+  static const Color snackbarRed = Colors.redAccent;
+
   // ボタン
   static const Color acceptButton = Colors.deepPurple;
   static const Color rejectButton = Colors.grey;
