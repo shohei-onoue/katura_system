@@ -299,16 +299,22 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) {
-        final btn = TextButton.styleFrom(foregroundColor: AppColors.dialogTextButton);
+        ButtonStyle btn(Color c) => ElevatedButton.styleFrom(
+              backgroundColor: c,
+              foregroundColor: Colors.white,
+              fixedSize: Size(rs(context, 120), rs(context, 40)),
+            );
         return AlertDialog(
+          elevation: 12,
+          shadowColor: Colors.black,
           backgroundColor: AppColors.dialogBackground,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
           title: Text('${lane + 1}号車のルートを表示しますか？', textAlign: TextAlign.center),
-          titleTextStyle: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.dialogLabel),
+          titleTextStyle: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primaryText),
           actionsAlignment: MainAxisAlignment.center,
           actions: [
-            TextButton(style: btn, onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
-            TextButton(style: btn, onPressed: () => Navigator.pop(ctx, true), child: const Text('表示する')),
+            ElevatedButton(style: btn(AppColors.cancelButton), onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+            ElevatedButton(style: btn(AppColors.acceptButton), onPressed: () => Navigator.pop(ctx, true), child: const Text('表示する')),
           ],
         );
       },

@@ -23,7 +23,10 @@ class KStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visible = [for (int i = 0; i < steps.length; i++) if (!hiddenSteps.contains(i)) i];
+    final visible = [
+      for (int i = 0; i < steps.length; i++)
+        if (!hiddenSteps.contains(i)) i,
+    ];
     return Container(
       padding: EdgeInsets.symmetric(horizontal: rav(context, 12)),
       decoration: const BoxDecoration(
@@ -35,101 +38,144 @@ class KStepper extends StatelessWidget {
       child: SizedBox(
         height: kStepBarHeight(context),
         child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: _withArrows(context, List.generate(visible.length, (pos) {
-          final index = visible[pos];
-          final isLast = index == steps.length - 1;
-          final isClickable = index <= maxReachedStep || (isLast && isFinalStepAvailable);
-          final isCompleted = index <= maxReachedStep && index != currentStep; // 修正: 実際に到達・通過済みのものだけチェックマーク
-          final isActive = index == currentStep;
-          final isAvailableButUnvisited = isClickable && !isCompleted && !isActive; // 追加: ジャンプ可能な未来のステップ
-          
-          return Expanded(
-            flex: 1, // 全ボタンの横幅を均一にする
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: isClickable ? () => onStepTapped(index) : null,
-              child: Center(
-                child: AnimatedScale(
-                scale: isActive ? 1.05 : 1.0,
-                duration: const Duration(milliseconds: 200),
-                child: Container(
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      if (isActive) 
-                        BoxShadow(
-                          color: AppColors.accentOrange.withValues(alpha: 0.3),
-                          blurRadius: rav(context, 12),
-                          spreadRadius: rav(context, 2),
-                          offset: Offset(0, rav(context, 4)),
-                        ),
-                    ],
-                  ),
-                  child: Card(
-                    elevation: isActive ? 8 : (isClickable ? 2 : 0),
-                    margin: EdgeInsets.symmetric(horizontal: rav(context, 2), vertical: rav(context, 4)),
-                    color: isActive ? AppColors.mainBackground : (isClickable ? Colors.grey.shade50 : Colors.grey.shade100),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(rav(context, 8)),
-                      side: BorderSide(
-                        color: isActive ? AppColors.accentOrange : (isAvailableButUnvisited ? AppColors.accentPurple.withValues(alpha: 0.3) : Colors.transparent),
-                        width: rav(context, 2),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: rav(context, 4)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: rf(context, 18),
-                            height: rf(context, 18),
-                            decoration: BoxDecoration(
-                              color: isActive 
-                                  ? AppColors.accentOrange 
-                                  : (isCompleted 
-                                      ? Colors.green 
-                                      : (isAvailableButUnvisited ? AppColors.accentPurple : Colors.grey.shade400)),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: isCompleted
-                                  ? Icon(Icons.check, color: AppColors.mainBackground, size: rav(context, 14))
-                                  : Text(
-                                      '${pos + 1}',
-                                      style: TextStyle(
-                                        color: AppColors.mainBackground,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: rf(context, 12),
-                                        height: 1.0,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          SizedBox(width: rav(context, 4)),
-                          Flexible(
-                            child: Text(
-                              steps[index],
-                              style: TextStyle(
-                                color: isActive ? AppColors.primaryText : (isClickable ? Colors.black87 : Colors.grey.shade600),
-                                fontWeight: isActive || isAvailableButUnvisited ? FontWeight.bold : FontWeight.normal,
-                                fontSize: rf(context, 18),
-                                height: 1.0,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _withArrows(
+            context,
+            List.generate(visible.length, (pos) {
+              final index = visible[pos];
+              final isLast = index == steps.length - 1;
+              final isClickable =
+                  index <= maxReachedStep || (isLast && isFinalStepAvailable);
+              final isCompleted =
+                  index <= maxReachedStep &&
+                  index != currentStep; // 修正: 実際に到達・通過済みのものだけチェックマーク
+              final isActive = index == currentStep;
+              final isAvailableButUnvisited =
+                  isClickable &&
+                  !isCompleted &&
+                  !isActive; // 追加: ジャンプ可能な未来のステップ
+
+              return Expanded(
+                flex: 1, // 全ボタンの横幅を均一にする
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: isClickable ? () => onStepTapped(index) : null,
+                  child: Center(
+                    child: AnimatedScale(
+                      scale: isActive ? 1.05 : 1.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          boxShadow: [
+                            if (isActive)
+                              BoxShadow(
+                                color: AppColors.accentOrange.withValues(
+                                  alpha: 0.3,
+                                ),
+                                blurRadius: rav(context, 12),
+                                spreadRadius: rav(context, 2),
+                                offset: Offset(0, rav(context, 4)),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
+                          ],
+                        ),
+                        child: Card(
+                          elevation: isActive ? 8 : (isClickable ? 2 : 0),
+                          margin: EdgeInsets.symmetric(
+                            horizontal: rav(context, 2),
+                            vertical: rav(context, 4),
+                          ),
+                          color: isActive
+                              ? AppColors.mainBackground
+                              : (isClickable
+                                    ? Colors.grey.shade50
+                                    : Colors.grey.shade100),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              rav(context, 8),
+                            ),
+                            side: BorderSide(
+                              color: isActive
+                                  ? AppColors.accentOrange
+                                  : (isAvailableButUnvisited
+                                        ? AppColors.accentPurple.withValues(
+                                            alpha: 0.3,
+                                          )
+                                        : Colors.transparent),
+                              width: rav(context, 2),
                             ),
                           ),
-                        ],
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: 2,
+                              horizontal: rav(context, 10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: rf(context, 18),
+                                  height: rf(context, 18),
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? AppColors.accentOrange
+                                        : (isCompleted
+                                              ? Colors.green
+                                              : (isAvailableButUnvisited
+                                                    ? AppColors.accentPurple
+                                                    : Colors.grey.shade400)),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Center(
+                                    child: isCompleted
+                                        ? Icon(
+                                            Icons.check,
+                                            color: AppColors.mainBackground,
+                                            size: rav(context, 14),
+                                          )
+                                        : Text(
+                                            '${pos + 1}',
+                                            style: TextStyle(
+                                              color: AppColors.mainBackground,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: rf(context, 12),
+                                              height: 1.0,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                                SizedBox(width: rav(context, 4)),
+                                Flexible(
+                                  child: Text(
+                                    steps[index],
+                                    style: TextStyle(
+                                      color: isActive
+                                          ? AppColors.primaryText
+                                          : (isClickable
+                                                ? Colors.black87
+                                                : Colors.grey.shade600),
+                                      fontWeight:
+                                          isActive || isAvailableButUnvisited
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      fontSize: rf(context, 18),
+                                      height: 1.0,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              )),
-            ),
-          );
-        })),
+              );
+            }),
+          ),
         ),
       ),
     );
@@ -140,9 +186,18 @@ class KStepper extends StatelessWidget {
     return [
       for (int i = 0; i < cards.length; i++) ...[
         if (i > 0)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: rav(context, 8)),
-            child: Center(child: Icon(MyFlutterApp.right_open, size: rf(context, 10), color: Colors.grey.shade500)),
+          Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                3,
+                (_) => Icon(
+                  MyFlutterApp.right_open,
+                  size: rf(context, 10),
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ),
           ),
         cards[i],
       ],

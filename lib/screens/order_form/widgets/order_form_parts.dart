@@ -23,14 +23,7 @@ class PhoneReceivedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (phoneNumber.isEmpty) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.phone_callback, color: AppColors.accentOrange, size: rav(context, 26)),
-        SizedBox(width: rav(context, 6)),
-        Text(phoneNumber, style: TextStyle(color: AppColors.selectButton, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
-      ],
-    );
+    return Text(phoneNumber, style: TextStyle(color: AppColors.accentText, fontWeight: FontWeight.bold, fontSize: rf(context, 22)));
   }
 }
 

@@ -159,7 +159,7 @@ class DeliveryDestinationStep extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文中止', isSecondary: !isEditingOrder, color: AppColors.cancelButton, onPressed: onCancelOrder),
+                    child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文中止', color: AppColors.cancelButton, onPressed: onCancelOrder),
                   ),
                   SizedBox(width: rs(context, 12)),
                   Expanded(

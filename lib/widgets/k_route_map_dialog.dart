@@ -41,6 +41,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   List<LatLng> _points = []; // 出発地 → 各配達先の座標
   List<RouteLeg?> _legs = []; // 各配達先へ向かう区間
   List<bool> _highway = []; // 区間ごとの経路タイプ（false＝一般優先［標準］、true＝高速優先）
+  final Map<String, RouteLeg?> _optLegs = {}; // 開いたカードに出す「一般／高速」それぞれの区間（キー＝"区間-高速か"）
   int _selected = -1;
   bool _mapReady = false;
 
@@ -152,6 +153,17 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     final next = _selected == i ? -1 : i; // もう一度タップで閉じる
     setState(() => _selected = next);
     _controller?.runJavaScript('selectLeg($next)');
+    if (next >= 0) _loadOptionLegs(next);
+  }
+
+  /// 開いたカードの一般優先・高速優先の移動時間を取得する（DB保存済みならAPIは呼ばない）。
+  Future<void> _loadOptionLegs(int i) async {
+    for (final h in [false, true]) {
+      if (_optLegs.containsKey('$i-$h') || i >= _points.length - 1) continue;
+      final leg = await _maps.getLeg(_points[i], _points[i + 1], highway: h);
+      if (!mounted) return;
+      setState(() => _optLegs['$i-$h'] = leg);
+    }
   }
 
   /// 区間 [i] の経路タイプを切り替え、移動時間と地図の経路線を更新する（DB保存済みならAPIは呼ばない）。
@@ -162,6 +174,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     setState(() {
       _highway[i] = highway;
       _legs[i] = leg;
+      _optLegs['$i-$highway'] = leg;
       _updateSummary();
     });
     _controller?.runJavaScript('setLegPath($i, ${jsonEncode(leg.polyline)})');
@@ -183,25 +196,32 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     );
   }
 
-  /// 開いたカード内の「一般優先／高速優先」ラジオボタン
+  /// 開いたカード内の「一般優先／高速優先」ラジオボタン（背景は whiteText、右端に移動時間）
   Widget _routeTypeRadios(BuildContext context, int i) {
-    final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.whiteText);
-    Widget option(String label, bool value) => InkWell(
-          onTap: _mapReady ? () => _setHighway(i, value) : null,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
-            child: Row(
-              children: [
-                Icon(_highway[i] == value ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                    color: AppColors.whiteText, size: rs(context, 22)),
-                SizedBox(width: rs(context, 8)),
-                Text(label, style: white),
-              ],
-            ),
+    final dark = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primaryText);
+    Widget option(String label, bool value) {
+      final sec = _optLegs['$i-$value']?.seconds;
+      return InkWell(
+        onTap: _mapReady ? () => _setHighway(i, value) : null,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
+          child: Row(
+            children: [
+              Icon(_highway[i] == value ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: AppColors.primaryText, size: rs(context, 22)),
+              SizedBox(width: rs(context, 8)),
+              Expanded(child: Text(label, style: dark)),
+              Text(sec == null ? '--分' : '${(sec / 60).ceil()}分', style: dark),
+            ],
           ),
-        );
-    return Padding(
-      padding: EdgeInsets.only(top: rs(context, 8)),
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(top: rs(context, 8)),
+      padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
+      decoration: BoxDecoration(color: AppColors.whiteText, borderRadius: BorderRadius.circular(rs(context, 6))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [option('一般優先', false), option('高速優先', true)],

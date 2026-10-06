@@ -51,7 +51,7 @@ class KButton extends StatelessWidget {
               onPressed: onPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
-                foregroundColor: AppColors.mainBackground,
+                foregroundColor: AppColors.whiteText,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(rav(context, 8)),
                 ),

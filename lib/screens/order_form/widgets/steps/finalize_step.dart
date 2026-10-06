@@ -145,7 +145,7 @@ class FinalizeStep extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文キャンセル', isSecondary: !isEditingOrder, color: isEditingOrder ? Colors.red : Colors.redAccent, onPressed: onCancelOrder),
+                child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文キャンセル', color: AppColors.cancelButton, onPressed: onCancelOrder),
               ),
               SizedBox(width: rs(context, 12)),
               Expanded(
@@ -212,6 +212,8 @@ class FinalizeStep extends StatelessWidget {
                 ],
                 onSelected: onPackagingTypeChanged,
                 showLabel: false,
+                selectedColor: AppColors.selectButton,
+                selectedTextColor: AppColors.primaryText,
               ),
             ),
             SizedBox(width: rs(context, 12)),
@@ -401,18 +403,18 @@ class FinalizeStep extends StatelessWidget {
         height: rs(context, 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.onButton : AppColors.offButton,
+          color: selected ? AppColors.selectButton : AppColors.offButton,
           borderRadius: BorderRadius.circular(rs(context, 10)),
-          border: Border.all(color: selected ? AppColors.onButton : Colors.grey.shade300, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? AppColors.selectButton : Colors.grey.shade300, width: selected ? 2 : 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: rs(context, 18), color: selected ? AppColors.onButtonText : Colors.grey),
+                size: rs(context, 18), color: selected ? AppColors.primaryText : Colors.grey),
             SizedBox(width: rs(context, 6)),
             Text(label,
-                style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? AppColors.onButtonText : AppColors.offButtonText)),
+                style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? AppColors.primaryText : AppColors.offButtonText)),
           ],
         ),
       ),

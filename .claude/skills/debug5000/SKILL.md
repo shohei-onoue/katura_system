@@ -48,6 +48,10 @@ Dart VM ServiceへのJSON-RPC直叩き（`reloadSources`）はFlutterのフロ�
 3. 手順3の監視を再度張る。
 4. 起動完了のログを検知したらユーザーに実機への反映完了を報告する。
 
+## 5. 作業ログの追記
+
+起動（または再起動）のたびに、前回の追記以降の変更内容を `~/Desktop/work_log.md` の今日の日付の見出しの下へ、箇条書き1〜2行で端的に追記する（見出しが無ければ作る）。`git diff` で変更を確認して書く。
+
 ## 注意
 
 - `flutter analyze` は既存の警告（`use_build_context_synchronously` や `deprecated_member_use` など）が残っていても、新規に増えていなければ問題なしと判断してよい。

@@ -121,9 +121,9 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                     onSelected: (val) {
                       if (val) setState(() => selectedCategory = cat);
                     },
-                    selectedColor: AppColors.accentPurple,
+                    selectedColor: AppColors.selectButton,
                     labelStyle: TextStyle(
-                      color: isSelected ? AppColors.mainBackground : Colors.black87,
+                      color: AppColors.primaryText,
                       fontSize: rf(context, 13),
                     ),
                     showCheckmark: false,
