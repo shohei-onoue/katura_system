@@ -6,7 +6,6 @@ import '../../../../widgets/k_dial_pad.dart';
 import '../../../../widgets/k_direct_address_picker_dialog.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_pen_input_dialog.dart';
-import '../../../../widgets/k_text_field.dart';
 import '../../../../services/category_service.dart';
 import '../order_form_parts.dart';
 import 'receiver_selector.dart';
@@ -127,11 +126,10 @@ class DeliveryDestinationStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        OrderFormCard(
+    final card = OrderFormCard(
           title: '配達先の確定',
           icon: Icons.location_on,
+          fill: isHistoryMode,
           trailing: PhoneReceivedBadge(phoneNumber: phoneNumberText),
           child: Column(
             children: [
@@ -143,7 +141,11 @@ class DeliveryDestinationStep extends StatelessWidget {
                 ],
               ),
               SizedBox(height: rs(context, 32)),
-              if (isHistoryMode) _buildHistoryList(context) else _buildNewForm(context),
+              if (isHistoryMode)
+                // 履歴カードの表示エリアのみスクロール（ボタンは常に画面内に固定）
+                Expanded(child: SingleChildScrollView(child: _buildHistoryList(context)))
+              else
+                _buildNewForm(context),
               SizedBox(height: rs(context, 32)),
               Divider(height: rs(context, 1), color: Colors.grey.shade200),
               SizedBox(height: rs(context, 20)),
@@ -157,7 +159,7 @@ class DeliveryDestinationStep extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文キャンセル', isSecondary: !isEditingOrder, color: isEditingOrder ? Colors.red : Colors.redAccent, onPressed: onCancelOrder),
+                    child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文中止', isSecondary: !isEditingOrder, color: AppColors.cancelButton, onPressed: onCancelOrder),
                   ),
                   SizedBox(width: rs(context, 12)),
                   Expanded(
@@ -168,7 +170,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                             addressControllerText.isNotEmpty &&
                             receiverController.text.isNotEmpty;
                         return KButton(
-                          label: '注文商品の選択へ',
+                          label: '商品選択',
                           onPressed: ready ? onNext : () {},
                           color: ready ? AppColors.accentPurple : Colors.grey,
                         );
@@ -179,9 +181,9 @@ class DeliveryDestinationStep extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ],
-    );
+        );
+    // 履歴モードは親の高さいっぱいに広げて内部スクロール、新規登録は従来どおり
+    return isHistoryMode ? card : Column(children: [card]);
   }
 
   Widget _buildModeToggleBtn(BuildContext context, {required String label, required IconData icon, required bool isSelected, required VoidCallback onTap}) {
@@ -1320,9 +1322,9 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 onChanged: (v) => setDialogState(() => selectedParent = v),
               ),
               SizedBox(height: rs(context, 16)),
-              KTextField(label: 'ジャンル名（例：美容院）', controller: genreController),
+              KMultimodalTextField(label: 'ジャンル名（例：美容院）', controller: genreController, maxLines: 1),
               SizedBox(height: rs(context, 16)),
-              KTextField(label: 'キーワード（カンマ区切り。例：ヘア,理容）', controller: keywordController),
+              KMultimodalTextField(label: 'キーワード（カンマ区切り。例：ヘア,理容）', controller: keywordController, maxLines: 1),
             ],
           ),
           actions: [

@@ -150,7 +150,7 @@ class CustomerService {
     await _initLocalDb();
     final cleanSuffix = suffix.replaceAll(RegExp(r'[^0-9]'), '');
     if (cleanSuffix.length < 4) return [];
-    final results = _localDb!.select('SELECT data FROM customers WHERE phoneNumber LIKE ?', ['%$cleanSuffix']);
+    final results = _localDb!.select("SELECT data FROM customers WHERE REPLACE(REPLACE(phoneNumber, '-', ''), ' ', '') LIKE ?", ['%$cleanSuffix']);
     return results.map((row) => Customer.fromMap(jsonDecode(row['data'] as String))).toList();
   }
 

@@ -32,6 +32,13 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   /// 時間は呼び出し側（配達予定ダイアログ）で決める。
   final bool calendarOnly;
 
+  /// 選択日の丸の色（未指定なら themeColor）。指定すると丸の中の文字は黒系になる。
+  final Color? selectedDayColor;
+
+  /// trueのときはカレンダーだけを表示し、日付をタップするとすぐにその日付(00:00)を返して閉じる
+  /// （関連注文カードやボタンは出さない。時間は呼び出し側で別のウィジェットで決める）。
+  final bool pickDayOnly;
+
   const KDateTimeSelectionDialog({
     super.key,
     required this.initialDateTime,
@@ -46,6 +53,8 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.previewOrders = const [],
     this.relatedOrders = const [],
     this.calendarOnly = false,
+    this.selectedDayColor,
+    this.pickDayOnly = false,
   });
 
   @override
@@ -57,28 +66,54 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   bool _calendarOpen = false;
   late String _timeBuffer; // 4桁の数字保持用 (例: "1430")
   Map<String, String> _customerNames = {};
+  final GlobalKey _calendarKey = GlobalKey(); // カレンダー枠の高さを測る（右側の高さを合わせる）
+  double? _calendarHeight;
 
   String _nameOf(OrderModel o) => withHonorific(_customerNames[o.id] ?? o.customerName);
 
   Future<void> _loadCustomerNames() async {
-    if (widget.relatedOrders.isEmpty) return;
+    await _ensureNames(widget.relatedOrders);
+  }
+
+  /// まだ顧客名を取得していない注文だけ、顧客管理の最新の顧客名を取得して追加する。
+  Future<void> _ensureNames(List<OrderModel> orders) async {
+    final missing = orders.where((o) => !_customerNames.containsKey(o.id)).toList();
+    if (missing.isEmpty) return;
     try {
-      final names = await CustomerService().resolveOrderNames(widget.relatedOrders);
+      final names = await CustomerService().resolveOrderNames(missing);
       if (!mounted) return;
-      setState(() => _customerNames = names);
+      setState(() => _customerNames = {..._customerNames, ...names});
     } catch (_) {}
+  }
+
+  /// 選択日の受注（previewOrders と relatedOrders の和集合・時間順）。
+  List<OrderModel> _ordersOnSelectedDay() {
+    final byId = <String, OrderModel>{};
+    for (final o in [...widget.previewOrders, ...widget.relatedOrders]) {
+      if (isSameDay(o.deliveryDate, _tempDate)) byId[o.id] = o;
+    }
+    final warnIds = widget.relatedOrders.map((o) => o.id).toSet();
+    // 警告（関連注文）のカードを先頭に、その中は時間順
+    return byId.values.toList()
+      ..sort((a, b) {
+        final wa = warnIds.contains(a.id) ? 0 : 1;
+        final wb = warnIds.contains(b.id) ? 0 : 1;
+        if (wa != wb) return wa.compareTo(wb);
+        return a.deliveryTime.compareTo(b.deliveryTime);
+      });
   }
 
   @override
   void initState() {
     super.initState();
-    _calendarOpen = widget.calendarOnly;
-    _loadCustomerNames();
+    _calendarOpen = widget.calendarOnly || widget.pickDayOnly;
     _tempDate = DateTime(
       widget.initialDateTime.year,
       widget.initialDateTime.month,
       widget.initialDateTime.day,
     );
+    _loadCustomerNames();
+    if (widget.calendarOnly) _ensureNames(_ordersOnSelectedDay());
     // 初期時間を4桁の文字列に変換
     _timeBuffer = widget.initialDateTime.hour.toString().padLeft(2, '0') +
                   widget.initialDateTime.minute.toString().padLeft(2, '0');
@@ -162,7 +197,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     );
   }
 
-  bool get _showRelated => widget.calendarOnly || widget.relatedOrders.isNotEmpty;
+  bool get _showRelated => !widget.pickDayOnly && (widget.calendarOnly || widget.relatedOrders.isNotEmpty);
 
   /// カレンダーの右に関連注文カード領域を並べる（7:3）。狭い画面では下に縦積み。
   Widget _withRelated(BuildContext context, Widget calendar) {
@@ -174,16 +209,25 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
         children: [
           calendar,
           SizedBox(height: rs(context, 12)),
-          SizedBox(height: rs(context, 260), child: _buildRelatedPanel(context)),
+          SizedBox(height: rs(context, widget.calendarOnly ? 340 : 260), child: _buildRelatedPanel(context)),
         ],
       );
+    }
+    if (widget.calendarOnly) {
+      // カレンダー枠の高さを測り、右側（カード＋ボタン）の下端をカレンダーの下端に合わせる
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final h = _calendarKey.currentContext?.size?.height;
+        if (mounted && h != null && (_calendarHeight == null || (h - _calendarHeight!).abs() > 0.5)) {
+          setState(() => _calendarHeight = h);
+        }
+      });
     }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(flex: 7, child: calendar),
         SizedBox(width: rs(context, 12)),
-        Expanded(flex: 3, child: SizedBox(height: rs(context, 420), child: _buildRelatedPanel(context))),
+        Expanded(flex: 3, child: SizedBox(height: widget.calendarOnly ? (_calendarHeight ?? rs(context, 420)) : rs(context, 420), child: _buildRelatedPanel(context))),
       ],
     );
   }
@@ -260,7 +304,100 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     return result ?? false;
   }
 
+  /// calendarOnly 用：選択日の受注カードを一覧し、下の「スケジュール確認」で配達車両スケジュールへ進む。
+  /// 関連注文（重複など）に当たるカードは赤系の色＋警告アイコンで通常の注文と区別する。
+  Widget _buildDayOrdersPanel(BuildContext context) {
+    final list = _ordersOnSelectedDay();
+    final warnIds = widget.relatedOrders.map((o) => o.id).toSet();
+    return Container(
+      padding: EdgeInsets.all(rs(context, 8)),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(rs(context, 12)),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${DateFormat('M/d(E)', 'ja_JP').format(_tempDate)} の受注 ${list.length}件',
+              style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.secondaryText)),
+          SizedBox(height: rs(context, 6)),
+          Expanded(
+            child: list.isEmpty
+                ? Center(child: Text('受注なし', style: TextStyle(fontSize: rf(context, 12), color: Colors.grey)))
+                : ListView.separated(
+                    itemCount: list.length,
+                    separatorBuilder: (context, index) => SizedBox(height: rs(context, 6)),
+                    itemBuilder: (context, i) {
+                      final o = list[i];
+                      final isWarn = warnIds.contains(o.id);
+                      final place = o.facilityName.isNotEmpty ? o.facilityName : _areaLabel(o);
+                      return Container(
+                        padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 6)),
+                        decoration: BoxDecoration(
+                          color: isWarn ? AppColors.cautionCardBackground.withValues(alpha: 0.5) : Colors.white,
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(rs(context, 8)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (isWarn)
+                              Padding(
+                                padding: EdgeInsets.only(bottom: rs(context, 4)),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: rf(context, 20)),
+                                    SizedBox(width: rs(context, 6)),
+                                    Expanded(
+                                      child: Text('重複の可能性',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.warningText)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            Text('${o.deliveryTime}  ${_areaLabel(o)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: isWarn ? AppColors.warningText : widget.themeColor)),
+                            Text(_nameOf(o),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600, color: isWarn ? AppColors.warningText : null)),
+                            Text(place,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: rf(context, 11), color: isWarn ? AppColors.warningText : AppColors.secondaryText)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 受注カードの枠の外（下）に置く「スケジュール確認」ボタン付きの右側エリア。
+  Widget _buildDayOrdersArea(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: _buildDayOrdersPanel(context)),
+        SizedBox(height: rs(context, 8)),
+        KButton(
+          label: 'スケジュール確認',
+          color: widget.themeColor,
+          onPressed: () => Navigator.of(context).pop(DateTime(_tempDate.year, _tempDate.month, _tempDate.day)),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRelatedPanel(BuildContext context) {
+    if (widget.calendarOnly) return _buildDayOrdersArea(context);
     final list = [...widget.relatedOrders]
       ..sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
     return Container(
@@ -344,8 +481,8 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
             Row(
               children: [
                 Text(widget.title, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.themeColor)),
-                if (!widget.calendarOnly) SizedBox(width: rs(context, 16)),
-                if (!widget.calendarOnly) Container(
+                if (!widget.calendarOnly && !widget.pickDayOnly) SizedBox(width: rs(context, 16)),
+                if (!widget.calendarOnly && !widget.pickDayOnly) Container(
                   padding: EdgeInsets.symmetric(horizontal: rs(context, 16), vertical: rs(context, 8)),
                   decoration: BoxDecoration(
                     color: isValid ? widget.themeColor.withValues(alpha: 0.08) : Colors.red.shade50,
@@ -403,6 +540,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                       Container(
+                      key: _calendarKey,
                       padding: EdgeInsets.all(rs(context, 12)),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
@@ -421,8 +559,11 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                         calendarStyle: CalendarStyle(
                           // 選択日：枠なし・テーマ色塗りつぶし・白文字（配達＝#000038 / 回収＝オレンジ）
-                          selectedDecoration: BoxDecoration(color: widget.themeColor, shape: BoxShape.circle),
-                          selectedTextStyle: const TextStyle(color: AppColors.whiteText, fontWeight: FontWeight.bold),
+                          selectedDecoration: BoxDecoration(color: widget.selectedDayColor ?? widget.themeColor, shape: BoxShape.circle),
+                          selectedTextStyle: TextStyle(
+                            color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
+                            fontWeight: FontWeight.bold,
+                          ),
                           // 今日：丸枠のみ・塗りつぶしなし
                           todayDecoration: BoxDecoration(
                             color: Colors.transparent,
@@ -433,6 +574,16 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) async {
+                          if (widget.pickDayOnly) {
+                            Navigator.of(this.context).pop(DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
+                            return;
+                          }
+                          if (widget.calendarOnly) {
+                            // すぐには進まず、右の受注カード一覧を選択日に切り替える（警告はカードで表示）
+                            setState(() => _tempDate = selectedDay);
+                            _ensureNames(_ordersOnSelectedDay());
+                            return;
+                          }
                           final prevDate = _tempDate;
                           setState(() => _tempDate = selectedDay);
                           final proceed = await _confirmDuplicate(selectedDay);
@@ -441,11 +592,11 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             setState(() => _tempDate = prevDate);
                             return;
                           }
-                          if (widget.calendarOnly) {
-                            Navigator.of(this.context).pop(DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
-                          }
                         },
                         rowHeight: rs(context, 50),
+                        // 曜日の行を高くして日付と重ならないようにし、月によらず6週分の高さを確保する
+                        daysOfWeekHeight: rs(context, 36),
+                        sixWeekMonthsEnforced: true,
                         // 「関連する注文」がある日は、日付の下に赤丸を表示する
                         eventLoader: (day) => widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).toList(),
                         calendarBuilders: CalendarBuilders(
@@ -522,15 +673,15 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             )
                           : const SizedBox(width: double.infinity),
                     ),
-                    if (!widget.calendarOnly) _buildOrderPreview(context),
+                    if (!widget.calendarOnly && !widget.pickDayOnly) _buildOrderPreview(context),
                   ],
                 ),
               ),
             ),
             
-            if (!widget.calendarOnly) SizedBox(height: rs(context, 24)),
+            if (!widget.calendarOnly && !widget.pickDayOnly) SizedBox(height: rs(context, 24)),
             
-            if (!widget.calendarOnly) Row(
+            if (!widget.calendarOnly && !widget.pickDayOnly) Row(
               children: [
                 Expanded(
                   child: SizedBox(

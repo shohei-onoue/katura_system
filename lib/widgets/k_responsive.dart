@@ -77,8 +77,17 @@ double kFieldHeight(BuildContext context) => KR.rs(context, KR.fieldHeight);
 /// ステップタイトルバー(KStepper)とサイドバー見出し帯の共通高さ。
 /// rav はスマホ幅だと極端に縮みタップ領域が不足するため 48 を下限にクランプする。
 /// 両者でこの関数を使うことで、下のコンテンツのY位置が揃う。
-double kStepBarHeight(BuildContext context) =>
-    KR.rav(context, 56).clamp(48.0, 160.0);
+double kStepBarHeight(BuildContext context) {
+  final h = kOpenLogoAreaHeight(context);
+  return h < 48.0 ? 48.0 : h;
+}
+
+/// サイドメニュー開時のロゴ表示エリア（白背景）の高さ。
+/// 幅=画面の16%、ロゴ縦横比184/486、上下余白12+8。
+double kOpenLogoAreaHeight(BuildContext context) {
+  final openWidth = (MediaQuery.of(context).size.width - KR.rs(context, 1)) * 0.16;
+  return KR.rs(context, 12) + openWidth * 0.8 * 184 / 486 + KR.rs(context, 8);
+}
 
 /// 短縮関数
 double rf(BuildContext context, double baseSize) => KR.rf(context, baseSize);

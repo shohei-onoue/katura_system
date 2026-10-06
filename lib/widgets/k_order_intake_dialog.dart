@@ -26,7 +26,7 @@ class KOrderIntakeDialog extends StatefulWidget {
 }
 
 class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
-  static const _orderSources = ['デリカ', '結膳', '直取', 'その他'];
+  static const _orderSources = ['直取', 'デリカ', '結膳', 'その他'];
 
   late String _orderSource;
   late String _handover; // '配達' | '引取り'
@@ -35,12 +35,11 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
   @override
   void initState() {
     super.initState();
+    // 未選択のときは「直取」「配達」をデフォルトにする
     _orderSource = _orderSources.contains(widget.initialOrderSource)
         ? widget.initialOrderSource
-        : '';
-    _handover = widget.initialDeliveryType == '引取'
-        ? '引取り'
-        : (widget.initialDeliveryType == '配送' ? '配達' : '');
+        : '直取';
+    _handover = widget.initialDeliveryType == '引取' ? '引取り' : '配達';
     _otherController = TextEditingController(text: widget.initialOrderSourceOther);
   }
 
@@ -80,7 +79,7 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
           children: [
             Row(
               children: [
-                Text('受注区分・受け渡し方法',
+                Text('受注区分',
                     style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: themeColor)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
@@ -94,6 +93,8 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
               label: '',
               selectedValue: _handover,
               showLabel: false,
+              selectedColor: AppColors.selectButton.withValues(alpha: 0.5),
+              selectedTextColor: AppColors.offButtonText,
               items: [
                 KChoiceItem(label: '配達', value: '配達'),
                 KChoiceItem(label: '引取り', value: '引取り'),
@@ -108,6 +109,8 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
                 label: '',
                 selectedValue: _orderSource,
                 showLabel: false,
+                selectedColor: AppColors.selectButton.withValues(alpha: 0.5),
+                selectedTextColor: AppColors.offButtonText,
                 items: _orderSources.map((s) => KChoiceItem(label: s, value: s)).toList(),
                 onSelected: (v) => setState(() => _orderSource = v),
               ),

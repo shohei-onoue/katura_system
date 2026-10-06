@@ -9,6 +9,10 @@ class KChoiceGroup<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
   final bool showLabel;
   final bool enabled;
+  /// 選択中ボタンの背景色（未指定なら標準の onButton）
+  final Color? selectedColor;
+  /// 選択中ボタンの文字色（未指定なら標準の onButtonText）
+  final Color? selectedTextColor;
 
   const KChoiceGroup({
     super.key,
@@ -18,6 +22,8 @@ class KChoiceGroup<T> extends StatelessWidget {
     required this.onSelected,
     this.showLabel = true,
     this.enabled = true,
+    this.selectedColor,
+    this.selectedTextColor,
   });
 
   @override
@@ -53,8 +59,8 @@ class KChoiceGroup<T> extends StatelessWidget {
                     child: Container(
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.onButton : AppColors.offButton,
-                        border: Border.all(color: isSelected ? AppColors.onButton : Colors.grey.shade300),
+                        color: isSelected ? (selectedColor ?? AppColors.onButton) : AppColors.offButton,
+                        border: Border.all(color: isSelected ? (selectedColor ?? AppColors.onButton) : Colors.grey.shade300),
                         borderRadius: BorderRadius.horizontal(
                           left: Radius.circular(isFirst ? 8 : 0),
                           right: Radius.circular(isLast ? 8 : 0),
@@ -63,7 +69,7 @@ class KChoiceGroup<T> extends StatelessWidget {
                       child: Text(
                         item.label,
                         style: TextStyle(
-                          color: isSelected ? AppColors.onButtonText : AppColors.offButtonText,
+                          color: isSelected ? (selectedTextColor ?? AppColors.onButtonText) : AppColors.offButtonText,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),

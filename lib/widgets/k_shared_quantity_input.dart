@@ -88,6 +88,7 @@ class KSharedQuantityInput extends StatelessWidget {
         initialValue: (clearOnDirectInput || value == 0) ? '' : value.toString(),
         maxLength: 4,
         emptyHint: '0',
+        unit: '個',
         themeColor: themeColor,
         onConfirmed: (text) => onChanged(int.tryParse(text) ?? 0),
       ),

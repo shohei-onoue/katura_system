@@ -25,6 +25,7 @@ class AppColors {
   static const Color primaryText = Colors.black;
   static const Color secondaryText = Color(0xFF444444);
   static const Color whiteText = Colors.white;
+  static const Color warningText = Colors.red;
 
   // 強調色
   static const Color accentPurple = Colors.deepPurple;
@@ -44,6 +45,7 @@ class AppColors {
   static const Color acceptButton = Colors.deepPurple;
   static const Color rejectButton = Colors.grey;
   static const Color cancelButton = Colors.red;
+  static const Color selectButton = Colors.lightGreenAccent;
 
   // スナックバー
   static const Color snackbarRed = Colors.redAccent;
@@ -56,4 +58,8 @@ class AppColors {
   static const Color dialogBlackLine = Colors.black;
   static const Color dialogLabel = accentOrange;
   static const Color dialogTextButton = Colors.deepPurple;
+
+  // カード表示
+  static const Color selectCardBackground = Colors.lightGreenAccent;
+  static const Color cautionCardBackground = Colors.yellowAccent;
 }

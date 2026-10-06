@@ -35,6 +35,7 @@ class DeliveryScheduleDialog extends StatefulWidget {
   final int initialVehicle; // すでに決まっている号車（0＝なし）
   final TimeOfDay? initialTime; // すでに決まっている時間（あれば予約枠として最初から表示する）
   final bool allowTimePick; // false＝空白タップで時間入力をしない（閲覧のみ）
+  final String handoverLabel; // タイトルなどに使う受け渡し方法の呼び名（'配達' / '引取り'）
 
   const DeliveryScheduleDialog({
     super.key,
@@ -47,6 +48,7 @@ class DeliveryScheduleDialog extends StatefulWidget {
     this.initialVehicle = 0,
     this.initialTime,
     this.allowTimePick = true,
+    this.handoverLabel = '配達',
   });
 
   @override
@@ -253,6 +255,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       context: context,
       builder: (_) => KNumericInputDialog(
         title: '- ${lane + 1}号車 -',
+        timeFormat: true,
         initialValue: initial,
         emptyHint: '',
         maxLength: 4,
@@ -478,7 +481,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('配達時間', style: label),
+                            Text(o.deliveryType == '引取' ? '引取り時間' : '配達時間', style: label),
                             Text(o.deliveryTime, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.dialogText)),
                           ],
                         ),
@@ -533,7 +536,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
             Row(
               children: [
                 Text(
-                  '配達予定  ${DateFormat('M/d(E)', 'ja_JP').format(widget.date)}　${_dayOrders.length}件',
+                  '${widget.handoverLabel}予定  ${DateFormat('M/d(E)', 'ja_JP').format(widget.date)}　${_dayOrders.length}件',
                   style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
                 const Spacer(),

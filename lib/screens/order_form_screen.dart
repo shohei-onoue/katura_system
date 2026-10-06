@@ -20,6 +20,7 @@ import '../widgets/k_branch_select_dialog.dart';
 import '../widgets/k_receipt_preview_dialog.dart';
 import '../widgets/k_date_time_selection_dialog.dart';
 import '../widgets/k_order_intake_dialog.dart';
+import '../widgets/k_numeric_input_dialog.dart';
 import '../widgets/k_trash_pickup_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
@@ -52,6 +53,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _phoneController = TextEditingController();
   final _phonePrefixController = TextEditingController();
   bool _isCompletingPhone = false;
+  final LayerLink _phoneCardLink = LayerLink();
   final _nameController = TextEditingController();
   final _furiganaController = TextEditingController();
   final _receiverController = TextEditingController();
@@ -68,7 +70,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   int _currentStep = 0;
   int _maxStepReached = 0;
-  String? _scheduledCustomerId; // 受注区分・配達日時を設定済みの顧客ID（同じ顧客なら戻っても再入力しない）
   DateTime _receptionDate = DateTime.now();
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   String _deliveryType = ''; // 未選択がデフォルト。受注区分ダイアログで選択する
@@ -351,7 +352,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (widget.initialSection == '配達先' || widget.initialSection == '注文内容') return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _showDeliveryDateDialog(withPreview: order.deliveryType == '配送');
+      _showDeliveryDateDialog(withPreview: true); // 配達・引取りとも同じダイアログ
     });
     final coords = _parseCoordsFromAddress(order.address);
     if (coords != null && coords.latitude != 0) {
@@ -453,7 +454,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _preConfirmationRecipientController.clear();
       _currentStep = 0;
       _maxStepReached = 0;
-      _scheduledCustomerId = null;
       _currentCustomer = null;
       _confirmedItems = [];
       _selectedQuantities.clear();
@@ -584,13 +584,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       return;
     }
     if (_newCustomerFlow) setState(() => _newCustomerFlow = false);
-    // すでに設定済みで顧客も変わっていなければ、ダイアログを出さずに次へ
-    if (_scheduledCustomerId == _currentCustomer!.id) {
-      _updateStep(2);
-      return;
-    }
+    // 「日程調整」を押すたびにダイアログを開く（確定済みでも日程を変更できる。
+    // 決め直すと、前の予約枠は _showDeliveryDateDialog 内で削除される）
     if (await _runIntakeAndSchedule() && mounted) {
-      _scheduledCustomerId = _currentCustomer?.id;
       _updateStep(2);
     }
   }
@@ -614,7 +610,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryTypeSelected = true;
     });
 
-    final picked = await _showDeliveryDateDialog(withPreview: _deliveryType == '配送');
+    final picked = await _showDeliveryDateDialog(withPreview: true); // 配達・引取りとも同じダイアログ
     return picked && mounted;
   }
 
@@ -654,7 +650,82 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
   /// [withPreview] が true のときはカレンダー下部に「選択日の受注（全店舗）」を表示する。
+  /// 引取り：配送スケジュールは不要なので、カレンダーで日付 →「ご来店時間」（HHMM）の順に決める。
+  /// 時間の入力をやめた／カレンダーを閉じたときは false。時間入力を閉じたらカレンダーに戻る。
+  Future<bool> _showPickupDateTimeDialog() async {
+    final initial = DateTime(
+      _deliveryDate.year, _deliveryDate.month, _deliveryDate.day,
+      _selectedTime.hour, _selectedTime.minute,
+    );
+    final minMinutes = _timePickerMin.hour * 60 + _timePickerMin.minute;
+    final maxMinutes = _timePickerMax.hour * 60 + _timePickerMax.minute;
+    while (true) {
+      final day = await showDialog<DateTime>(
+        context: context,
+        builder: (_) => KDateTimeSelectionDialog(
+          initialDateTime: initial,
+          title: '引取り日時',
+          selectedDayColor: AppColors.selectButton,
+          pickDayOnly: true,
+        ),
+      );
+      if (!mounted || day == null) return false;
+
+      String? entered;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => KNumericInputDialog(
+          title: 'ご来店時間',
+          timeFormat: true,
+          initialValue: '${initial.hour.toString().padLeft(2, '0')}${initial.minute.toString().padLeft(2, '0')}',
+          emptyHint: '',
+          maxLength: 4,
+          overwrite: true,
+          themeColor: AppColors.primary,
+          onConfirmed: (v) => entered = v,
+        ),
+      );
+      if (!mounted) return false;
+      if (entered == null) continue; // 時間を決めずに閉じた → カレンダーに戻る
+
+      final digits = entered!.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
+      final h = int.parse(digits.substring(0, 2));
+      final m = int.parse(digits.substring(2, 4));
+      final minutes = h * 60 + m;
+      if (h > 23 || m > 59 || minutes < minMinutes || minutes > maxMinutes) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('${_timePickerMin.hour}:00〜${_timePickerMax.hour}:00の間で入力してください'),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
+          ),
+        );
+        if (!mounted) return false;
+        continue;
+      }
+
+      // 引取りは号車の予約枠を使わない（前に取った予約枠があれば消す）
+      if (_reservationId != null) {
+        await _reservationService.delete(_reservationId);
+        _reservationId = null;
+      }
+      if (!mounted) return false;
+      final picked = DateTime(day.year, day.month, day.day, h, m);
+      setState(() {
+        _deliveryVehicleNumber = 0;
+        _deliveryDate = picked;
+        _selectedTime = picked;
+        _isDeliveryDateSelected = true;
+        _isDeliveryTimeSelected = true;
+      });
+      return true;
+    }
+  }
+
   Future<bool> _showDeliveryDateDialog({required bool withPreview}) async {
+    if (_deliveryType == '引取') return _showPickupDateTimeDialog();
+    // 受け渡し方法に合わせてダイアログのタイトルなどを切り替える
+    final String handoverLabel = _deliveryType == '引取' ? '引取り' : '配達';
     List<OrderModel> preview = const [];
     if (withPreview) {
       try {
@@ -686,6 +757,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             previewOrders: preview,
             relatedOrders: related,
             calendarOnly: true,
+            selectedDayColor: AppColors.selectButton,
+            title: '$handoverLabel日時',
+            highlightLabel: '$handoverLabel日',
           ),
         );
         if (!mounted || day == null) return false;
@@ -704,6 +778,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             service: _scheduleService,
             initialVehicle: sameDay ? _deliveryVehicleNumber : 0,
             initialTime: sameDay ? TimeOfDay(hour: initial.hour, minute: initial.minute) : null,
+            handoverLabel: handoverLabel,
           ),
         );
         if (!mounted) return false;
@@ -722,6 +797,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           enforceTimeRange: true,
           interval: _timePickerInterval,
           relatedOrders: related,
+          selectedDayColor: AppColors.selectButton,
+          title: '$handoverLabel日時',
+          highlightLabel: '$handoverLabel日',
         ),
       );
     }
@@ -779,28 +857,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _updateStep(4);
   }
 
+  int _lookupSeq = 0; // 検索の通し番号（古い検索結果が新しい入力を上書きしないようにする）
+
   Future<void> _lookupCustomer(String phone) async {
+    final seq = ++_lookupSeq;
     final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
     _lastPhoneQuery = cleanDigits;
     if (cleanDigits.length >= 4) {
       _isLoadingNotifier.value = true;
       final candidates = await _customerService.searchByPhoneSuffix(cleanDigits);
       final lastDates = await _calcLastOrderDates(candidates);
-      if (mounted) {
-        _lastOrderDates = lastDates;
-        if (candidates.length == 1 && cleanDigits.length >= 10) {
-          _selectCustomer(candidates.first);
-        } else {
-          setState(() {
-            _isLoadingNotifier.value = false;
-            _phoneSearchCandidates = candidates;
-            _currentCustomer = null;
-            _nameController.clear();
-            _furiganaController.clear();
-            _facilityController.clear();
-          });
-        }
-      }
+      if (!mounted || seq != _lookupSeq) return;
+      _lastOrderDates = lastDates;
+      // 番号を編集したら選択は解除し、番号に合う顧客を「該当する顧客」として下に表示する
+      setState(() {
+        _isLoadingNotifier.value = false;
+        _phoneSearchCandidates = candidates;
+        _currentCustomer = null;
+        _nameController.clear();
+        _furiganaController.clear();
+        _facilityController.clear();
+      });
       return;
     }
     if (!mounted) return;
@@ -841,10 +918,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   /// 候補カードのタップ：顧客を選択したら番号確認ステップを飛ばして配達区分ポップアップへ。
+  /// 候補カードをタップしたら顧客を選択するだけにする（番号をフル表示）。
+  /// 次へ進むのは「日程調整」ボタン（_startPostPhoneFlow）。
   Future<void> _onCandidateTapped(Customer customer) async {
     await _selectCustomer(customer);
-    if (!mounted || _currentCustomer?.id != customer.id) return;
-    await _startPostPhoneFlow();
   }
 
   Future<void> _selectCustomer(Customer customer) async {
@@ -1519,29 +1596,43 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     if (s <= _maxStepReached || isJumpableToFinal) {
                       _updateStep(s);
                       if (s == 0) {
-                        setState(() => _isCompletingPhone = false);
-                        _phoneController.text = _lastPhoneQuery;
-                        _lookupCustomer(_lastPhoneQuery);
+                        final selected = _currentCustomer;
+                        if (selected != null) {
+                          // 顧客を選択済み：番号・顧客はそのままに「お客様電話番号」画面へ戻る（日程調整で再設定できる）
+                          setState(() {
+                            _isCompletingPhone = false;
+                            if (_phoneSearchCandidates.every((c) => c.id != selected.id)) {
+                              _phoneSearchCandidates = [selected, ..._phoneSearchCandidates];
+                            }
+                          });
+                        } else {
+                          setState(() => _isCompletingPhone = false);
+                          _phoneController.text = _lastPhoneQuery;
+                          _lookupCustomer(_lastPhoneQuery);
+                        }
                       }
                     }
                   }
                 )),
                   Expanded(
-                    child: Stack(
+                    child: ColoredBox(
+                      color: KR.backgroundLight, // ステッパー表示エリアと同じ背景色（全ステップ共通）
+                      child: Stack(
                       children: [
                         Positioned.fill(
                           child: RepaintBoundary(
                             child: _phonePopupOpen
                                 // 番号確認は下のポップアップで行う（ここは待機表示）
-                                ? Center(child: Text('下４桁を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16), fontWeight: FontWeight.bold)))
-                                : _currentStep == 3
-                                    // 注文内容ステップ：タブ以上を固定し、メニュー一覧のみ内部スクロール
+                                ? const SizedBox.shrink()
+                                : (_currentStep == 3 || (_currentStep == 2 && _isHistoryMode))
+                                    // 注文内容ステップ・配達先(履歴)：タイトル/ボタンを固定し、一覧のみ内部スクロール
                                     ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
                                     : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
                           ),
                         ),
                         if (_phonePopupOpen) Positioned.fill(child: _buildPhonePopup(context)),
                       ],
+                    ),
                     ),
                   ),
                 ],
@@ -1781,35 +1872,58 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _currentStep == 0 && (_isCompletingPhone || _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length >= 4);
 
   Widget _buildPhonePopup(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.35),
-      alignment: Alignment.center,
-      padding: EdgeInsets.all(rs(context, 24)),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: rs(context, 900)),
-        child: Stack(
+    // 顧客選択後も、該当顧客カード（選択中は緑枠）を下に表示し続ける
+    final bool showCandidates = _phoneSearchCandidates.isNotEmpty && !_isCompletingPhone;
+    return LayoutBuilder(
+      builder: (context, c) {
+        // 入力前（通常表示）と同じ余白・幅にして、カードの位置と幅が変わらないようにする
+        final double pad = rav(context, MediaQuery.of(context).size.width < 900 ? 12 : 24);
+        final double cardWidth = c.maxWidth - pad * 2;
+        return Stack(
           children: [
-            Material(
-              color: Colors.transparent,
-              child: SingleChildScrollView(child: _buildStepContent()),
+            Positioned.fill(
+              child: Container(
+                color: KR.backgroundLight, // 領域の背景と同じ色（暗い膜は使わない）
+                alignment: Alignment.topCenter,
+                padding: EdgeInsets.all(pad),
+                child: Stack(
+                    children: [
+                      Material(
+                        color: Colors.transparent,
+                        // カードは従来どおり中央。候補はカードの下端に追従して展開する
+                        child: SingleChildScrollView(
+                          child: CompositedTransformTarget(link: _phoneCardLink, child: _buildStepContent()),
+                        ),
+                      ),
+                    ],
+                  ),
+              ),
             ),
             Positioned(
-              top: rs(context, 4),
-              right: rs(context, 4),
-              child: IconButton(
-                tooltip: '入力をやり直す',
-                icon: const Icon(Icons.close, color: Colors.white),
-                onPressed: () {
-                  setState(() => _isCompletingPhone = false);
-                  _phonePrefixController.clear();
-                  _phoneController.clear();
-                  _lookupCustomer('');
-                },
+              left: 0,
+              top: 0,
+              child: CompositedTransformFollower(
+                link: _phoneCardLink,
+                showWhenUnlinked: false,
+                targetAnchor: Alignment.bottomCenter,
+                followerAnchor: Alignment.topCenter,
+                child: SizedBox(
+                  width: cardWidth,
+                  child: PhoneCandidatePanel(
+                    visible: showCandidates,
+                    candidates: _phoneSearchCandidates,
+                    selectedCustomerId: _currentCustomer?.id,
+                    isFullPhone: _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length >= 10,
+                    lastOrderDates: _lastOrderDates,
+                    onSelectCustomer: _onCandidateTapped,
+                    maxHeight: c.maxHeight * 0.3,
+                  ),
+                ),
               ),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1817,15 +1931,33 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final phoneDisplay = _phoneController.text;
     switch (_currentStep) {
       case 0: return PhoneConfirmStep(
+          onCancelOrder: _confirmCancelOrder,
+          onClose: _phonePopupOpen
+              ? () {
+                  setState(() => _isCompletingPhone = false);
+                  _phonePrefixController.clear();
+                  _phoneController.clear();
+                  _lookupCustomer('');
+                }
+              : null,
           phoneController: _phoneController, 
           isLoading: _isLoadingNotifier.value, 
-          candidates: _phoneSearchCandidates, 
           currentCustomer: _currentCustomer, 
           phoneDisplay: phoneDisplay, 
           isCompletingPhone: _isCompletingPhone,
           phonePrefixController: _phonePrefixController,
           onNext: () {
-            if (!_isCompletingPhone && _currentCustomer == null) {
+            final String phoneDigits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+            if (!_isCompletingPhone && _currentCustomer == null && phoneDigits.length >= 10) {
+              // 番号がフルのまま進む：同じ番号の顧客が1人いればその顧客で、いなければ新規顧客として進む
+              final exact = _phoneSearchCandidates
+                  .where((c) => c.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') == phoneDigits)
+                  .toList();
+              () async {
+                if (exact.length == 1) await _selectCustomer(exact.first);
+                if (mounted) await _startPostPhoneFlow();
+              }();
+            } else if (!_isCompletingPhone && _currentCustomer == null) {
               setState(() {
                 _isCompletingPhone = true;
               });
@@ -1839,8 +1971,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               _startPostPhoneFlow();
             }
           },
-          onSelectCustomer: _onCandidateTapped,
-          lastOrderDates: _lastOrderDates,
       );
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController,

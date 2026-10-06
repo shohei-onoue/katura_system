@@ -175,6 +175,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                         title: '価格の入力',
                         initialValue: priceController.text,
                         emptyHint: '価格を入力してください',
+                        unit: '円',
                         onConfirmed: (v) => setDialogState(() => priceController.text = v),
                       ),
                     ),
@@ -563,11 +564,24 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                   SizedBox(width: rs(context, 8)),
                   Expanded(
                     flex: 2,
-                    child: TextField(
-                      controller: row.amountController,
-                      textAlignVertical: TextAlignVertical.center,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(isDense: true, hintText: '使用量'),
+                    child: InkWell(
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => KNumericInputDialog(
+                          title: '${row.name}の使用量',
+                          initialValue: row.amountController.text,
+                          unit: row.unit,
+                          maxLength: 6,
+                          onConfirmed: (v) => setDialogState(() => row.amountController.text = v),
+                        ),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(isDense: true),
+                        child: Text(
+                          row.amountController.text.isEmpty ? '使用量' : row.amountController.text,
+                          style: TextStyle(color: row.amountController.text.isEmpty ? Colors.grey : Colors.black87),
+                        ),
+                      ),
                     ),
                   ),
                   SizedBox(width: rs(context, 6)),

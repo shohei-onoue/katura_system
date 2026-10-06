@@ -10,11 +10,17 @@ import 'package:katura_system/utils/app_colors.dart';
 class KSidebar extends StatefulWidget {
   final int selectedIndex;
   final Function(int) onDestinationSelected;
+  final bool collapsed; // trueならアイコンのみ表示
+  final VoidCallback? onClose;
+  final VoidCallback? onOpen;
 
   const KSidebar({
     super.key,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.collapsed = false,
+    this.onClose,
+    this.onOpen,
   });
 
   @override
@@ -22,15 +28,7 @@ class KSidebar extends StatefulWidget {
 }
 
 class _KSidebarState extends State<KSidebar> {
-  final GlobalKey _manageLabelKey = GlobalKey();
   String _staffName = '';
-
-  // 「管理」にまとめる画面の論理インデックス（MainScreenの_selectedIndexと対応）
-  static const List<int> _manageIndices = [6, 7, 10, 8];
-  static const List<String> _manageLabels = ['顧客管理', 'メニューマスタ', '食材マスタ', 'スタッフ管理'];
-  static const List<IconData> _manageIcons = [Icons.people, Icons.restaurant, Icons.egg_alt, Icons.badge];
-
-  bool get _isManageActive => _manageIndices.contains(widget.selectedIndex);
 
   @override
   void initState() {
@@ -59,56 +57,68 @@ class _KSidebarState extends State<KSidebar> {
     );
   }
 
-  void _showManageMenu() {
-    final renderBox = _manageLabelKey.currentContext?.findRenderObject() as RenderBox?;
-    final overlayBox = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (renderBox == null || overlayBox == null) return;
-
-    final topRight = renderBox.localToGlobal(Offset(renderBox.size.width, 0), ancestor: overlayBox);
-    final bottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlayBox);
-    final position = RelativeRect.fromRect(
-      Rect.fromPoints(topRight, bottomRight),
-      Offset.zero & overlayBox.size,
-    );
-
-    showMenu<int>(
-      context: context,
-      position: position,
-      color: AppColors.menuBackground.withValues(alpha: 0.5),
-      items: List.generate(_manageIndices.length, (i) {
-        return PopupMenuItem<int>(
-          value: _manageIndices[i],
-          child: Row(
-            children: [
-              Icon(_manageIcons[i], size: rs(context, 18), color: AppColors.mainBackground),
-              SizedBox(width: rs(context, 10)),
-              Text(_manageLabels[i], style: const TextStyle(color: AppColors.mainBackground, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        );
-      }),
-    ).then((selected) {
-      if (selected != null) {
-        widget.onDestinationSelected(selected);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.grey[50],
+      color: AppColors.menuBackground,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildLogo(context),
+          if (widget.collapsed) ...[
+            Container(
+              color: AppColors.whiteText,
+              height: _openLogoAreaHeight(context),
+              padding: EdgeInsets.all(rs(context, 8)),
+              child: Image.asset(
+                'assets/img/Icon.jpg',
+                fit: BoxFit.contain,
+              ),
+            ),
+            _buildMenuHeader(context),
+          ] else
+            // 開閉アイコンはロゴ(白)とメニュー(黒)の境目の中央・右詰め
+            Stack(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [_buildLogo(context), _buildMenuHeader(context)],
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: rs(context, 48) - rs(context, 15),
+                  child: _buildToggle(context),
+                ),
+              ],
+            ),
           SizedBox(height: rs(context, 4)),
-          _buildItem(context, index: 0, icon: Icons.edit_document, label: '受注入力'),
+          _buildItem(
+            context,
+            index: 0,
+            icon: Icons.edit_document,
+            label: '受注入力',
+          ),
           _buildItem(context, index: 1, icon: Icons.list_alt, label: '受注一覧'),
-          _buildItem(context, index: 2, icon: Icons.inventory_2, label: '調理・仕入れ計画'),
-          _buildItem(context, index: 3, icon: Icons.local_shipping, label: '配送ルート最適化'),
+          _buildItem(
+            context,
+            index: 2,
+            icon: Icons.inventory_2,
+            label: '調理・仕入れ計画',
+          ),
+          _buildItem(
+            context,
+            index: 3,
+            icon: Icons.local_shipping,
+            label: '配送予定',
+          ),
           _buildItem(context, index: 5, icon: Icons.analytics, label: 'データ分析'),
-          _buildManageItem(context),
+          _buildItem(context, index: 6, icon: Icons.people, label: '顧客管理'),
+          _buildItem(
+            context,
+            index: 7,
+            icon: Icons.restaurant,
+            label: 'メニューマスタ',
+          ),
+          _buildItem(context, index: 8, icon: Icons.badge, label: 'スタッフ管理'),
           _buildItem(context, index: 9, icon: Icons.settings, label: '設定'),
           const Spacer(),
           _buildFooter(context),
@@ -117,46 +127,99 @@ class _KSidebarState extends State<KSidebar> {
     );
   }
 
+  Widget _buildToggle(BuildContext context) {
+    return Material(
+      color: AppColors.menuBackground,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.whiteText),
+      ),
+      child: InkWell(
+                onTap: widget.collapsed ? widget.onOpen : widget.onClose,
+        child: SizedBox(
+          width: rs(context, 30),
+          height: rs(context, 30),
+          child: Icon(
+            widget.collapsed
+                ? Icons.chevron_right
+                : Icons.chevron_left,
+            color: AppColors.whiteText,
+            size: rs(context, 22),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuHeader(BuildContext context) {
+    final toggle = _buildToggle(context);
+    return SizedBox(
+      height: rs(context, 48),
+      child: Center(
+        child: widget.collapsed
+            ? toggle
+            : Text(
+                '- MENU -',
+                style: TextStyle(
+                  color: AppColors.whiteText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: rf(context, 16),
+                ),
+              ),
+      ),
+    );
+  }
+
+  double _openLogoAreaHeight(BuildContext context) =>
+      kOpenLogoAreaHeight(context);
+
   Widget _buildLogo(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final logoWidth = constraints.maxWidth * 0.8;
-        return Padding(
+        return Container(
+          color: AppColors.whiteText,
           padding: EdgeInsets.only(
             top: rs(context, 12),
             bottom: rs(context, 8),
             left: rs(context, 16),
           ),
-          child: Align(
+          child: Stack(
             alignment: Alignment.centerLeft,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(rs(context, 8)),
-              child: SizedBox(
-                width: logoWidth,
-                child: Image.asset(
-                  'assets/img/logo.png',
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.restaurant_menu,
-                    size: rs(context, 40),
-                    color: AppColors.accentOrange,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(rs(context, 8)),
+                child: SizedBox(
+                  width: logoWidth,
+                  child: Image.asset(
+                    'assets/img/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.restaurant_menu,
+                      size: rs(context, 40),
+                      color: AppColors.accentOrange,
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         );
       },
     );
   }
 
-  Widget _buildItem(BuildContext context, {required int index, required IconData icon, required String label}) {
+  Widget _buildItem(
+    BuildContext context, {
+    required int index,
+    required IconData icon,
+    required String label,
+  }) {
     final isSelected = widget.selectedIndex == index;
     return _buildRow(
       context,
       isSelected: isSelected,
       onTap: () => widget.onDestinationSelected(index),
-      icon: Icon(icon, color: isSelected ? AppColors.accentPurple : Colors.black54, size: rs(context, 20)),
+      icon: Icon(icon, color: AppColors.whiteText, size: rs(context, 20)),
       label: Text(
         label,
         maxLines: 1,
@@ -165,63 +228,46 @@ class _KSidebarState extends State<KSidebar> {
           fontWeight: FontWeight.bold,
           fontSize: rf(context, 14),
           height: 1.2,
-          color: isSelected ? AppColors.accentPurple : Colors.black87,
+          color: AppColors.whiteText,
         ),
       ),
     );
   }
 
-  Widget _buildManageItem(BuildContext context) {
-    return _buildRow(
-      context,
-      isSelected: _isManageActive,
-      onTap: _showManageMenu,
-      icon: Icon(
-        _isManageActive ? Icons.admin_panel_settings : Icons.admin_panel_settings_outlined,
-        color: _isManageActive ? AppColors.accentPurple : Colors.black54,
-        size: rs(context, 20),
-      ),
-      label: Container(
-        key: _manageLabelKey,
-        child: Row(
-          children: [
-            Text(
-              '管理',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: rf(context, 14),
-                height: 1.2,
-                color: _isManageActive ? AppColors.accentPurple : Colors.black87,
-              ),
-            ),
-            const Spacer(),
-            Icon(Icons.keyboard_arrow_down, size: rs(context, 16), color: _isManageActive ? AppColors.accentPurple : Colors.black54),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRow(BuildContext context, {required bool isSelected, required VoidCallback onTap, required Widget icon, required Widget label}) {
+  Widget _buildRow(
+    BuildContext context, {
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Widget icon,
+    required Widget label,
+  }) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 2)),
+      padding: EdgeInsets.symmetric(
+        horizontal: rs(context, 8),
+        vertical: rs(context, 2),
+      ),
       child: Material(
-        color: isSelected ? AppColors.accentPurple.withValues(alpha: 0.1) : Colors.transparent,
+        color: isSelected
+            ? AppColors.whiteText.withValues(alpha: 0.2)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(rs(context, 8)),
         child: InkWell(
           borderRadius: BorderRadius.circular(rs(context, 8)),
           onTap: onTap,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 8)),
-            child: Row(
-              children: [
-                icon,
-                SizedBox(width: rs(context, 10)),
-                Expanded(child: label),
-              ],
+            padding: EdgeInsets.symmetric(
+              horizontal: widget.collapsed ? 0 : rs(context, 12),
+              vertical: rs(context, 8),
             ),
+            child: widget.collapsed
+                ? Center(child: icon)
+                : Row(
+                    children: [
+                      icon,
+                      SizedBox(width: rs(context, 10)),
+                      Expanded(child: label),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -230,44 +276,79 @@ class _KSidebarState extends State<KSidebar> {
 
   Widget _buildFooter(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 24.0)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(),
-          SizedBox(height: rs(context, 6)),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _staffName.isNotEmpty ? _staffName : '未ログイン',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 12), color: Colors.black87),
-                ),
-              ),
-              Tooltip(
-                message: 'ログアウト',
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(rs(context, 8)),
-                  onTap: _logout,
-                  child: Padding(
-                    padding: EdgeInsets.all(rs(context, 4)),
-                    child: Icon(Icons.logout, size: rs(context, 18), color: Colors.black54),
+      padding: EdgeInsets.symmetric(
+        horizontal: widget.collapsed ? 0 : rs(context, 24.0),
+      ),
+      child: widget.collapsed
+          ? Padding(
+              padding: EdgeInsets.only(bottom: rs(context, 12)),
+              child: Center(
+                child: Tooltip(
+                  message: 'ログアウト',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(rs(context, 8)),
+                    onTap: _logout,
+                    child: Padding(
+                      padding: EdgeInsets.all(rs(context, 4)),
+                      child: Icon(
+                        Icons.logout,
+                        size: rs(context, 18),
+                        color: AppColors.whiteText,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: rs(context, 6)),
-          Text(
-            'Version 1.0.52',
-            style: TextStyle(fontSize: rf(context, 10), color: Colors.grey, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: rs(context, 8)),
-        ],
-      ),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Divider(color: Colors.white24),
+                SizedBox(height: rs(context, 6)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _staffName.isNotEmpty ? _staffName : '未ログイン',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: rf(context, 12),
+                          color: AppColors.whiteText,
+                        ),
+                      ),
+                    ),
+                    Tooltip(
+                      message: 'ログアウト',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(rs(context, 8)),
+                        onTap: _logout,
+                        child: Padding(
+                          padding: EdgeInsets.all(rs(context, 4)),
+                          child: Icon(
+                            Icons.logout,
+                            size: rs(context, 18),
+                            color: AppColors.whiteText,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: rs(context, 6)),
+                Text(
+                  'Version 1.0.52',
+                  style: TextStyle(
+                    fontSize: rf(context, 10),
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: rs(context, 8)),
+              ],
+            ),
     );
   }
 }

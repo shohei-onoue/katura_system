@@ -12,7 +12,7 @@ class DeliveryStop {
 }
 
 /// 1日分の配達予定について、ナビ（Distance Matrix）から移動時間・到着時間を求める。
-/// 区間ごとの移動時間はメモリに保持し、同じ区間は再取得しない（将来のルート最適化でも使う）。
+/// 区間ごとの移動時間（一般道のみ）はメモリとDB（Firestore）に保持し、同じ区間は再取得しない。
 class DeliveryScheduleService {
   final GoogleMapsService _maps;
   DeliveryScheduleService(this._maps);

@@ -7,7 +7,9 @@ import 'package:katura_system/utils/name_format.dart';
 
 /// 受注フォーム全ステップで共通の色・高さトークン
 class OrderFormTokens {
-  static const Color titleBarColor = AppColors.labelBackground;
+  static const Color titleBarColor = AppColors.primary;
+  /// タイトル行の共通高さ
+  static double titleBarHeight(BuildContext context) => rav(context, 52);
   /// 入力フィールド・ボタンの共通高さ
   static double fieldHeight(BuildContext context) => rs(context, 50);
 }
@@ -26,7 +28,7 @@ class PhoneReceivedBadge extends StatelessWidget {
       children: [
         Icon(Icons.phone_callback, color: AppColors.accentOrange, size: rav(context, 26)),
         SizedBox(width: rav(context, 6)),
-        Text(phoneNumber, style: TextStyle(color: AppColors.accentOrange, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
+        Text(phoneNumber, style: TextStyle(color: AppColors.selectButton, fontWeight: FontWeight.bold, fontSize: rf(context, 22))),
       ],
     );
   }
@@ -78,12 +80,15 @@ class SidebarSectionTitle extends StatelessWidget {
           topRight: Radius.circular(rav(context, 16)),
         ),
       ),
-      padding: EdgeInsets.all(rav(context, 16)),
+      height: OrderFormTokens.titleBarHeight(context),
+      padding: EdgeInsets.symmetric(horizontal: rav(context, 16)),
+      alignment: Alignment.center,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: AppColors.whiteText, size: rav(context, 20)),
-          SizedBox(width: rav(context, 8)),
-          Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
+          Text(title,
+              textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false, applyHeightToLastDescent: false),
+              style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
           if (trailing != null) ...[const Spacer(), trailing!],
         ],
       ),
@@ -99,6 +104,8 @@ class OrderFormCard extends StatelessWidget {
   /// true の場合、カードが親の高さいっぱいに広がり、child を Expanded で内包する。
   /// （タイトルバーを固定し、child 側で内部スクロールさせたいステップ用）
   final bool fill;
+  /// タイトルバーの背景色（未指定なら標準色）
+  final Color? titleBarColor;
 
   const OrderFormCard({
     super.key,
@@ -107,6 +114,7 @@ class OrderFormCard extends StatelessWidget {
     required this.child,
     this.trailing,
     this.fill = false,
+    this.titleBarColor,
   });
 
   @override
@@ -130,19 +138,22 @@ class OrderFormCard extends StatelessWidget {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: OrderFormTokens.titleBarColor,
+              color: titleBarColor ?? OrderFormTokens.titleBarColor,
               borderRadius: BorderRadius.only(
                 topLeft: radius.topLeft,
                 topRight: radius.topRight,
               ),
             ),
-            child: Padding(
-              padding: EdgeInsets.all(rav(context, 16)),
+            child: Container(
+              height: OrderFormTokens.titleBarHeight(context),
+              padding: EdgeInsets.symmetric(horizontal: rav(context, 16)),
+              alignment: Alignment.center,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(icon, color: AppColors.whiteText, size: rav(context, 20)),
-                  SizedBox(width: rav(context, 8)),
-                  Text(title, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
+                  Text(title,
+                      textHeightBehavior: const TextHeightBehavior(applyHeightToFirstAscent: false, applyHeightToLastDescent: false),
+                      style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
                   if (trailing != null) ...[const Spacer(), trailing!],
                 ],
               ),

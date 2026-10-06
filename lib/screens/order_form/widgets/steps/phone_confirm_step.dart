@@ -9,35 +9,55 @@ import 'package:katura_system/utils/name_format.dart';
 class PhoneConfirmStep extends StatelessWidget {
   final TextEditingController phoneController;
   final bool isLoading;
-  final List<Customer> candidates;
   final Customer? currentCustomer;
   final String phoneDisplay;
   final bool isCompletingPhone;
   final TextEditingController phonePrefixController;
   final VoidCallback onNext;
-  final Function(Customer) onSelectCustomer;
-  /// 顧客ID → 前回の配達日（注文データから算出）
-  final Map<String, DateTime> lastOrderDates;
+  /// 指定すると、タイトル行の右端に「×」（入力をやり直す）を表示する
+  final VoidCallback? onClose;
+  /// 顧客選択後に「受注中止」ボタンとして表示する
+  final VoidCallback? onCancelOrder;
 
   const PhoneConfirmStep({
     super.key,
     required this.phoneController,
     required this.isLoading,
-    required this.candidates,
     required this.currentCustomer,
     required this.phoneDisplay,
     this.isCompletingPhone = false,
     required this.phonePrefixController,
     required this.onNext,
-    required this.onSelectCustomer,
-    this.lastOrderDates = const {},
+    this.onClose,
+    this.onCancelOrder,
   });
+
+  /// 電話番号がフルで表示されているか（10桁以上）
+  bool get _isFullPhone => phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length >= 10;
 
   @override
   Widget build(BuildContext context) {
     return OrderFormCard(
-      title: isCompletingPhone ? '電話番号の完成' : '電話番号の確認',
+      title: isCompletingPhone
+          ? '電話番号の完成'
+          // 電話番号がフルで表示されているとき（顧客選択後など）
+          : (_isFullPhone ? 'お客様電話番号' : '下４桁を入力'),
       icon: Icons.phone_callback,
+      titleBarColor: AppColors.primary,
+      // タイトル行の Row 内に置くので、タイトルテキストと同じく上下中央になる（高さは文字行以下に抑える）
+      trailing: onClose == null
+          ? null
+          : Tooltip(
+              message: '入力をやり直す',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onClose,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: rav(context, 8)),
+                  child: Icon(Icons.close, color: AppColors.whiteText, size: rf(context, 16)),
+                ),
+              ),
+            ),
       child: Column(
         children: [
           if (isCompletingPhone)
@@ -56,19 +76,43 @@ class PhoneConfirmStep extends StatelessWidget {
               ),
               keyboardType: TextInputType.none,
             ),
-          if (isLoading)
-            Padding(padding: EdgeInsets.symmetric(vertical: rs(context, 20)), child: const CircularProgressIndicator()),
-          if (candidates.isNotEmpty && currentCustomer == null && !isCompletingPhone)
-            _buildCandidateList(context),
-          SizedBox(height: rs(context, 48)),
-          if (phoneController.text.isNotEmpty || isCompletingPhone)
-            KButton(
-              label: isCompletingPhone ? '確定して次へ' : (currentCustomer != null ? '顧客確認へ進む' : '新規登録として受注フォームへ'),
-              onPressed: onNext,
-              color: isCompletingPhone ? AppColors.accentOrange : AppColors.accentPurple,
-            )
-          else
-            Text('下４桁を入力してください', style: TextStyle(color: Colors.grey, fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+          // 入力欄の上（タイトル行との間）と同じ余白をボタンの上にも取る。
+          // 読み込み中の表示は余白からはみ出して重ね、カードの高さ（=位置）が変わらないようにする
+          SizedBox(
+            height: rav(context, 16),
+            child: isLoading
+                ? OverflowBox(
+                    maxHeight: rs(context, 32),
+                    child: Center(child: SizedBox(width: rs(context, 32), height: rs(context, 32), child: const CircularProgressIndicator())),
+                  )
+                : null,
+          ),
+          // 番号が空でもボタン分の高さは確保し、入力前後でカードの高さが変わらないようにする
+          Visibility(
+            visible: phoneController.text.isNotEmpty || isCompletingPhone,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            // 電話番号がフル表示のとき（顧客選択後・日程調整から戻った後など）は「受注中止」を左に並べる
+            child: (!isCompletingPhone && _isFullPhone && onCancelOrder != null)
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: KButton(label: '受注中止', onPressed: onCancelOrder, color: AppColors.cancelButton),
+                      ),
+                      SizedBox(width: rs(context, 12)),
+                      Expanded(
+                        flex: 2,
+                        child: KButton(label: '日程調整', onPressed: onNext, color: AppColors.accentPurple),
+                      ),
+                    ],
+                  )
+                : KButton(
+                    label: isCompletingPhone ? '確定して次へ' : (currentCustomer != null ? '日程調整' : '新規登録'),
+                    onPressed: onNext,
+                    color: isCompletingPhone ? AppColors.accentOrange : AppColors.accentPurple,
+                  ),
+          ),
         ],
       ),
     );
@@ -121,6 +165,51 @@ class PhoneConfirmStep extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 下４桁入力後に該当顧客がいるとき、番号確認カードの下にアコーディオン状に展開する候補パネル。
+class PhoneCandidatePanel extends StatelessWidget {
+  final bool visible;
+  final List<Customer> candidates;
+  final Function(Customer) onSelectCustomer;
+  /// 顧客ID → 前回の配達日（注文データから算出）
+  final Map<String, DateTime> lastOrderDates;
+  final double maxHeight;
+  /// 選択中の顧客ID（そのカードの枠線を緑にする）
+  final String? selectedCustomerId;
+  /// 電話番号がフルで表示されているか（未選択時のラベルを切り替える）
+  final bool isFullPhone;
+
+  const PhoneCandidatePanel({
+    super.key,
+    required this.visible,
+    required this.candidates,
+    required this.onSelectCustomer,
+    this.lastOrderDates = const {},
+    required this.maxHeight,
+    this.selectedCustomerId,
+    this.isFullPhone = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignment: Alignment.topCenter,
+        child: visible && candidates.isNotEmpty
+            ? Material(
+                color: Colors.transparent,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: _buildCandidateList(context),
+                ),
+              )
+            : const SizedBox(width: double.infinity),
+      ),
+    );
+  }
 
   Widget _buildLastOrderBadge(BuildContext context, Customer customer) {
     final dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
@@ -164,21 +253,26 @@ class PhoneConfirmStep extends StatelessWidget {
 
   Widget _buildCandidateList(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: rs(context, 20)),
+      margin: EdgeInsets.only(top: rs(context, 8)),
       padding: EdgeInsets.all(rs(context, 16)),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(rs(context, 12)),
-        border: Border.all(color: Colors.grey.shade200),
+        color: AppColors.mainBackground,
+        borderRadius: BorderRadius.circular(rav(context, 16)),
+        boxShadow: [
+          BoxShadow(color: AppColors.primaryText.withValues(alpha: 0.05), blurRadius: rav(context, 10)),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('該当する候補', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: rf(context, 14))),
+          Text(selectedCustomerId != null ? '選択中の顧客' : (isFullPhone ? '該当する顧客' : '該当する候補'), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: rf(context, 14))),
           SizedBox(height: rs(context, 12)),
-          ListView.builder(
+          Flexible(
+            child: ListView.builder(
             shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
+            // 候補が複数のときだけ、この候補エリア内でスクロールさせる
+            physics: candidates.length > 1 ? const ClampingScrollPhysics() : const NeverScrollableScrollPhysics(),
             itemCount: candidates.length,
             itemBuilder: (context, index) {
               final customer = candidates[index];
@@ -187,12 +281,20 @@ class PhoneConfirmStep extends StatelessWidget {
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(rs(context, 8)),
-                  side: BorderSide(color: Colors.grey.shade300),
+                  // 選択中のカードは枠線なし・背景色を selectCardBackground にする
+                  side: customer.id == selectedCustomerId ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
                 ),
+                color: customer.id == selectedCustomerId ? AppColors.selectCardBackground.withValues(alpha: 0.5) : null,
                 child: ListTile(
-                  title: Text(withHonorific(customer.name), style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
+                  // 1行目：企業名 / 顧客名、2行目：電話番号（文字サイズは同じ）
+                  title: Text(
+                    customer.companyName.isNotEmpty
+                        ? '${customer.companyName} / ${withHonorific(customer.name)}'
+                        : withHonorific(customer.name),
+                    style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.primaryText),
+                  ),
                   subtitle: Text(
-                    '${customer.companyName} / ${customer.phoneNumber}',
+                    customer.phoneNumber,
                     style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentText),
                   ),
                   trailing: _buildLastOrderBadge(context, customer),
@@ -200,6 +302,7 @@ class PhoneConfirmStep extends StatelessWidget {
                 ),
               );
             },
+          ),
           ),
         ],
       ),

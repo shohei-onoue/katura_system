@@ -170,6 +170,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
       context: context,
       builder: (_) => KNumericInputDialog(
         title: '事前確認メールの送信時刻（前日 HHMM）',
+        timeFormat: true,
         initialValue: digits,
         maxLength: 4,
         overwrite: true,
@@ -633,6 +634,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           builder: (_) => KNumericInputDialog(
             title: '配送車両数の入力',
             emptyHint: '台数を入力してください',
+            unit: '台',
             maxLength: 3,
             onConfirmed: (v) {
               final digits = v.replaceAll(RegExp(r'[^0-9]'), '');

@@ -28,6 +28,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _sidebarOpen = true;
 
   // 編集中の注文情報を保持（画面切り替えで消えないように）
   OrderModel? _currentEditingOrder;
@@ -159,13 +160,25 @@ class _MainScreenState extends State<MainScreen> {
         child: Row(
           children: [
             if (!isMobile) ...[
-              Expanded(
-                flex: 16, // 比率を微調整して美しく
-                child: KSidebar(
-                  selectedIndex: _selectedIndex,
-                  onDestinationSelected: _goTo,
+              if (_sidebarOpen)
+                Expanded(
+                  flex: 16, // 比率を微調整して美しく
+                  child: KSidebar(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _goTo,
+                    onClose: () => setState(() => _sidebarOpen = false),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: rs(context, 56),
+                  child: KSidebar(
+                    selectedIndex: _selectedIndex,
+                    onDestinationSelected: _goTo,
+                    collapsed: true,
+                    onOpen: () => setState(() => _sidebarOpen = true),
+                  ),
                 ),
-              ),
               VerticalDivider(thickness: 1, width: rs(context, 1), color: Color(0xFFEEEEEE)),
             ],
             Expanded(

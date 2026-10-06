@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
 import '../../../widgets/k_responsive.dart';
+import '../../../widgets/k_multimodal_text_field.dart';
+import '../../../widgets/k_numeric_input_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerEditDialog extends StatefulWidget {
@@ -66,37 +67,36 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: nameController,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(labelText: '氏名'),
+              KMultimodalTextField(label: '氏名', controller: nameController, maxLines: 1),
+              KMultimodalTextField(label: '企業名', controller: companyController, maxLines: 1),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: rs(context, 8)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('電話番号', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+                    SizedBox(height: rs(context, 4)),
+                    InkWell(
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (_) => KNumericInputDialog(
+                          title: '電話番号の入力',
+                          initialValue: phoneController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+                          emptyHint: '番号を入力してください',
+                          maxLength: 11,
+                          onConfirmed: (v) => setState(() => phoneController.text = _formatPhone(v)),
+                        ),
+                      ),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
+                        child: Text(phoneController.text.isEmpty ? 'タップして入力' : phoneController.text),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              TextField(
-                controller: companyController,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(labelText: '企業名'),
-              ),
-              TextField(
-                controller: phoneController,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(labelText: '電話番号'),
-                keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-                  _PhoneFormatter(_formatPhone),
-                ],
-              ),
-              TextField(
-                controller: emailController,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(labelText: 'メールアドレス'),
-              ),
-              TextField(
-                controller: addressController,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(labelText: '住所'),
-                maxLines: 2,
-              ),
+              KMultimodalTextField(label: 'メールアドレス', controller: emailController, maxLines: 1),
+              KMultimodalTextField(label: '住所', controller: addressController, maxLines: 2),
             ],
           ),
         ),
@@ -136,20 +136,5 @@ class _CustomerEditDialogState extends State<CustomerEditDialog> {
     emailController.dispose();
     addressController.dispose();
     super.dispose();
-  }
-}
-
-class _PhoneFormatter extends TextInputFormatter {
-  final String Function(String) formatFunc;
-  _PhoneFormatter(this.formatFunc);
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final formatted = formatFunc(newValue.text);
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
-      composing: TextRange.empty,
-    );
   }
 }

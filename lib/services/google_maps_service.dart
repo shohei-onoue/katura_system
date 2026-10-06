@@ -2,10 +2,28 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import '../firebase_options.dart';
 
+/// 2地点間のナビ経路1区間分（移動秒数・距離・経路線）
+typedef RouteLeg = ({int seconds, int meters, String polyline});
+
 class GoogleMapsService {
+  /// 区間のナビ情報の保存先（Firestore）。同じ区間は2回目以降APIを呼ばない。
+  /// ドキュメントID＝"出発地_到着地"（座標を小数5桁に丸めたもの）。general＝一般道のみ、highway＝高速も使う。
+  static const String _cacheCollection = 'route_cache';
+  static final Map<String, RouteLeg> _legMemory = {}; // アプリ起動中のメモリ保持
+
+  CollectionReference get _legCol =>
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection(_cacheCollection);
+
+  static String _pairId(LatLng a, LatLng b) {
+    String r(double v) => v.toStringAsFixed(5);
+    return '${r(a.latitude)}_${r(a.longitude)}__${r(b.latitude)}_${r(b.longitude)}';
+  }
+
   // 開発環境用のAPIキー
   static String get _apiKey => DefaultFirebaseOptions.currentPlatform.apiKey;
 
@@ -99,60 +117,56 @@ class GoogleMapsService {
     return min >= 60 ? '${min ~/ 60}時間${min % 60}分' : '$min分';
   }
 
-  /// 出発地から、経由地を順に通って最後の地点までの経路（Routes API）。失敗時は null。
-  /// [stops] は LatLng か住所(String)。最後が目的地、それ以外は経由地。
-  /// 返り値: 経路線(encodedPolyline)・合計メートル・合計秒・各地点の座標（出発地→各stopの順）
-  Future<({String polyline, int meters, int seconds, List<LatLng> points, List<({String polyline, int seconds})> legs})?> getRoute(LatLng origin, List<Object> stops) async {
-    if (stops.isEmpty) return null;
-    const urlStr = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
-    Map<String, dynamic> wp(Object p) => p is LatLng
-        ? {'location': {'latLng': {'latitude': p.latitude, 'longitude': p.longitude}}}
-        : {'address': p.toString()};
-    final body = json.encode({
-      'origin': wp(origin),
-      'destination': wp(stops.last),
-      if (stops.length > 1) 'intermediates': stops.sublist(0, stops.length - 1).map(wp).toList(),
-      'travelMode': 'DRIVE',
-      'languageCode': 'ja',
-    });
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': _apiKey,
-          'X-Goog-FieldMask': 'routes.polyline.encodedPolyline,routes.distanceMeters,routes.duration,routes.legs.startLocation,routes.legs.endLocation,routes.legs.polyline.encodedPolyline,routes.legs.duration',
-        },
-        body: body,
-      );
-      if (response.statusCode != 200) {
-        debugPrint('Routes API HTTP ${response.statusCode}: ${response.body}');
-        return null;
-      }
-      final routes = json.decode(response.body)['routes'] as List?;
-      if (routes == null || routes.isEmpty) return null;
-      final r = routes.first as Map<String, dynamic>;
-      LatLng ll(Map m) => LatLng((m['latLng']['latitude'] as num).toDouble(), (m['latLng']['longitude'] as num).toDouble());
-      final legs = (r['legs'] as List).cast<Map<String, dynamic>>();
-      return (
-        polyline: r['polyline']['encodedPolyline'] as String,
-        meters: (r['distanceMeters'] as num?)?.toInt() ?? 0,
-        seconds: int.tryParse(r['duration'].toString().replaceAll('s', '')) ?? 0,
-        points: [ll(legs.first['startLocation']), ...legs.map((l) => ll(l['endLocation']))],
-        legs: legs
-            .map((l) => (polyline: l['polyline']['encodedPolyline'] as String, seconds: int.tryParse(l['duration'].toString().replaceAll('s', '')) ?? 0))
-            .toList(),
-      );
-    } catch (e) {
-      debugPrint('Routes API Error: $e');
-      return null;
-    }
+  /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（秒）。失敗時は null。
+  /// [highway] が false（標準）のときは一般道のみ。true のときは高速道路も使う。
+  Future<int?> getDurationSeconds(LatLng origin, LatLng destination, {bool highway = false}) async {
+    return (await getLeg(origin, destination, highway: highway))?.seconds;
   }
 
-  /// 配達元(origin)から配達先(destination)までのナビ経路の所要時間（秒）を取得する。失敗時は null。
-  /// Routes API（Google公式の新しい経路API）を使う。旧Distance Matrix APIは新規プロジェクトでは使えないため。
-  Future<int?> getDurationSeconds(LatLng origin, LatLng destination) async {
+  /// 2地点間の1区間のナビ情報。メモリ → Firestore → Routes API の順に探し、APIで取れたら保存する。
+  Future<RouteLeg?> getLeg(LatLng origin, LatLng destination, {bool highway = false}) async {
+    final id = _pairId(origin, destination);
+    final mode = highway ? 'highway' : 'general';
+    final memKey = '$id|$mode';
+    final mem = _legMemory[memKey];
+    if (mem != null) return mem;
+
+    try {
+      final snap = await _legCol.doc(id).get();
+      final saved = (snap.data() as Map<String, dynamic>?)?[mode] as Map<String, dynamic>?;
+      if (saved != null) {
+        final leg = (
+          seconds: (saved['seconds'] as num).toInt(),
+          meters: (saved['meters'] as num).toInt(),
+          polyline: saved['polyline'] as String,
+        );
+        _legMemory[memKey] = leg;
+        return leg;
+      }
+    } catch (e) {
+      debugPrint('Route cache read error: $e');
+    }
+
+    final leg = await _fetchLeg(origin, destination, highway: highway);
+    if (leg == null) return null;
+    _legMemory[memKey] = leg;
+    try {
+      await _legCol.doc(id).set({
+        mode: {
+          'seconds': leg.seconds,
+          'meters': leg.meters,
+          'polyline': leg.polyline,
+          'savedAt': FieldValue.serverTimestamp(),
+        },
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Route cache write error: $e');
+    }
+    return leg;
+  }
+
+  /// Routes API（Google公式の経路API）で1区間を取得する。一般道のみのときは高速道路を避ける。
+  Future<RouteLeg?> _fetchLeg(LatLng origin, LatLng destination, {required bool highway}) async {
     const urlStr = 'https://routes.googleapis.com/directions/v2:computeRoutes';
     final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
     final body = json.encode({
@@ -160,35 +174,39 @@ class GoogleMapsService {
       'destination': {'location': {'latLng': {'latitude': destination.latitude, 'longitude': destination.longitude}}},
       'travelMode': 'DRIVE',
       'languageCode': 'ja',
+      if (!highway) 'routeModifiers': {'avoidHighways': true},
     });
-
     try {
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': _apiKey,
-          'X-Goog-FieldMask': 'routes.duration',
+          'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline',
         },
         body: body,
       ).timeout(const Duration(seconds: 8)); // 応答が無いときは8秒で失敗扱い
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final routes = data['routes'] as List?;
-        if (routes != null && routes.isNotEmpty) {
-          // 例: "1234s"
-          final d = routes.first['duration']?.toString() ?? '';
-          final sec = int.tryParse(d.replaceAll('s', ''));
-          if (sec != null) return sec;
-        }
-        debugPrint('Routes API: 経路なし ${response.body}');
-      } else {
+      if (response.statusCode != 200) {
         debugPrint('Routes API HTTP ${response.statusCode}: ${response.body}');
+        return null;
       }
+      final routes = json.decode(response.body)['routes'] as List?;
+      if (routes == null || routes.isEmpty) {
+        debugPrint('Routes API: 経路なし ${response.body}');
+        return null;
+      }
+      final r = routes.first as Map<String, dynamic>;
+      final sec = int.tryParse(r['duration']?.toString().replaceAll('s', '') ?? '');
+      if (sec == null) return null;
+      return (
+        seconds: sec,
+        meters: (r['distanceMeters'] as num?)?.toInt() ?? 0,
+        polyline: r['polyline']?['encodedPolyline'] as String? ?? '',
+      );
     } catch (e) {
       debugPrint('Routes API Error: $e');
+      return null;
     }
-    return null;
   }
 
   Future<List<Map<String, dynamic>>> searchPlacesByText(String query, {LatLng? location}) async {

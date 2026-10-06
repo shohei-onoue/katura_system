@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
+import 'package:katura_system/utils/my_flutter_app_icons.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class KStepper extends StatelessWidget {
@@ -35,7 +36,7 @@ class KStepper extends StatelessWidget {
         height: kStepBarHeight(context),
         child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: List.generate(visible.length, (pos) {
+        children: _withArrows(context, List.generate(visible.length, (pos) {
           final index = visible[pos];
           final isLast = index == steps.length - 1;
           final isClickable = index <= maxReachedStep || (isLast && isFinalStepAvailable);
@@ -44,7 +45,7 @@ class KStepper extends StatelessWidget {
           final isAvailableButUnvisited = isClickable && !isCompleted && !isActive; // 追加: ジャンプ可能な未来のステップ
           
           return Expanded(
-            flex: isActive ? 16 : 10, // 現在地を大幅に強調
+            flex: 1, // 全ボタンの横幅を均一にする
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: isClickable ? () => onStepTapped(index) : null,
@@ -76,13 +77,14 @@ class KStepper extends StatelessWidget {
                       ),
                     ),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: rav(context, 6), horizontal: rav(context, 4)),
+                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: rav(context, 4)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Container(
-                            width: rav(context, 22),
-                            height: rav(context, 22),
+                            width: rf(context, 18),
+                            height: rf(context, 18),
                             decoration: BoxDecoration(
                               color: isActive 
                                   ? AppColors.accentOrange 
@@ -99,7 +101,8 @@ class KStepper extends StatelessWidget {
                                       style: TextStyle(
                                         color: AppColors.mainBackground,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: rf(context, 11),
+                                        fontSize: rf(context, 12),
+                                        height: 1.0,
                                       ),
                                     ),
                             ),
@@ -111,7 +114,8 @@ class KStepper extends StatelessWidget {
                               style: TextStyle(
                                 color: isActive ? AppColors.primaryText : (isClickable ? Colors.black87 : Colors.grey.shade600),
                                 fontWeight: isActive || isAvailableButUnvisited ? FontWeight.bold : FontWeight.normal,
-                                fontSize: rf(context, 12),
+                                fontSize: rf(context, 18),
+                                height: 1.0,
                               ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
@@ -125,9 +129,23 @@ class KStepper extends StatelessWidget {
               )),
             ),
           );
-        }),
+        })),
         ),
       ),
     );
+  }
+
+  // カードの間に ▶▶▶ を挟む（幅は固定、カード側が縮んでスペースを確保）
+  List<Widget> _withArrows(BuildContext context, List<Widget> cards) {
+    return [
+      for (int i = 0; i < cards.length; i++) ...[
+        if (i > 0)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: rav(context, 8)),
+            child: Center(child: Icon(MyFlutterApp.right_open, size: rf(context, 10), color: Colors.grey.shade500)),
+          ),
+        cards[i],
+      ],
+    ];
   }
 }
