@@ -94,15 +94,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   // 追加項目：受注区分・梱包・ゴミ・お茶・事前確認
   String _orderSource = ''; // 未選択がデフォルト
-  String _packagingType = ''; // 未選択がデフォルト
+  String _packagingType = '個包装'; // デフォルトは個包装
   int _packagingSmallQty = 0;
   bool _trashPickupRequested = false;
   DateTime? _trashPickupDateTime;
   String _trashPickupLocation = '引渡し場所';
   String _teaOption = 'なし';
   int _teaQuantity = 0;
-  String _preConfirmationMethod = ''; // 未選択がデフォルト
-  String _preConfirmationPhoneType = ''; // 未選択がデフォルト
+  String _preConfirmationMethod = '電話'; // デフォルトは電話
+  String _preConfirmationPhoneType = 'この電話番号'; // デフォルトは受電番号
+  final Set<String> _documents = {}; // 書類（複数選択）
+  String _paymentMethod = ''; // 支払い方法（未選択は空）
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
   String _preConfirmationSmsTime = '09:00';
@@ -338,6 +340,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _teaQuantity = order.teaQuantity;
       _preConfirmationMethod = order.preConfirmationMethod;
       _preConfirmationPhoneType = order.preConfirmationPhoneType;
+      _documents..clear()..addAll(order.documents);
+      _paymentMethod = order.paymentMethod;
       _preConfirmationPhoneNumber = order.preConfirmationPhoneNumber;
       _preConfirmationPhoneController.text = order.preConfirmationPhoneNumber;
       _preConfirmationDateTime = order.preConfirmationDateTime;
@@ -477,9 +481,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryTypeSelected = false;
       _deliveryType = '';
       _orderSource = '';
-      _packagingType = '';
-      _preConfirmationMethod = '';
-      _preConfirmationPhoneType = '';
+      _packagingType = '個包装';
+      _preConfirmationMethod = '電話';
+      _preConfirmationPhoneType = 'この電話番号';
+      _documents.clear();
+      _paymentMethod = '';
       _preConfirmationPhoneNumber = '';
       _preConfirmationDateTime = null;
       _preConfirmationSmsTime = '09:00';
@@ -1512,6 +1518,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       branchName: _branchName, 
       remarks: _remarksController.text,
       vehicleNumber: _deliveryVehicleNumber,
+      documents: _documents.toList(),
+      paymentMethod: _paymentMethod,
       deliveryDestinationImageUrl: imageUrl ?? widget.initialOrder?.deliveryDestinationImageUrl,
       latitude: _markers.any((m) => m.markerId.value == 'dest') 
           ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.latitude : null,
@@ -2109,7 +2117,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           nameController: _nameController, 
           facilityController: _facilityController, 
           addressController: _addressController, 
-          receiverController: _receiverController, 
           deliveryLocationController: _deliveryLocationController, 
           addressQueryController: _addressQueryController, 
           keywordQueryController: _keywordQueryController, 
@@ -2199,7 +2206,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       case 4: return FinalizeStep(
           branchName: _branchName,
           preConfirmationRecipientController: _preConfirmationRecipientController,
-          recipientHistory: _currentCustomer?.facilityReceivers[_facilityController.text] ?? const [],
+          selectedDocuments: _documents,
+          paymentMethod: _paymentMethod,
+          onDocumentToggled: (v) => setState(() => _documents.contains(v) ? _documents.remove(v) : _documents.add(v)),
+          onPaymentMethodChanged: (v) => setState(() => _paymentMethod = v),
           packagingType: _packagingType,
           packagingSmallQty: _packagingSmallQty,
           packagingOtherController: _packagingOtherController,

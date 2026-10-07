@@ -1081,7 +1081,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                                         color: candidate.isEmpty
                                             ? (lane.isEven
                                                   ? AppColors.mainBackground
-                                                  : AppColors.labelBackground)
+                                                  : AppColors.labelBackground.withValues(alpha: 0.25))
                                             : AppColors.primary.withValues(
                                                 alpha: 0.08,
                                               ),

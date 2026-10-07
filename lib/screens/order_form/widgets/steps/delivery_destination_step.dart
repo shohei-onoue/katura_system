@@ -12,7 +12,6 @@ import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_pen_input_dialog.dart';
 import '../../../../services/category_service.dart';
 import '../order_form_parts.dart';
-import 'receiver_selector.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class DeliveryDestinationStep extends StatelessWidget {
@@ -24,7 +23,6 @@ class DeliveryDestinationStep extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController facilityController;
   final TextEditingController addressController;
-  final TextEditingController receiverController;
   final TextEditingController deliveryLocationController;
   final TextEditingController addressQueryController;
   final TextEditingController keywordQueryController;
@@ -84,7 +82,6 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.nameController,
     required this.facilityController,
     required this.addressController,
-    required this.receiverController,
     required this.deliveryLocationController,
     required this.addressQueryController,
     required this.keywordQueryController,
@@ -155,14 +152,6 @@ class DeliveryDestinationStep extends StatelessWidget {
               else
                 _buildNewForm(context),
               SizedBox(height: rs(context, 32)),
-              Divider(height: rs(context, 1), color: Colors.grey.shade200),
-              SizedBox(height: rs(context, 20)),
-              ReceiverSelector(
-                receiverController: receiverController,
-                currentCustomer: currentCustomer,
-                customerName: customerName,
-                facilityName: facilityControllerText,
-              ),
               SizedBox(height: rs(context, 40)),
               Row(
                 children: [
@@ -175,8 +164,7 @@ class DeliveryDestinationStep extends StatelessWidget {
                       builder: (context) {
                         // 企業名なし（目印として登録）の場合は、備考に「〜が目印」があれば進める
                         final bool ready = (facilityControllerText.isNotEmpty || remarksController.text.contains('が目印')) &&
-                            addressControllerText.isNotEmpty &&
-                            receiverController.text.isNotEmpty;
+                            addressControllerText.isNotEmpty;
                         return KButton(
                           label: '商品選択',
                           onPressed: ready ? onNext : () {},

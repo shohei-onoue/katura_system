@@ -17,7 +17,7 @@ class OrderModel {
   final int totalPrice; 
   
   // 梱包設定
-  final String packagingType; // 紙袋, 段ボール, 小分け, その他
+  final String packagingType; // 個包装, 紙袋, 段ボール, 小分け, その他
   final int packagingSmallQty; // 小分け数量
   final String packagingOther; // 梱包その他
 
@@ -51,6 +51,8 @@ class OrderModel {
   final double? latitude;
   final double? longitude;
   final int vehicleNumber; // 配送車両の号車（0＝未割り当て）
+  final List<String> documents; // 書類（領収書, 請求書, レシート, 納品書, 印字領収書）
+  final String paymentMethod; // 支払い方法（現金, カード, 未選択は空）
 
   OrderModel({
     required this.id,
@@ -92,6 +94,8 @@ class OrderModel {
     this.latitude,
     this.longitude,
     this.vehicleNumber = 0,
+    this.documents = const [],
+    this.paymentMethod = '',
     String? deliveryDateStrParam,
     int? totalPriceParam,
   }) : deliveryDateStr = deliveryDateStrParam ?? deliveryDate.toIso8601String().split('T')[0],
@@ -144,6 +148,8 @@ class OrderModel {
       'latitude': latitude,
       'longitude': longitude,
       'vehicleNumber': vehicleNumber,
+      'documents': documents,
+      'paymentMethod': paymentMethod,
     };
   }
 
@@ -219,6 +225,8 @@ class OrderModel {
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
       vehicleNumber: (map['vehicleNumber'] as num?)?.toInt() ?? 0,
+      documents: ((map['documents'] as List?) ?? const []).map((e) => e.toString()).toList(),
+      paymentMethod: map['paymentMethod'] ?? '',
     );
   }
 

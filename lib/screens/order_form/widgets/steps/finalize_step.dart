@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../widgets/k_button.dart';
-import '../../../../widgets/k_choice_group.dart';
+import '../../../../widgets/k_pen_input_dialog.dart';
 import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_shared_quantity_input.dart';
@@ -35,7 +35,11 @@ class FinalizeStep extends StatelessWidget {
   final String trashPickupLocationDetail;
   // 事前連絡の宛先（受取人と同じUIで選択、独立した値）
   final TextEditingController preConfirmationRecipientController;
-  final List<String> recipientHistory;
+  // 書類（複数選択）と支払い方法
+  final Set<String> selectedDocuments;
+  final String paymentMethod;
+  final ValueChanged<String> onDocumentToggled;
+  final ValueChanged<String> onPaymentMethodChanged;
 
   final Function(String) onPackagingTypeChanged;
   final Function(int) onPackagingSmallQtyChanged;
@@ -74,7 +78,10 @@ class FinalizeStep extends StatelessWidget {
     this.trashPickupDateTime,
     required this.trashPickupLocationDetail,
     required this.preConfirmationRecipientController,
-    this.recipientHistory = const [],
+    required this.selectedDocuments,
+    required this.paymentMethod,
+    required this.onDocumentToggled,
+    required this.onPaymentMethodChanged,
     required this.onPackagingTypeChanged,
     required this.onPackagingSmallQtyChanged,
     required this.onPreConfirmationMethodChanged,
@@ -97,59 +104,32 @@ class FinalizeStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. 梱包
+          // 1. 梱包方法
           _buildPackagingArea(context),
 
-          SizedBox(height: rs(context, 12)),
+          SizedBox(height: rs(context, 26)),
           Divider(height: rs(context, 1)),
-          SizedBox(height: rs(context, 12)),
+          SizedBox(height: rs(context, 26)),
 
           // 2. 事前連絡
           _buildAdvanceNotificationSection(context),
 
-          SizedBox(height: rs(context, 12)),
+          SizedBox(height: rs(context, 26)),
           Divider(height: rs(context, 1)),
-          SizedBox(height: rs(context, 12)),
+          SizedBox(height: rs(context, 26)),
 
-          // 4. 領収書
-          _buildFormRow(
-            context: context,
-            label: '領収書',
-            buttons: const SizedBox.shrink(),
-            details: LayoutBuilder(
-              builder: (context, c) {
-                final tileW = (c.maxWidth - rs(context, 16)) / 3;
-                final tileH = tileW / 2.5;
-                return Row(
-                  children: [
-                    const Spacer(),
-                    SizedBox(
-                      width: tileW,
-                      height: tileH,
-                      child: KButton(
-                        label: '領収書',
-                        isSecondary: true,
-                        color: Colors.blueGrey,
-                        height: tileH,
-                        fontSize: rf(context, 15),
-                        onPressed: onShowReceipt,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          
-          SizedBox(height: rs(context, 24)),
+          // 3. 書類を選択（複数選択）／支払い方法
+          _buildDocumentsArea(context),
+
+          SizedBox(height: rs(context, 36)),
           Row(
             children: [
               Expanded(
-                child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文キャンセル', color: AppColors.cancelButton, onPressed: onCancelOrder),
+                child: KButton(label: isEditingOrder ? '編集キャンセル' : '注文中止', color: AppColors.cancelButton, onPressed: onCancelOrder),
               ),
               SizedBox(width: rs(context, 12)),
               Expanded(
-                child: KButton(label: '受注を確定して保存する', color: AppColors.accentOrange, onPressed: onSave),
+                child: KButton(label: '確定', color: AppColors.acceptButton, onPressed: onSave),
               ),
             ],
           ),
@@ -158,81 +138,64 @@ class FinalizeStep extends StatelessWidget {
     );
   }
 
-  Widget _buildFormRow({
-    required BuildContext context,
-    required String label,
-    required Widget buttons,
-    Widget? details,
-  }) {
-    return Column(
+  /// ラベルの横幅（全ラベル共通）。
+  double _labelW(BuildContext context) => rs(context, 110);
+
+  /// ラベルと、選択ボタンなどを同じ行に置く（ラベルのサイズは全画面で共通）。
+  Widget _labeledRow(BuildContext context, String label, Widget child) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: _labelStyle(context)),
-        SizedBox(height: rs(context, 6)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 50,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: buttons,
-              ),
-            ),
-            SizedBox(width: rs(context, 16)),
-            Expanded(
-              flex: 50,
-              child: details ?? const SizedBox.shrink(),
-            ),
-          ],
+        SizedBox(
+          width: _labelW(context),
+          height: rs(context, 44),
+          child: Align(alignment: Alignment.centerLeft, child: Text(label, style: _labelStyle(context))),
         ),
+        Expanded(child: child),
       ],
     );
   }
 
   Widget _buildPackagingArea(BuildContext context) {
+    // 表示名 → 保存する値
+    const items = [
+      ['個包装', '個包装'],
+      ['紙袋', '紙袋'],
+      ['ダンボール', '段ボール'],
+      ['小分け', '小分け'],
+      ['その他', 'その他'],
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('梱包方法', style: _labelStyle(context)),
-        SizedBox(height: rs(context, 12)),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 1,
-              child: KChoiceGroup<String>(
-                label: '',
-                selectedValue: packagingType,
-                items: [
-                  KChoiceItem(label: '紙袋', value: '紙袋'),
-                  KChoiceItem(label: '段ボール', value: '段ボール'),
-                  KChoiceItem(label: '小分け', value: '小分け'),
-                  KChoiceItem(label: 'その他', value: 'その他'),
-                ],
-                onSelected: onPackagingTypeChanged,
-                showLabel: false,
-                selectedColor: AppColors.selectButton,
-                selectedTextColor: AppColors.primaryText,
-              ),
-            ),
-            SizedBox(width: rs(context, 12)),
-            Expanded(
-              flex: 1,
-              child: SizedBox(
-                height: kFieldHeight(context),
-                child: _buildPackagingDetailArea(context),
-              ),
-            ),
-          ],
+        _labeledRow(
+          context,
+          '梱包方法',
+          Wrap(
+            spacing: rs(context, 8),
+            runSpacing: rs(context, 8),
+            children: [
+              for (int i = 0; i < items.length; i++)
+                _choiceCard(context,
+                    selected: packagingType == items[i][1], label: items[i][0], onTap: () => onPackagingTypeChanged(items[i][1])),
+            ],
+          ),
         ),
+        if (packagingType == '小分け' || packagingType == 'その他') ...[
+          SizedBox(height: rs(context, 8)),
+          Padding(
+            padding: EdgeInsets.only(left: _labelW(context)),
+            child: SizedBox(height: kFieldHeight(context), child: _buildPackagingDetailArea(context)),
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildPackagingDetailArea(BuildContext context) {
     if (packagingType == '小分け') {
-      return Center(
+      return Align(
+        alignment: Alignment.centerLeft,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -269,67 +232,142 @@ class FinalizeStep extends StatelessWidget {
 
   Widget _buildAdvanceNotificationSection(BuildContext context) {
     final bool isSms = preConfirmationMethod == 'SMS';
-    final bool isPhone = preConfirmationMethod == '電話';
     final bool isNumberSelf = preConfirmationPhoneType == 'この電話番号';
     final bool isNumberOther = preConfirmationPhoneType == '指定番号へ連絡';
     // 事前連絡の「ご本人」は受取人ではなく顧客本人（注文者）を指す
     final String selfName = customerName.isNotEmpty ? customerName : receiverName;
+    final linkStyle = TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade700);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('事前連絡', style: _labelStyle(context)),
-        SizedBox(height: rs(context, 10)),
-
-        // ① 連絡先番号：受電番号 / 指定番号 / 番号フィールド を同じROWに
-        Text('連絡先番号', style: _subLabelStyle(context)),
-        SizedBox(height: rs(context, 6)),
-        Row(
-          children: [
-            Expanded(flex: 3, child: _choiceCard(context, selected: isNumberSelf, label: '受電番号', onTap: () => onPreConfirmationPhoneTypeChanged('この電話番号'))),
-            SizedBox(width: rs(context, 8)),
-            Expanded(flex: 3, child: _choiceCard(context, selected: isNumberOther, label: '指定番号', onTap: () => onPreConfirmationPhoneTypeChanged('指定番号へ連絡'))),
-            SizedBox(width: rs(context, 8)),
-            Expanded(
-              flex: 5,
-              child: isNumberSelf
-                  ? _numberField(context, phoneDisplay.isEmpty ? '受電番号なし' : phoneDisplay, phoneDisplay.isNotEmpty)
-                  : InkWell(
-                      onTap: () => _showPhoneDialDialog(context),
-                      child: _numberField(context, preConfirmationPhoneNumber.isEmpty ? '電話番号を入力' : preConfirmationPhoneNumber, preConfirmationPhoneNumber.isNotEmpty),
-                    ),
+        // 「受電番号」に「電話」で連絡する：ボタンを押すとメニューで選ぶ
+        _labeledRow(
+          context,
+          '事前連絡',
+          SizedBox(
+            height: rs(context, 44),
+            child: Row(
+              children: [
+                _menuButton(
+                  context,
+                  label: isNumberOther ? '指定番号' : '受電番号',
+                  options: const ['受電番号', '指定番号'],
+                  onSelected: (v) => onPreConfirmationPhoneTypeChanged(v == '指定番号' ? '指定番号へ連絡' : 'この電話番号'),
+                ),
+                SizedBox(width: rs(context, 10)),
+                Text('に', style: linkStyle),
+                SizedBox(width: rs(context, 10)),
+                _menuButton(
+                  context,
+                  label: isSms ? 'SMS' : '電話',
+                  options: const ['電話', 'SMS'],
+                  onSelected: (v) => onPreConfirmationMethodChanged(v),
+                ),
+                SizedBox(width: rs(context, 10)),
+                Text('で連絡する', style: linkStyle),
+              ],
             ),
-          ],
+          ),
         ),
-
-        SizedBox(height: rs(context, 12)),
-
-        // ② 連絡方法：SMS / 電話連絡 / テキスト（送信予約 or 連絡希望日時）を同じROWに
-        Text('連絡方法', style: _subLabelStyle(context)),
-        SizedBox(height: rs(context, 6)),
-        SizedBox(
-          height: rs(context, 44),
+        SizedBox(height: rs(context, 14)),
+        // 連絡先の番号／送信予約または連絡希望日時
+        Padding(
+          padding: EdgeInsets.only(left: _labelW(context)),
           child: Row(
             children: [
-              Expanded(flex: 3, child: _choiceCard(context, selected: isSms, label: 'SMS', onTap: () => onPreConfirmationMethodChanged('SMS'))),
+              Expanded(
+                child: SizedBox(
+                  height: rs(context, 44),
+                  child: isNumberSelf
+                      ? _numberField(context, phoneDisplay.isEmpty ? '受電番号なし' : phoneDisplay, phoneDisplay.isNotEmpty)
+                      : InkWell(
+                          onTap: () => _showPhoneDialDialog(context),
+                          child: _numberField(context, preConfirmationPhoneNumber.isEmpty ? '電話番号を入力' : preConfirmationPhoneNumber, preConfirmationPhoneNumber.isNotEmpty),
+                        ),
+                ),
+              ),
               SizedBox(width: rs(context, 8)),
-              Expanded(flex: 3, child: _choiceCard(context, selected: isPhone, label: '電話連絡', onTap: () => onPreConfirmationMethodChanged('電話'))),
-              SizedBox(width: rs(context, 8)),
-              Expanded(flex: 5, child: isSms ? _smsScheduleRow(context) : _buildDateTimeRow(context)),
+              Expanded(child: SizedBox(height: rs(context, 44), child: isSms ? _smsScheduleRow(context) : _buildDateTimeRow(context))),
             ],
           ),
         ),
 
-        SizedBox(height: rs(context, 12)),
+        SizedBox(height: rs(context, 22)),
 
-        // ③ 連絡の宛先：ご本人（顧客名）/ 履歴 / 受取人（受取人名）
-        Text('連絡の宛先', style: _subLabelStyle(context)),
-        SizedBox(height: rs(context, 6)),
-        _RecipientSelector(
-          controller: preConfirmationRecipientController,
-          selfName: selfName,
-          receiverName: receiverName,
-          history: recipientHistory,
+        // 受取人の指定：ご本人（顧客名）／指定（ペン入力）
+        _labeledRow(
+          context,
+          '受取人の指定',
+          _RecipientSelector(
+            controller: preConfirmationRecipientController,
+            selfName: selfName,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 書類（複数選択）と支払い方法。ラベルとボタンは同じ行に置く。
+  Widget _buildDocumentsArea(BuildContext context) {
+    const docs = ['領収書', '請求書', 'レシート', '納品書', '印字領収書'];
+    const payments = ['現金', 'カード'];
+    final double labelW = _labelW(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 書類を選択：ラベル／選択ボタン／プレビュー
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: labelW,
+              height: rs(context, 44),
+              child: Align(alignment: Alignment.centerLeft, child: Text('書類を選択', style: _labelStyle(context))),
+            ),
+            Expanded(
+              child: Wrap(
+                spacing: rs(context, 8),
+                runSpacing: rs(context, 8),
+                children: [
+                  for (final d in docs)
+                    _choiceCard(context, selected: selectedDocuments.contains(d), label: d, multi: true, onTap: () => onDocumentToggled(d)),
+                ],
+              ),
+            ),
+            SizedBox(width: rs(context, 8)),
+            SizedBox(
+              width: _btnW(context),
+              height: rs(context, 44),
+              child: TextButton(
+                onPressed: onShowReceipt,
+                style: TextButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: rs(context, 4))),
+                child: FittedBox(fit: BoxFit.scaleDown, child: Text('領収書プレビュー', maxLines: 1, style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold))),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: rs(context, 26)),
+        // 支払い方法：ラベル／選択ボタン
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: labelW,
+              height: rs(context, 44),
+              child: Align(alignment: Alignment.centerLeft, child: Text('支払い方法', style: _labelStyle(context))),
+            ),
+            Expanded(
+              child: Wrap(
+                spacing: rs(context, 8),
+                runSpacing: rs(context, 8),
+                children: [
+                  for (final pm in payments)
+                    _choiceCard(context, selected: paymentMethod == pm, label: pm, onTap: () => onPaymentMethodChanged(pm)),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -395,34 +433,58 @@ class FinalizeStep extends StatelessWidget {
     );
   }
 
-  Widget _choiceCard(BuildContext context, {required bool selected, required String label, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(rs(context, 10)),
-      child: Container(
-        height: rs(context, 44),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? AppColors.selectButton : AppColors.offButton,
-          borderRadius: BorderRadius.circular(rs(context, 10)),
-          border: Border.all(color: selected ? AppColors.selectButton : Colors.grey.shade300, width: selected ? 2 : 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(selected ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: rs(context, 18), color: selected ? AppColors.primaryText : Colors.grey),
-            SizedBox(width: rs(context, 6)),
-            Text(label,
+  /// 画面内のボタンの横幅：テキスト5文字分＋左右に4pxずつの隙間。
+  double _btnW(BuildContext context) => rf(context, 14) * 5 + rs(context, 8);
+
+  Widget _choiceCard(BuildContext context, {required bool selected, required String label, required VoidCallback onTap, bool multi = false}) {
+    return SizedBox(
+      width: _btnW(context),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(rs(context, 10)),
+        child: Container(
+          height: rs(context, 44),
+          alignment: Alignment.center,
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 4)),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.selectButton : AppColors.offButton,
+            borderRadius: BorderRadius.circular(rs(context, 10)),
+            border: selected ? null : Border.all(color: Colors.grey.shade300),
+          ),
+          // ボタンの中はテキストのみ（長い文字は縮小して収める）
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label,
+                maxLines: 1,
                 style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: selected ? AppColors.primaryText : AppColors.offButtonText)),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  TextStyle _subLabelStyle(BuildContext context) =>
-      TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: Colors.blueGrey.shade600);
+  /// タップでメニューを開いて選ぶボタン（テキストのみ）。
+  Widget _menuButton(BuildContext context, {required String label, required List<String> options, required ValueChanged<String> onSelected}) {
+    return PopupMenuButton<String>(
+      onSelected: onSelected,
+      itemBuilder: (_) => [for (final o in options) PopupMenuItem<String>(value: o, child: Text(o, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold)))],
+      child: Container(
+        width: _btnW(context),
+        height: rs(context, 44),
+        alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(horizontal: rs(context, 4)),
+        decoration: BoxDecoration(
+          color: AppColors.offButton,
+          borderRadius: BorderRadius.circular(rs(context, 10)),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, maxLines: 1, style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.offButtonText)),
+        ),
+      ),
+    );
+  }
 
   Widget _buildDateTimeRow(BuildContext context) {
     return Row(
@@ -473,18 +535,14 @@ class FinalizeStep extends StatelessWidget {
   }
 }
 
-/// 事前連絡の宛先セレクタ。受取人の選択UI（ご本人様／履歴から選択／新規追加）と同じ。
+/// 受取人の指定。ご本人（顧客名）／指定（ペン入力で名前を書く）。
 class _RecipientSelector extends StatefulWidget {
   final TextEditingController controller;
   final String selfName;
-  final String receiverName;
-  final List<String> history;
 
   const _RecipientSelector({
     required this.controller,
     required this.selfName,
-    required this.receiverName,
-    required this.history,
   });
 
   @override
@@ -503,36 +561,45 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
       _mode = 'ご本人様';
     } else if (widget.controller.text == widget.selfName) {
       _mode = 'ご本人様';
-    } else if (widget.receiverName.isNotEmpty && widget.controller.text == widget.receiverName) {
-      _mode = '受取人';
-    } else if (widget.history.contains(widget.controller.text)) {
-      _mode = '履歴から選択';
+    } else if (widget.controller.text.isNotEmpty) {
+      _mode = '指定';
     } else {
       _mode = 'ご本人様';
     }
   }
 
   void _selectMode(String mode) {
-    setState(() => _mode = mode);
-    if (mode == 'ご本人様') {
-      widget.controller.text = widget.selfName;
-    } else if (mode == '受取人') {
-      widget.controller.text = widget.receiverName;
-    }
+    setState(() {
+      _mode = mode;
+      // ご本人＝顧客名／指定＝空欄にしてペン入力で書く
+      widget.controller.text = mode == 'ご本人様' ? widget.selfName : '';
+    });
+  }
+
+  Future<void> _inputByPen() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => KPenInputDialog(
+        initialText: widget.controller.text,
+        onTextRecognized: (t) {
+          if (mounted) setState(() => widget.controller.text = t.trim());
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ご本人 / 履歴 / 受取人 / 表示欄 をすべて同じROWに配置
+    final double w = rf(context, 14) * 5 + rs(context, 8);
+    // ご本人 / 指定 / 名前の表示欄 をすべて同じROWに配置
     return Row(
       children: [
-        Expanded(flex: 2, child: _modeBtn(context, 'ご本人様', 'ご本人')),
-        SizedBox(width: rs(context, 6)),
-        Expanded(flex: 2, child: _modeBtn(context, '履歴から選択', '履歴')),
-        SizedBox(width: rs(context, 6)),
-        Expanded(flex: 2, child: _modeBtn(context, '受取人', '受取人')),
-        SizedBox(width: rs(context, 6)),
-        Expanded(flex: 5, child: _buildInput(context)),
+        SizedBox(width: w, child: _modeBtn(context, 'ご本人様', 'ご本人')),
+        SizedBox(width: rs(context, 8)),
+        SizedBox(width: w, child: _modeBtn(context, '指定', '指定')),
+        SizedBox(width: rs(context, 8)),
+        Expanded(child: _buildInput(context)),
       ],
     );
   }
@@ -546,71 +613,28 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
         height: rs(context, 44),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: sel ? Colors.deepPurple.shade50 : AppColors.mainBackground,
+          color: sel ? AppColors.selectButton : AppColors.mainBackground,
           borderRadius: BorderRadius.circular(rs(context, 10)),
-          border: Border.all(color: sel ? AppColors.accentPurple : Colors.grey.shade300, width: sel ? 2 : 1),
+          border: sel ? null : Border.all(color: Colors.grey.shade300),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(sel ? Icons.check_circle : Icons.radio_button_unchecked,
-                size: rs(context, 15), color: sel ? AppColors.accentPurple : Colors.grey),
-            SizedBox(width: rs(context, 3)),
-            Flexible(
-              child: Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: sel ? Colors.deepPurple.shade900 : Colors.black87)),
-            ),
-          ],
-        ),
+        child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: sel ? AppColors.primaryText : Colors.black87)),
       ),
     );
   }
 
   Widget _buildInput(BuildContext context) {
-    if (_mode == '履歴から選択') {
-      final list = widget.history.where((n) => n.isNotEmpty && n != widget.selfName).toList();
-      return SizedBox(
-        height: rs(context, 44),
-        child: list.isEmpty
-            ? Align(
-                alignment: Alignment.centerLeft,
-                child: Text('履歴なし', style: TextStyle(color: Colors.grey, fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
-              )
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: list.map((name) {
-                    final sel = widget.controller.text == name;
-                    return Padding(
-                      padding: EdgeInsets.only(right: rs(context, 6)),
-                      child: ActionChip(
-                        label: Text(name, style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold)),
-                        labelPadding: EdgeInsets.symmetric(horizontal: rs(context, 6)),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => setState(() => widget.controller.text = name),
-                        backgroundColor: sel ? Colors.deepPurple.shade100 : Colors.deepPurple.shade50,
-                        side: BorderSide(color: sel ? AppColors.accentPurple : Colors.deepPurple.shade100),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-      );
-    }
-
-    // ご本人様（顧客名）／受取人（受取人名）はともに読み取り専用表示
-    final String shown = _mode == '受取人'
-        ? (widget.receiverName.isEmpty ? '未設定' : widget.receiverName)
-        : (widget.selfName.isEmpty ? '未設定' : widget.selfName);
-    return Container(
+    final bool isSpecified = _mode == '指定';
+    final String shown = isSpecified ? widget.controller.text : (widget.selfName.isEmpty ? '未設定' : widget.selfName);
+    final field = Container(
       width: double.infinity,
       height: rs(context, 44),
       alignment: Alignment.centerLeft,
       padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isSpecified ? AppColors.mainBackground : Colors.grey.shade50,
         border: Border.all(color: Colors.grey.shade300),
         borderRadius: BorderRadius.circular(rs(context, 8)),
       ),
@@ -621,5 +645,7 @@ class _RecipientSelectorState extends State<_RecipientSelector> {
         style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: Colors.black87),
       ),
     );
+    // 指定のときだけ、タップでペン入力できる
+    return isSpecified ? InkWell(onTap: _inputByPen, child: field) : field;
   }
 }
