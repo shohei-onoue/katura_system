@@ -98,7 +98,7 @@ class _ReceiverSelectorState extends State<ReceiverSelector> {
               child: Container(
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.accentPurple : Colors.transparent,
+                  color: isSelected ? AppColors.selectButton : Colors.transparent,
                   borderRadius: BorderRadius.circular(rs(context, 8)),
                 ),
                 child: Text(
@@ -106,7 +106,7 @@ class _ReceiverSelectorState extends State<ReceiverSelector> {
                   style: TextStyle(
                     fontSize: KR.fontSmall(context),
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? AppColors.mainBackground : Colors.blueGrey,
+                    color: isSelected ? AppColors.primaryText : Colors.blueGrey,
                   ),
                 ),
               ),
@@ -140,11 +140,11 @@ class _ReceiverSelectorState extends State<ReceiverSelector> {
                       style: TextStyle(fontSize: KR.fontLarge(context), fontWeight: FontWeight.bold)),
                   labelPadding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 4)),
                   onPressed: () {
-                    widget.receiverController.text = name;
+                    setState(() => widget.receiverController.text = name);
                     _notify();
                   },
-                  backgroundColor: Colors.deepPurple.shade50,
-                  side: BorderSide(color: Colors.deepPurple.shade100),
+                  backgroundColor: widget.receiverController.text == name ? AppColors.selectButton : Colors.deepPurple.shade50,
+                  side: widget.receiverController.text == name ? BorderSide.none : BorderSide(color: Colors.deepPurple.shade100),
                 ))
             .toList(),
       );

@@ -46,6 +46,7 @@ flutter:
   assets:
     - assets/img/
     - assets/navi_database.db
+    - assets/aza.tsv
   fonts:
     - family: MyFlutterApp
       fonts:

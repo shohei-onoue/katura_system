@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:sqlite3/common.dart';
 import 'database_factory.dart';
 import '../constants/address_constants.dart';
@@ -29,11 +31,68 @@ class AddressService {
       _db!.execute("CREATE INDEX IF NOT EXISTS idx_pref_city_town ON post_all(prefecture, city, town_kana, town)");
       _addColumnIfNotExists('kigyou', 'lat', 'REAL');
       _addColumnIfNotExists('kigyou', 'lng', 'REAL');
+      try {
+        await _ensureAzaTable();
+      } catch (e) {
+        debugPrint('aza table error: $e');
+        try { _db!.execute('ROLLBACK'); } catch (_) {}
+      }
       _initCompleter!.complete();
     } catch (e) {
       _initCompleter!.completeError(e);
       _initCompleter = null;
     }
+  }
+
+  /// aza.tsv の中身を更新したら、この数字を上げる（端末のdbを作り直すための目印）。
+  static const int _azaVersion = 2;
+
+  /// 字・丁目などの細かい地名（e-Stat 町丁・字等）。端末のdbに無い・古いときは assets/aza.tsv から作り直す。
+  Future<void> _ensureAzaTable() async {
+    final hasVersion = _db!.select("SELECT name FROM sqlite_master WHERE type='table' AND name='aza_version'").isNotEmpty;
+    final hasAza = _db!.select("SELECT name FROM sqlite_master WHERE type='table' AND name='aza'").isNotEmpty;
+    if (hasVersion && hasAza) {
+      final v = _db!.select('SELECT v FROM aza_version LIMIT 1');
+      if (v.isNotEmpty && (v.first['v'] as int) >= _azaVersion) return;
+    }
+    final text = await rootBundle.loadString('assets/aza.tsv');
+    _db!.execute('BEGIN');
+    _db!.execute('DROP TABLE IF EXISTS aza');
+    _db!.execute('DROP TABLE IF EXISTS aza_version');
+    _db!.execute('CREATE TABLE aza(prefecture TEXT, city TEXT, town TEXT, detail TEXT)');
+    final stmt = _db!.prepare('INSERT INTO aza VALUES (?, ?, ?, ?)');
+    for (final line in text.split('\n')) {
+      final c = line.split('\t');
+      if (c.length == 4) stmt.execute(c);
+    }
+    stmt.close();
+    _db!.execute('CREATE INDEX idx_aza ON aza(prefecture, city, town)');
+    _db!.execute('CREATE TABLE aza_version(v INTEGER)');
+    _db!.execute('INSERT INTO aza_version VALUES ($_azaVersion)');
+    _db!.execute('COMMIT');
+  }
+
+  /// 選んだ町名の「字・丁目」候補（標準データ＋ユーザーが追加登録した分）。町名が空（すべて）のときは市区町村全体（町名つき）。
+  Future<List<({String town, String detail})>> getAzaCandidates(String pref, String city, String town) async {
+    await initDatabase();
+    _db!.execute('CREATE TABLE IF NOT EXISTS aza_user(prefecture TEXT, city TEXT, town TEXT, detail TEXT)');
+    final rows = town.isEmpty
+        ? _db!.select(
+            'SELECT DISTINCT town, detail FROM (SELECT town, detail FROM aza WHERE prefecture = ?1 AND city = ?2 '
+            'UNION SELECT town, detail FROM aza_user WHERE prefecture = ?1 AND city = ?2) ORDER BY town, detail',
+            [pref, city])
+        : _db!.select(
+            'SELECT DISTINCT town, detail FROM (SELECT town, detail FROM aza WHERE prefecture = ?1 AND city = ?2 AND town = ?3 '
+            'UNION SELECT town, detail FROM aza_user WHERE prefecture = ?1 AND city = ?2 AND town = ?3) ORDER BY detail',
+            [pref, city, town]);
+    return [for (final r in rows) (town: r['town'] as String, detail: r['detail'] as String)];
+  }
+
+  /// 字・丁目などを追加登録する（端末のdbに保存。標準データを作り直しても消えない）。
+  Future<void> addAzaUser(String pref, String city, String town, String detail) async {
+    await initDatabase();
+    _db!.execute('CREATE TABLE IF NOT EXISTS aza_user(prefecture TEXT, city TEXT, town TEXT, detail TEXT)');
+    _db!.execute('INSERT INTO aza_user VALUES (?, ?, ?, ?)', [pref, city, town, detail]);
   }
 
   void _addColumnIfNotExists(String tableName, String columnName, String type) {

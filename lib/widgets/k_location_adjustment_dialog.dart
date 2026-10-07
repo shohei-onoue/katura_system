@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
+import 'k_dialog_title.dart';
 import '../firebase_options.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
@@ -208,7 +209,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
       insetPadding: EdgeInsets.zero,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('場所の微調整と写真撮影', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const KDialogTitle('場所の微調整と写真撮影'),
           backgroundColor: AppColors.accentPurple,
           foregroundColor: AppColors.mainBackground,
           actions: [

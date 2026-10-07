@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'k_button.dart';
+import 'k_dialog_title.dart';
 import 'k_responsive.dart';
 import 'k_dial_pad.dart';
 import '../services/address_service.dart';
@@ -122,8 +123,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('住所・郵便番号で検索',
-                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentPurple)),
+                const KDialogTitle('住所・郵便番号で検索'),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -199,13 +199,13 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               }
             } : null,
             child: Card(
-              elevation: isActive ? 4 : 0,
+              elevation: 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? AppColors.mainBackground : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? Color.alphaBlend(AppColors.selectButton, AppColors.popupBackground) : (isCompleted ? Color.alphaBlend(AppColors.accentPurple.withValues(alpha: 0.05), AppColors.popupBackground) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
-                  color: isActive ? AppColors.accentPurple : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
+                  color: isActive ? Colors.transparent : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
                   width: rs(context, 2),
                 ),
               ),
@@ -238,7 +238,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                             style: TextStyle(
                               fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
-                              color: isActive ? AppColors.accentOrange : (isCompleted ? Colors.black87 : Colors.grey),
+                              color: isActive ? AppColors.primaryText : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,

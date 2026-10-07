@@ -180,6 +180,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   @override
   void initState() {
     super.initState();
+    _reservationService.deleteLeftoversOfThisDevice(); // 確定されずに残った予約枠を消す
     _keywordQueryController.addListener(_syncSearchQuery);
     _receiverController.addListener(_scheduleRebuild);
     _trashPickupLocationController.addListener(_scheduleRebuild);
@@ -421,11 +422,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         ],
       ),
     );
-    if (ok == true && mounted) _resetForm();
+    if (ok != true) return;
+    // 注文中止：予約枠を消してから画面を戻す（消し終わる前に画面を戻さない）
+    final id = _reservationId;
+    _reservationId = null;
+    await _reservationService.delete(id);
+    if (mounted) _resetForm();
   }
 
   void _resetForm() {
-    // 注文中止：予約枠を消す
     _reservationService.delete(_reservationId);
     _reservationId = null;
     setState(() {
@@ -648,6 +653,25 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }).toList();
   }
 
+  /// 関連注文ごとの「重複の内容」（どこが同じか）を返す。キーは注文ID。
+  Map<String, String> _relatedReasons(List<OrderModel> related) {
+    final customer = _currentCustomer;
+    if (customer == null) return const {};
+    String norm(String v) => v.replaceAll(RegExp(r'\s+'), '');
+    final company = norm(customer.companyName);
+    final destName = norm(_selectedFacilityName);
+    final destAddr = norm(_selectedFacilityAddress);
+    final map = <String, String>{};
+    for (final o in related) {
+      final r = <String>[];
+      if (company.isNotEmpty && norm(o.facilityName) == company) r.add('同じ会社名（${o.facilityName}）');
+      if (destName.isNotEmpty && norm(o.facilityName) == destName) r.add('同じ届け先名（${o.facilityName}）');
+      if (destAddr.isNotEmpty && norm(o.address) == destAddr) r.add('同じ住所（${o.address}）');
+      map[o.id] = r.join(' / ');
+    }
+    return map;
+  }
+
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
   /// [withPreview] が true のときはカレンダー下部に「選択日の受注（全店舗）」を表示する。
   /// 引取り：配送スケジュールは不要なので、カレンダーで日付 →「ご来店時間」（HHMM）の順に決める。
@@ -747,7 +771,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (withPreview) {
       // 配送：カレンダーで日付を選ぶ → 配達予定ダイアログで号車と時間を決める（戻るとカレンダーへ）
       final scheduleOrders = preview
-          .where((o) => OrderService.isActive(o) && o.branchName == _branchName && o.id != widget.initialOrder?.id)
+          .where((o) => OrderService.isActive(o) && o.id != widget.initialOrder?.id)
           .toList();
       while (result == null) {
         final day = await showDialog<DateTime>(
@@ -756,6 +780,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             initialDateTime: initial,
             previewOrders: preview,
             relatedOrders: related,
+            relatedReasons: _relatedReasons(related),
             calendarOnly: true,
             selectedDayColor: AppColors.selectButton,
             title: '$handoverLabel日時',
@@ -775,6 +800,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             reservations: reservations,
             branchPos: _branchCoordinates[_branchName],
             vehicleCount: _branchVehicleCounts[_branchName] ?? 1,
+            branchNames: _branchCoordinates.keys.toList(),
+            initialBranch: _branchName,
+            branchPositions: _branchCoordinates,
+            branchVehicleCounts: _branchVehicleCounts,
+            reservationLoader: (b) async => (await _reservationService.listByDate(b, day)).where((r) => r.id != _reservationId).toList(),
             service: _scheduleService,
             initialVehicle: sameDay ? _deliveryVehicleNumber : 0,
             initialTime: sameDay ? TimeOfDay(hour: initial.hour, minute: initial.minute) : null,
@@ -797,6 +827,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           enforceTimeRange: true,
           interval: _timePickerInterval,
           relatedOrders: related,
+            relatedReasons: _relatedReasons(related),
           selectedDayColor: AppColors.selectButton,
           title: '$handoverLabel日時',
           highlightLabel: '$handoverLabel日',
@@ -1467,7 +1498,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
         }
         keepImg ??= imageUrl;
-        String displayEntry = "${_facilityController.text}:${_addressController.text} ($destLat, $destLng)";
+        String displayEntry = "${_facilityController.text}: ${_addressController.text} ($destLat, $destLng)";
         if (keepImg != null) displayEntry += " [IMG:$keepImg]";
         final newList = List<String>.from(updatedCustomer.deliveryAddresses);
         if (idx == -1) {

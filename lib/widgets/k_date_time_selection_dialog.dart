@@ -27,6 +27,8 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   /// 対応中顧客の所属企業の他顧客の注文、および同じ配達先の他顧客の注文。
   /// 表示は後続のデザイン対応で実装（現状は受け口のみ）。
   final List<OrderModel> relatedOrders;
+  /// 関連注文ID → 重複の内容（例: 同じ住所）
+  final Map<String, String> relatedReasons;
 
   /// trueのときはカレンダーだけを表示し、日付をタップするとその日付(00:00)を返して閉じる。
   /// 時間は呼び出し側（配達予定ダイアログ）で決める。
@@ -52,6 +54,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.highlightLabel = '配達日',
     this.previewOrders = const [],
     this.relatedOrders = const [],
+    this.relatedReasons = const {},
     this.calendarOnly = false,
     this.selectedDayColor,
     this.pickDayOnly = false,
@@ -335,7 +338,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                       return Container(
                         padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 6)),
                         decoration: BoxDecoration(
-                          color: isWarn ? AppColors.cautionCardBackground.withValues(alpha: 0.5) : Colors.white,
+                          color: AppColors.mainBackground,
                           border: Border.all(color: Colors.grey.shade200),
                           borderRadius: BorderRadius.circular(rs(context, 8)),
                         ),
@@ -343,15 +346,21 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (isWarn)
-                              Padding(
-                                padding: EdgeInsets.only(bottom: rs(context, 4)),
+                              Container(
+                                margin: EdgeInsets.only(bottom: rs(context, 4)),
+                                padding: EdgeInsets.all(rs(context, 4)),
+                                decoration: BoxDecoration(
+                                  color: AppColors.cautionCardBackground.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(rs(context, 6)),
+                                ),
                                 child: Row(
                                   children: [
                                     Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: rf(context, 20)),
                                     SizedBox(width: rs(context, 6)),
                                     Expanded(
-                                      child: Text('重複の可能性',
-                                          maxLines: 1,
+                                      child: Text(
+                                          (widget.relatedReasons[o.id] ?? '').isEmpty ? '重複の可能性' : '重複の可能性: ${widget.relatedReasons[o.id]}',
+                                          maxLines: 3,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: AppColors.warningText)),
                                     ),
@@ -361,15 +370,15 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             Text('${o.deliveryTime}  ${_areaLabel(o)}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: isWarn ? AppColors.warningText : widget.themeColor)),
+                                style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: isWarn ? AppColors.primaryText : widget.themeColor)),
                             Text(_nameOf(o),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600, color: isWarn ? AppColors.warningText : null)),
+                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w600, color: AppColors.primaryText)),
                             Text(place,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: rf(context, 11), color: isWarn ? AppColors.warningText : AppColors.secondaryText)),
+                                style: TextStyle(fontSize: rf(context, 11), color: isWarn ? AppColors.primaryText : AppColors.secondaryText)),
                           ],
                         ),
                       );
@@ -456,6 +465,26 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _legendItem(BuildContext context, String label, {Color? border, Color? fill, Color? dot}) {
+    final size = rs(context, dot != null ? 8 : 14);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: dot ?? fill,
+            border: border != null ? Border.all(color: border, width: rs(context, 1.5)) : null,
+          ),
+        ),
+        SizedBox(width: rs(context, 6)),
+        Text(label, style: TextStyle(fontSize: rf(context, 12))),
+      ],
     );
   }
 
@@ -553,9 +582,13 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         focusedDay: _tempDate,
                         currentDay: DateTime.now(),
                         locale: 'ja_JP',
-                        headerStyle: const HeaderStyle(
+                        headerStyle: HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
+                          // 月表示を上に詰め、曜日との間に余白を確保する
+                          headerPadding: EdgeInsets.only(bottom: rs(context, 12)),
+                          leftChevronPadding: EdgeInsets.zero,
+                          rightChevronPadding: EdgeInsets.zero,
                         ),
                         calendarStyle: CalendarStyle(
                           // 選択日：枠なし・テーマ色塗りつぶし・白文字（配達＝#000038 / 回収＝オレンジ）
@@ -649,6 +682,20 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         ),
                       ),
                     ),
+                      // マーキングの凡例
+                      Padding(
+                        padding: EdgeInsets.only(top: rs(context, 8)),
+                        child: Wrap(
+                          spacing: rs(context, 14),
+                          runSpacing: rs(context, 4),
+                          children: [
+                            _legendItem(context, '今日', border: widget.themeColor),
+                            _legendItem(context, '予約あり', border: AppColors.accentOrange),
+                            _legendItem(context, '選択中', fill: widget.selectedDayColor ?? widget.themeColor),
+                            _legendItem(context, '警告あり', dot: Colors.red),
+                          ],
+                        ),
+                      ),
                       if (widget.highlightDate != null)
                         Padding(
                           padding: EdgeInsets.only(top: rs(context, 8)),

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'dart:math' show Random;
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 予約枠（注文入力中に確保している「号車・日時」）。注文が確定するか取り消されると消える。
 class ReservationSlot {
@@ -31,6 +33,29 @@ class ReservationService {
   static String _dateStr(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  /// この端末を見分けるID（端末内に保存）。予約枠に付けて、消し忘れの掃除に使う。
+  static Future<String> _deviceId() async {
+    final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString('reservation_device_id');
+    if (id == null || id.isEmpty) {
+      id = '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+      await prefs.setString('reservation_device_id', id);
+    }
+    return id;
+  }
+
+  /// この端末が作って消し忘れている予約枠（アプリの再起動などで残ったもの）をすべて消す。
+  Future<void> deleteLeftoversOfThisDevice() async {
+    try {
+      final snap = await _col.where('ownerId', isEqualTo: await _deviceId()).get();
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
+      }
+    } catch (e) {
+      debugPrint('Reservation cleanup error: $e');
+    }
+  }
+
   /// 予約枠を作る。作れなければ null（画面は止めない）。
   Future<String?> create({
     required String branchName,
@@ -40,6 +65,7 @@ class ReservationService {
   }) async {
     try {
       final ref = await _col.add({
+        'ownerId': await _deviceId(),
         'branchName': branchName,
         'dateStr': _dateStr(date),
         'time': time,

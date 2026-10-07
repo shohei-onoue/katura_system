@@ -1,3 +1,5 @@
+import '../../../../widgets/k_dialog_title.dart';
+import '../../../../services/address_service.dart';
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
@@ -193,18 +195,12 @@ class DeliveryDestinationStep extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(vertical: rs(context, 10)),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade50 : AppColors.mainBackground,
-          border: Border.all(color: isSelected ? AppColors.accentPurple : Colors.grey.shade300, width: rs(context, 2)),
+          color: isSelected ? AppColors.selectButton : AppColors.mainBackground,
+          border: isSelected ? null : Border.all(color: Colors.grey.shade300, width: rs(context, 2)),
           borderRadius: BorderRadius.circular(rs(context, 12)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: isSelected ? AppColors.accentPurple : Colors.grey, size: rs(context, 20)),
-            SizedBox(width: rs(context, 12)),
-            Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.accentPurple : Colors.grey)),
-          ],
-        ),
+        alignment: Alignment.center,
+        child: Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.primaryText : Colors.grey)),
       ),
     );
   }
@@ -235,9 +231,10 @@ class DeliveryDestinationStep extends StatelessWidget {
                   child: Card(
                     margin: EdgeInsets.zero,
                     elevation: 0,
+                    color: isSelected ? AppColors.selectButton : null,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(rs(context, 8)),
-                      side: BorderSide(color: isSelected ? AppColors.accentOrange : Colors.grey.shade200, width: isSelected ? 2 : 1)
+                      side: isSelected ? BorderSide.none : BorderSide(color: Colors.grey.shade200)
                     ),
                     child: InkWell(
                       onTap: () {
@@ -431,7 +428,7 @@ class FacilitySearchForm extends StatelessWidget {
 
   String _buildJoinedAddress() {
     String res = searchPrefecture;
-    if (searchCity.isNotEmpty) {
+    if (searchCity.isNotEmpty && searchCity != '（すべて）') {
       res += " $searchCity";
     }
     if (searchTown.isNotEmpty) {
@@ -448,8 +445,8 @@ class FacilitySearchForm extends StatelessWidget {
         borderRadius: BorderRadius.circular(rs(context, 12)),
         child: Container(
           padding: EdgeInsets.symmetric(vertical: rs(context, 12)),
-          decoration: BoxDecoration(color: isSelected ? AppColors.mainBackground : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? AppColors.accentPurple : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.accentPurple : Colors.grey))]),
+          decoration: BoxDecoration(color: isSelected ? AppColors.selectButton : Colors.transparent, borderRadius: BorderRadius.circular(rs(context, 12))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, size: rs(context, 18), color: isSelected ? AppColors.primaryText : Colors.grey), SizedBox(width: rs(context, 8)), Text(label, style: TextStyle(fontSize: rf(context, 14), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, color: isSelected ? AppColors.primaryText : Colors.grey))]),
         ),
       ),
     );
@@ -641,9 +638,7 @@ class FacilitySearchForm extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.business_center, color: Colors.blueGrey, size: rs(context, 24)),
-                            SizedBox(width: rs(context, 12)),
-                            Text('施設検索結果', style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
+                            const KDialogTitle('施設検索結果'),
                             const Spacer(),
                             if (!isLoading)
                               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(dialogContext).pop()),
@@ -809,6 +804,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   String tempPref = "";
   String tempCity = "";
   String tempTown = "";
+  String tempOther = ""; // 字・大字・番地など（任意）
+  bool _otherDone = false;
+  List<({String town, String detail})> _azaCandidates = [];
+  bool _azaLoading = false;
+  String _azaError = '';
+  final TextEditingController _otherController = TextEditingController();
   String? tempCategory;
   String? tempGenre;
 
@@ -831,6 +832,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
     'わ': ['わ', 'を', 'ん'],
   };
+
+  @override
+  void dispose() {
+    _otherController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -906,8 +913,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(widget.isKeywordMode ? '地域・キーワードの検索' : '地域・施設カテゴリの検索',
-                  style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: AppColors.accentPurple)),
+                KDialogTitle(widget.isKeywordMode ? '地域・キーワードの検索' : '地域・施設カテゴリの検索'),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -915,11 +921,17 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
             _buildPickerStepper(context),
             Divider(height: rs(context, 32)),
             Expanded(
-              child: phase == 3 
+              child: phase == 3
+                ? _buildOtherInput(context)
+                : phase == 4
                 ? (widget.isKeywordMode ? _buildKeywordHandwritingUI(context) : _buildCategoryGenreSelector(context)) 
                 : _buildAddressPicker(context),
             ),
-            if (phase == 3) ...[
+            if (phase == 3 && _azaCandidates.isNotEmpty) ...[
+              Divider(height: rs(context, 32)),
+              _buildOtherButtons(context),
+            ],
+            if (phase == 4) ...[
               Divider(height: rs(context, 32)),
               KButton(
                 label: 'この条件で検索',
@@ -943,10 +955,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       {'title': '都道府県', 'value': tempPref, 'phase': 0},
       {'title': '市区町村', 'value': tempCity, 'phase': 1},
       {'title': '町名', 'value': tempTown, 'phase': 2},
+      {'title': 'その他', 'value': _otherDone ? (tempOther.isEmpty ? 'なし' : tempOther) : '', 'phase': 3},
       {
         'title': widget.isKeywordMode ? 'キーワード' : 'カテゴリ',
         'value': widget.isKeywordMode ? _recognizedKeyword : (tempCategory ?? ''), 
-        'phase': 3
+        'phase': 4
       },
     ];
 
@@ -970,16 +983,18 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                 _loadCities();
               } else if (phase == 2) {
                 _loadTowns();
+              } else if (phase == 3) {
+                _loadAza();
               }
             } : null,
             child: Card(
-              elevation: isActive ? 4 : 0,
+              elevation: 0,
               margin: EdgeInsets.symmetric(horizontal: rs(context, 4)),
-              color: isActive ? AppColors.mainBackground : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.05) : Colors.grey.shade100),
+              color: isActive ? Color.alphaBlend(AppColors.selectButton, AppColors.popupBackground) : (isCompleted ? Color.alphaBlend(AppColors.accentPurple.withValues(alpha: 0.05), AppColors.popupBackground) : Colors.grey.shade100),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 side: BorderSide(
-                  color: isActive ? AppColors.accentPurple : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
+                  color: isActive ? Colors.transparent : (isCompleted ? AppColors.accentPurple.withValues(alpha: 0.2) : Colors.transparent),
                   width: rs(context, 2),
                 ),
               ),
@@ -1013,7 +1028,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                             style: TextStyle(
                               fontSize: rf(context, 13),
                               fontWeight: FontWeight.bold,
-                              color: isActive ? AppColors.accentOrange : (isCompleted ? Colors.black87 : Colors.grey),
+                              color: isActive ? AppColors.primaryText : (isCompleted ? Colors.black87 : Colors.grey),
                             ),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
@@ -1062,9 +1077,9 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                                            (phase == 1 && item == tempCity) || 
                                            (phase == 2 && item == tempTown);
                         return ListTile(
-                          tileColor: isSelected ? AppColors.accentOrange.withValues(alpha: 0.1) : null,
-                          title: Text(item, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: isSelected ? Colors.orange.shade900 : Colors.black87)),
-                          trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: isSelected ? AppColors.accentOrange : AppColors.accentPurple),
+                          tileColor: isSelected ? AppColors.selectButton : null,
+                          title: Text(item, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+                          trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: AppColors.accentPurple),
                           onTap: () => _handleItemSelect(item),
                         );
                       },
@@ -1223,14 +1238,14 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                     final cat = categories[index];
                     final isSelected = tempCategory == cat;
                     return Card(
-                      elevation: isSelected ? 2 : 0,
-                      color: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
+                      elevation: 0,
+                      color: isSelected ? AppColors.selectButton : AppColors.mainBackground,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(rs(context, 8)),
-                        side: BorderSide(color: isSelected ? AppColors.accentPurple : Colors.grey.shade300),
+                        side: isSelected ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
                       ),
                       child: ListTile(
-                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: isSelected ? AppColors.mainBackground : Colors.black87)),
+                        title: Text(cat, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
                         onTap: () {
                           setState(() {
                             tempCategory = cat;
@@ -1282,12 +1297,12 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                           child: Container(
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: isSelected ? AppColors.accentOrange : AppColors.mainBackground,
+                              color: isSelected ? AppColors.selectButton : AppColors.mainBackground,
                               borderRadius: BorderRadius.circular(rs(context, 8)),
-                              border: Border.all(color: isSelected ? AppColors.accentOrange : Colors.grey.shade300),
+                              border: isSelected ? null : Border.all(color: Colors.grey.shade300),
                             ),
                             child: Text(gen, 
-                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: isSelected ? AppColors.mainBackground : Colors.black87),
+                              style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primaryText),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -1311,7 +1326,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('新しいカテゴリジャンルを追加'),
+          title: const KDialogTitle('新しいカテゴリジャンルを追加'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1359,7 +1374,170 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
     _refreshItems();
   }
 
+  /// 「その他」ステップに入るとき、選んだ町名の字・丁目の候補を読み込む。
+  Future<void> _loadAza() async {
+    setState(() {
+      _azaLoading = true;
+      _azaError = '';
+      tempOther = '';
+      _otherDone = false;
+      _azaCandidates = [];
+    });
+    try {
+      final city = tempCity == '（すべて）' ? '' : tempCity;
+      final town = tempTown == '（すべて）' ? '' : tempTown;
+      final list = city.isEmpty ? <({String town, String detail})>[] : await AddressService().getAzaCandidates(tempPref, city, town);
+      if (mounted) setState(() => _azaCandidates = list);
+    } catch (e) {
+      debugPrint('aza load error: $e');
+      if (mounted) setState(() => _azaError = '候補を読み込めませんでした: $e');
+    }
+    if (!mounted) return;
+    setState(() => _azaLoading = false);
+    // 候補がなければ、そのまま次のステップへ
+    if (phase == 3 && _azaCandidates.isEmpty && _azaError.isEmpty) _finishOther('');
+  }
+
+  /// 町名＋その他（字以降）を親へ伝える。
+  void _confirmTownWithOther() {
+    final t = tempTown == '（すべて）' ? '' : tempTown;
+    var v = [t, tempOther].where((e) => e.isNotEmpty).join(' ');
+    if (v.isEmpty) v = '（すべて）';
+    widget.onTownConfirmed(v);
+    widget.onAddressConfirmed(tempPref, tempCity == '（すべて）' ? '' : tempCity, v);
+  }
+
+  /// 「その他」を決めて次のステップ（カテゴリ／キーワード）へ進む。[detail] が空なら「すべて」。
+  void _finishOther(String detail) {
+    setState(() {
+      tempOther = detail;
+      _otherController.text = detail;
+      _otherDone = true;
+      phase = 4;
+    });
+    _confirmTownWithOther();
+  }
+
+  /// 「追加登録」：ペン入力で字・丁目などを書き、端末のdbに追加して選択状態にする。
+  Future<void> _addOtherByPen() async {
+    final city = tempCity == '（すべて）' ? '' : tempCity;
+    if (tempTown == '（すべて）' || city.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('町名を選んでから追加登録してください')));
+      return;
+    }
+    String text = '';
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => KPenInputDialog(onTextRecognized: (t) => text = t.trim()),
+    );
+    if (text.isEmpty || !mounted) return;
+    await AddressService().addAzaUser(tempPref, city, tempTown, text);
+    final list = await AddressService().getAzaCandidates(tempPref, city, tempTown);
+    if (!mounted) return;
+    setState(() {
+      _azaCandidates = list;
+      tempOther = text;
+    });
+  }
+
+  /// 「その他」ステップ下部のボタン（追加登録／戻る／次へ）。
+  Widget _buildOtherButtons(BuildContext context) {
+    Widget btn(String label, VoidCallback onTap, {required Color bg, required Color fg, Color? border}) {
+      return Expanded(
+        child: SizedBox(
+          height: rs(context, 54),
+          child: ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bg,
+              foregroundColor: fg,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(rs(context, 12)),
+                side: border == null ? BorderSide.none : BorderSide(color: border, width: rs(context, 2)),
+              ),
+            ),
+            child: Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: fg)),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        btn('追加登録', _addOtherByPen, bg: AppColors.offButton, fg: AppColors.primaryText, border: Colors.greenAccent),
+        SizedBox(width: rs(context, 12)),
+        btn('戻る', _handleBack, bg: Colors.deepOrange, fg: AppColors.whiteText),
+        SizedBox(width: rs(context, 12)),
+        btn('次へ', () => _finishOther(tempOther), bg: AppColors.acceptButton, fg: AppColors.whiteText),
+      ],
+    );
+  }
+
+  /// 「その他」ステップ：町名・市区町村と同じ一覧で選ぶ（候補がなければ自動で次へ進む）。
+  Widget _buildOtherInput(BuildContext context) {
+    final allTown = tempTown == '（すべて）';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: rs(context, 12)),
+          child: Row(
+            children: [
+              Text('その他（字・丁目など）の項目', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey, fontWeight: FontWeight.bold)),
+              if (_azaLoading) ...[
+                SizedBox(width: rs(context, 12)),
+                SizedBox(width: rs(context, 12), height: rs(context, 12), child: const CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ],
+          ),
+        ),
+        Expanded(
+          child: _azaCandidates.isEmpty
+              ? Center(child: Text(_azaError, style: const TextStyle(color: Colors.red)))
+              : ListView.builder(
+                  itemCount: _azaCandidates.length,
+                  itemBuilder: (context, index) {
+                    final c = _azaCandidates[index];
+                    final isSelected = tempOther.isNotEmpty && tempOther == c.detail && (!allTown || tempTown == c.town);
+                    return ListTile(
+                      tileColor: isSelected ? AppColors.selectButton : null,
+                      title: Text(allTown ? '${c.town}${c.detail}' : c.detail,
+                          style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+                      trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: AppColors.accentPurple),
+                      onTap: () => setState(() {
+                        if (isSelected) {
+                          tempOther = '';
+                        } else {
+                          tempOther = c.detail;
+                          if (allTown) tempTown = c.town;
+                        }
+                      }),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _handleAllTap() async {
+    // 市区町村・町名で「すべて」→ 選択結果を「すべて」として次のステップへ進む
+    if (phase == 1 || phase == 2) {
+      setState(() {
+        if (phase == 1) tempCity = '（すべて）';
+        tempTown = '（すべて）';
+        tempOther = '';
+        _otherDone = false;
+        _otherController.clear();
+        phase = 3;
+        selectedInitial = 'すべて';
+      });
+      _confirmTownWithOther();
+      _loadAza();
+      return;
+    }
     setState(() {
       selectedInitial = 'すべて';
       isSearching = true;
@@ -1420,6 +1598,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         phase = 3; 
         isSearching = false;
       });
+      _loadAza();
     }
   }
 
@@ -1436,6 +1615,13 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       } else if (phase == 3) {
         phase = 2;
         _loadTowns();
+      } else if (phase == 4) {
+        if (_azaCandidates.isEmpty) {
+          phase = 2;
+          _loadTowns();
+        } else {
+          phase = 3;
+        }
       }
       selectedInitial = 'すべて';
     });

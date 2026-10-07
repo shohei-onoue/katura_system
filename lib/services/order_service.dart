@@ -6,6 +6,13 @@ import '../models/order_model.dart';
 import 'database_factory.dart';
 
 class OrderService {
+  // どの画面でも同じインスタンスを使い、DBの再オープンと全件の読み直しを防ぐ
+  static final OrderService _instance = OrderService._();
+  factory OrderService() => _instance;
+  OrderService._();
+
+  /// メモリ上の受注一覧（読み込み済みなら即返す）
+  List<OrderModel>? _cache;
   final CollectionReference _orderCollection =
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').collection('orders');
 
@@ -34,6 +41,7 @@ class OrderService {
 
   Future<void> saveOrder(OrderModel order) async {
     await _orderCollection.doc(order.id).set(order.toMap());
+    _cache = null;
     await _initLocalDb();
     _localDb!.execute(
       'INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)',
@@ -42,11 +50,12 @@ class OrderService {
   }
 
   Future<List<OrderModel>> getAllOrders({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cache != null) return List.of(_cache!);
     await _initLocalDb();
     if (!forceRefresh) {
       final results = _localDb!.select('SELECT data FROM orders ORDER BY deliveryDate DESC');
       if (results.isNotEmpty) {
-        return results.map((row) => OrderModel.fromMap(jsonDecode(row['data'] as String))).toList();
+        return _cache = results.map((row) => OrderModel.fromMap(jsonDecode(row['data'] as String))).toList();
       }
     }
     final List<OrderModel> list;
@@ -67,31 +76,47 @@ class OrderService {
     _localDb!.execute('COMMIT');
 
     list.sort((a, b) => b.deliveryDate.compareTo(a.deliveryDate));
-    return list;
+    _cache = list;
+    return List.of(list);
   }
 
   /// Firestoreの受注を監視し、変更のたびに全件を流す（ローカルキャッシュも同期）。
   Stream<List<OrderModel>> watchOrders() {
+    final byId = <String, OrderModel>{};
     return _orderCollection.snapshots().asyncMap((snapshot) async {
-      final list = snapshot.docs.map((doc) => OrderModel.fromMap(doc.data() as Map<String, dynamic>)).toList();
+      // 変わった分だけ反映する（毎回全件を消して入れ直さない）
+      final changes = snapshot.docChanges;
+      for (final c in changes) {
+        if (c.type == DocumentChangeType.removed) {
+          byId.remove(c.doc.id);
+        } else {
+          byId[c.doc.id] = OrderModel.fromMap(c.doc.data() as Map<String, dynamic>);
+        }
+      }
       try {
         await _initLocalDb();
         _localDb!.execute('BEGIN TRANSACTION');
-        _localDb!.execute('DELETE FROM orders');
-        final batch = _localDb!.prepare('INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)');
-        for (final order in list) {
-          batch.execute([order.id, jsonEncode(order.toMap()), order.deliveryDate.toIso8601String(), DateTime.now().millisecondsSinceEpoch]);
+        final upsert = _localDb!.prepare('INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)');
+        for (final c in changes) {
+          if (c.type == DocumentChangeType.removed) {
+            _localDb!.execute('DELETE FROM orders WHERE id = ?', [c.doc.id]);
+          } else {
+            final o = byId[c.doc.id]!;
+            upsert.execute([o.id, jsonEncode(o.toMap()), o.deliveryDate.toIso8601String(), DateTime.now().millisecondsSinceEpoch]);
+          }
         }
-        batch.close();
+        upsert.close();
         _localDb!.execute('COMMIT');
       } catch (_) {}
-      list.sort((a, b) => b.deliveryDate.compareTo(a.deliveryDate));
-      return list;
+      final list = byId.values.toList()..sort((a, b) => b.deliveryDate.compareTo(a.deliveryDate));
+      _cache = list;
+      return List.of(list);
     });
   }
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     await _orderCollection.doc(orderId).update({'status': status});
+    _cache = null;
     await _initLocalDb();
     final res = _localDb!.select('SELECT data FROM orders WHERE id = ?', [orderId]);
     if (res.isNotEmpty) {
@@ -104,6 +129,7 @@ class OrderService {
   /// 配送車両の号車だけを更新する（配達予定ダイアログのドラッグ&ドロップ用）。
   Future<void> updateVehicleNumber(String orderId, int vehicleNumber) async {
     await _orderCollection.doc(orderId).update({'vehicleNumber': vehicleNumber});
+    _cache = null;
     await _initLocalDb();
     final res = _localDb!.select('SELECT data FROM orders WHERE id = ?', [orderId]);
     if (res.isNotEmpty) {
@@ -115,6 +141,7 @@ class OrderService {
 
   Future<void> deleteOrder(String orderId) async {
     await _orderCollection.doc(orderId).delete();
+    _cache = null;
     await _initLocalDb();
     _localDb!.execute('DELETE FROM orders WHERE id = ?', [orderId]);
   }

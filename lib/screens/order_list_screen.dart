@@ -39,7 +39,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     _selectedDay = _focusedDay;
     _loadOrders();
     // 受注入力での確定など、受注が変わったら自動で更新する（最初の1回は上の読み込みと重複するため飛ばす）
-    _ordersSub = _orderService.watchOrders().skip(1).listen((_) => _loadOrders(showLoading: false));
+    _ordersSub = _orderService.watchOrders().skip(1).listen((_) => _loadOrders(showLoading: false, refresh: false));
   }
 
   StreamSubscription<List<OrderModel>>? _ordersSub;
@@ -50,13 +50,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
     super.dispose();
   }
 
-  Future<void> _loadOrders({bool showLoading = true}) async {
+  Future<void> _loadOrders({bool showLoading = true, bool refresh = true}) async {
     if (showLoading) {
       setState(() {
         _isLoading = true;
       });
     }
-    final list = await _orderService.getAllOrders(forceRefresh: true);
+    final list = await _orderService.getAllOrders(forceRefresh: refresh);
     final names = await _customerService.resolveOrderNames(list);
     if (!mounted) return;
     setState(() {

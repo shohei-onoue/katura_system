@@ -84,16 +84,24 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
     final branch = _selectedBranch;
     final reservations = await _reservationService.listByDate(_branchName, day);
     if (!mounted) return;
-    await showDialog<DeliverySlot>(
-      context: context,
-      builder: (_) => DeliveryScheduleDialog(
-        date: day,
-        orders: _branchOrders,
-        reservations: reservations,
-        branchPos: branch == null ? null : LatLng(branch.latitude, branch.longitude),
-        vehicleCount: branch?.deliveryVehicleCount ?? 1,
-        service: _scheduleService,
-        allowTimePick: false,
+    // ダイアログではなく画面として表示する（配達日時ダイアログと同じ内容）
+    await Navigator.of(context).push<DeliverySlot>(
+      MaterialPageRoute(
+        builder: (_) => DeliveryScheduleDialog(
+          asPage: true,
+          date: day,
+          orders: _orders.where((o) => OrderService.isActive(o) && o.deliveryType == '配送').toList(),
+          reservations: reservations,
+          branchPos: branch == null ? null : LatLng(branch.latitude, branch.longitude),
+          vehicleCount: branch?.deliveryVehicleCount ?? 1,
+          service: _scheduleService,
+          allowTimePick: false,
+          branchNames: [for (final b in _branches) b.name],
+          initialBranch: _branchName,
+          branchPositions: {for (final b in _branches) b.name: LatLng(b.latitude, b.longitude)},
+          branchVehicleCounts: {for (final b in _branches) b.name: b.deliveryVehicleCount},
+          reservationLoader: (name) => _reservationService.listByDate(name, day),
+        ),
       ),
     );
     // ここでは閲覧のみ（この画面から受注を作らないため、決定結果は使わない）。

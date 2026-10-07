@@ -106,7 +106,7 @@ class KStepper extends StatelessWidget {
                           ),
                           child: Padding(
                             padding: EdgeInsets.symmetric(
-                              vertical: 2,
+                              vertical: 8,
                               horizontal: rav(context, 10),
                             ),
                             child: Row(
