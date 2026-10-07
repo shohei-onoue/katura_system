@@ -210,33 +210,37 @@ class GoogleMapsService {
   }
 
   Future<List<Map<String, dynamic>>> searchPlacesByText(String query, {LatLng? location}) async {
-    String urlStr = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
-      '?query=${Uri.encodeComponent(query)}'
-      '&language=ja'
-      '&region=jp'
-      '&key=$_apiKey';
-    
-    if (location != null) {
-      urlStr += '&location=${location.latitude},${location.longitude}&radius=10000';
+    return (await searchPlacesPage(query, location: location)).results;
+  }
+
+  /// テキスト検索を1ページ分（最大20件）取得する。続きがあれば [next] に次ページのトークンが入る。
+  /// 2ページ目以降は [pageToken] だけ渡す（トークンは発行から少し待たないと使えない）。
+  Future<({List<Map<String, dynamic>> results, String? next})> searchPlacesPage(String query, {LatLng? location, String? pageToken}) async {
+    String urlStr = 'https://maps.googleapis.com/maps/api/place/textsearch/json';
+    if (pageToken != null) {
+      urlStr += '?pagetoken=${Uri.encodeComponent(pageToken)}&language=ja&key=$_apiKey';
+    } else {
+      urlStr += '?query=${Uri.encodeComponent(query)}&language=ja&region=jp&key=$_apiKey';
+      if (location != null) {
+        urlStr += '&location=${location.latitude},${location.longitude}&radius=10000';
+      }
     }
 
     final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
 
-    debugPrint('Google Maps Text Search: $query (Web: $kIsWeb)');
+    debugPrint('Google Maps Text Search: $query (page: ${pageToken != null}, Web: $kIsWeb)');
 
     try {
       final response = await http.get(url);
       debugPrint('API Response Status Code: ${response.statusCode}');
-      debugPrint('API Response Body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final status = data['status'] as String;
         debugPrint('Google Maps Text Search Status: $status');
 
         if (status == 'OK') {
-          final results = data['results'] as List;
-          return results.map((item) {
+          final results = (data['results'] as List).map<Map<String, dynamic>>((item) {
             final loc = item['geometry']['location'];
             return {
               'name': item['name'],
@@ -246,6 +250,7 @@ class GoogleMapsService {
               'type': 'Google検索',
             };
           }).toList();
+          return (results: results, next: data['next_page_token'] as String?);
         }
       } else if (kIsWeb) {
         debugPrint('Web CORS Error likely. Status: ${response.statusCode}');
@@ -253,6 +258,6 @@ class GoogleMapsService {
     } catch (e) {
       debugPrint('Text Search Exception: $e');
     }
-    return [];
+    return (results: <Map<String, dynamic>>[], next: null);
   }
 }

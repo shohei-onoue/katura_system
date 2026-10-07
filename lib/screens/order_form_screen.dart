@@ -15,6 +15,7 @@ import '../services/order_service.dart';
 import '../services/branch_service.dart';
 import '../services/sms_service.dart';
 import '../widgets/k_stepper.dart';
+import '../utils/history_entry.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
 import '../widgets/k_branch_select_dialog.dart';
 import '../widgets/k_receipt_preview_dialog.dart';
@@ -120,6 +121,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final Map<String, int> _selectedQuantities = {};
   List<Map<String, dynamic>> _confirmedItems = [];
   final _isLoadingNotifier = ValueNotifier<bool>(false);
+  final _loadingMoreNotifier = ValueNotifier<bool>(false);
+  String? _searchNextToken; // 検索結果の次ページ（無ければ null）
+  List<Map<String, dynamic>> _searchBuffer = []; // 取得済みで、まだ一覧に出していない結果
+  static const int _searchPageSize = 10; // 一覧に出す件数（最初・追加とも）
+  List<String> _searchGenreKeywords = [];
+  String _searchTownForFilter = '';
   final _facilityResultsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool _isSearchResultsDialogOpen = false;
   bool _isHistoryMode = true;
@@ -1114,32 +1121,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Future<void> _onAddressSelectedFromList(String fullAddr) async {
-    // キーワード検索の結果：入力したキーワードが企業名かを確認する
-    bool? keywordIsCompany;
-    String keyword = '';
+    // キーワード検索の結果：施設名は検索結果のカードの情報（企業名）をそのまま使う。
+    // 最寄り施設・その他の入力は備考へ反映する。
     final kwMatch = RegExp(r'\[KW:([^\]]*)\]').firstMatch(fullAddr);
+    String nearby = '', other = '';
     if (kwMatch != null) {
-      keyword = kwMatch.group(1)!.trim();
-      fullAddr = fullAddr.replaceFirst(kwMatch.group(0)!, '').trim();
-      keywordIsCompany = await showDialog<bool>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          title: Text('「$keyword」は企業名ですか？'),
-          content: const Text('「いいえ」の場合は、最寄りの目印として備考に登録します。'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('いいえ')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('はい')),
-          ],
-        ),
-      );
-      if (keywordIsCompany == null || !mounted) return;
-      // 施設名：はい＝キーワードを企業名に／いいえ＝企業名なし（住所と座標のみ）
-      final ps = fullAddr.split(': ');
-      if (ps.length > 1) fullAddr = '${keywordIsCompany ? keyword : ''}: ${ps.sublist(1).join(': ')}';
+      nearby = RegExp(r'\[NEAR:([^\]]*)\]').firstMatch(fullAddr)?.group(1)?.trim() ?? '';
+      other = RegExp(r'\[OTH:([^\]]*)\]').firstMatch(fullAddr)?.group(1)?.trim() ?? '';
+      fullAddr = fullAddr.replaceAll(RegExp(r'\[(KW|NEAR|OTH):[^\]]*\]'), '').trim();
     }
+    fullAddr = normalizeHistoryEntry(fullAddr);
     final parts = fullAddr.split(': ');
-    final facilityNamePart = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
+    final facilityNamePart = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '個人宅');
     final addressOnlyPart = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
 
     if (_facilityController.text == facilityNamePart && _addressController.text == addressOnlyPart) {
@@ -1197,16 +1190,22 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     if (kwMatch != null && pos != null) {
       // 住所・座標に加えて、ストリートビュー画像も自動で保存対象にする
       _pendingStreetViewImageUrl = StreetViewImageService.buildStaticUrl(pos.latitude, pos.longitude);
-      if (keywordIsCompany == false) {
-        // 目印扱い：代表地点として位置は概算とし、備考に「○○が目印」を記述
-        final mark = '$keywordが目印';
-        final cur = _remarksController.text.trim();
-        setState(() {
-          _isApproximateLocation = true;
-          if (!cur.contains(mark)) _remarksController.text = cur.isEmpty ? mark : '$cur $mark';
-        });
-      }
     }
+    // 最寄り施設・その他の入力を備考へ反映する
+    final notes = [
+      if (nearby.isNotEmpty) '最寄り: $nearby',
+      if (other.isNotEmpty) 'その他: $other',
+    ];
+    if (notes.isNotEmpty) {
+      var cur = _remarksController.text.trim();
+      for (final n in notes) {
+        if (!cur.contains(n)) cur = cur.isEmpty ? n : '$cur $n';
+      }
+      setState(() => _remarksController.text = cur);
+    }
+    // 履歴に保存されていた備考があれば、備考が空のときに復元する
+    final rmk = RegExp(r'\[RMK:([^\]]*)\]').firstMatch(fullAddr)?.group(1)?.trim() ?? '';
+    if (rmk.isNotEmpty && _remarksController.text.trim().isEmpty) setState(() => _remarksController.text = rmk);
   }
 
   LatLng? _parseCoordsFromAddress(String fullAddr) {
@@ -1339,6 +1338,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Future<void> _onSearchSubmit({bool forceApi = false, bool ignoreFilter = false}) async {
     _isLoadingNotifier.value = true;
     _facilityResultsNotifier.value = [];
+    _searchNextToken = null;
+    _searchBuffer = [];
     List<Map<String, dynamic>> results = [];
     
     if (_searchTabIndex == 0 || _searchTabIndex == 1) {
@@ -1357,24 +1358,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
         if (areaPart.isEmpty || facilityTerm.isEmpty) { _isLoadingNotifier.value = false; return; }
         
-        final raw = await _customerService.getGoogleMapsService().searchPlacesByText(kw, location: _branchCoordinates[_branchName]);
-        
-        final nC = _normalize(_searchCity), nT = _normalize(_searchTown == '（すべて）' ? '' : _searchTown), nP = _normalize(_searchPrefecture);
-        
-        final processed = raw.map((item) {
-          final nA = _normalize(item['address'] ?? ''), nN = _normalize(item['name'] ?? '');
-          bool isMatch = nA.contains(nP) || nA.contains(nC) || nN.contains(nC) || (nT.isNotEmpty && (nA.contains(nT) || nN.contains(nT)));
-          bool matchesGenre = genreKeywords.isEmpty || genreKeywords.any((k) => nN.contains(_normalize(k)) || nA.contains(_normalize(k)));
-          return { ...item, 'isNearby': !isMatch, 'matchesGenre': matchesGenre };
-        }).toList();
-
-        final List<Map<String, dynamic>> sortedResults = [];
-        sortedResults.addAll(processed.where((i) => !i['isNearby'] && i['matchesGenre']));
-        sortedResults.addAll(processed.where((i) => !i['isNearby'] && !i['matchesGenre']));
-        sortedResults.addAll(processed.where((i) => i['isNearby'] && i['matchesGenre']));
-        sortedResults.addAll(processed.where((i) => i['isNearby'] && !i['matchesGenre']));
-        
-        results = sortedResults;
+        final raw = await _customerService.getGoogleMapsService().searchPlacesPage(kw, location: _branchCoordinates[_branchName]);
+        _searchGenreKeywords = genreKeywords;
+        _searchTownForFilter = town;
+        // 最初は10件だけ一覧に出し、残りは取っておく（一番下までスクロールするたびに10件ずつ追加）
+        final ranked = _filterAndRank(raw.results, genreKeywords, town);
+        results = ranked.take(_searchPageSize).toList();
+        _searchBuffer = ranked.skip(_searchPageSize).toList();
+        _searchNextToken = raw.next;
 
         for (var i in results) {
           await _customerService.getAddressService().upsertKigyouEntity(
@@ -1393,6 +1384,60 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
     _isLoadingNotifier.value = false;
     _facilityResultsNotifier.value = List.from(results);
+  }
+
+  /// 検索結果を、選んだ住所と一致するものだけに絞り、（地域に合う→ジャンルに合う）順に並べる。
+  List<Map<String, dynamic>> _filterAndRank(List<Map<String, dynamic>> raw, List<String> genreKeywords, String town) {
+    final nC = _normalize(_searchCity), nT = _normalize(town), nP = _normalize(_searchPrefecture);
+    // 「地域・施設カテゴリ」検索は、選んだ住所（都道府県＋市区町村＋町名＋その他）と一致する住所の施設だけにする
+    String addrKey(String v) => _normalize(v).replaceAll('大字', '').replaceAll('字', '');
+    final selectedKey = addrKey('$_searchPrefecture${_searchCity == '（すべて）' ? '' : _searchCity}$town');
+    final filtered = _searchTabIndex == 0 ? raw.where((item) => addrKey(item['address'] ?? '').contains(selectedKey)).toList() : raw;
+
+    final processed = filtered.map((item) {
+      final nA = _normalize(item['address'] ?? ''), nN = _normalize(item['name'] ?? '');
+      bool isMatch = nA.contains(nP) || nA.contains(nC) || nN.contains(nC) || (nT.isNotEmpty && (nA.contains(nT) || nN.contains(nT)));
+      bool matchesGenre = genreKeywords.isEmpty || genreKeywords.any((k) => nN.contains(_normalize(k)) || nA.contains(_normalize(k)));
+      return {...item, 'isNearby': !isMatch, 'matchesGenre': matchesGenre};
+    }).toList();
+
+    return [
+      ...processed.where((i) => !i['isNearby'] && i['matchesGenre']),
+      ...processed.where((i) => !i['isNearby'] && !i['matchesGenre']),
+      ...processed.where((i) => i['isNearby'] && i['matchesGenre']),
+      ...processed.where((i) => i['isNearby'] && !i['matchesGenre']),
+    ];
+  }
+
+  /// 検索結果の一番下までスクロールしたとき、続きを10件追加する（足りなければ次ページを取得）。
+  Future<void> _loadMoreResults() async {
+    if (_loadingMoreNotifier.value) return;
+    if (_searchBuffer.isEmpty && _searchNextToken == null) return;
+    _loadingMoreNotifier.value = true;
+    final added = <Map<String, dynamic>>[];
+    try {
+      final known = {..._facilityResultsNotifier.value, ..._searchBuffer}.map((e) => '${e['name']}|${e['address']}').toSet();
+      var guard = 0;
+      while (_searchBuffer.length < _searchPageSize && _searchNextToken != null && guard++ < 3) {
+        await Future.delayed(const Duration(seconds: 2)); // 次ページのトークンは発行直後は使えない
+        final page = await _customerService.getGoogleMapsService().searchPlacesPage('', pageToken: _searchNextToken);
+        _searchNextToken = page.next;
+        for (final r in _filterAndRank(page.results, _searchGenreKeywords, _searchTownForFilter)) {
+          if (known.add('${r['name']}|${r['address']}')) _searchBuffer.add(r);
+        }
+      }
+      added.addAll(_searchBuffer.take(_searchPageSize));
+      _searchBuffer.removeRange(0, added.length);
+      for (var i in added) {
+        await _customerService.getAddressService().upsertKigyouEntity(
+          name: i['name'], address: i['address'], lat: i['lat'], lng: i['lng'], prefecture: _searchPrefecture, city: _searchCity,
+        );
+      }
+    } catch (e) {
+      debugPrint('load more error: $e');
+    }
+    if (added.isNotEmpty) _facilityResultsNotifier.value = [..._facilityResultsNotifier.value, ...added];
+    _loadingMoreNotifier.value = false;
   }
 
   String _normalize(String i) => i.replaceAll(RegExp(r'[ 　〒()（）.]'), '').replaceAll('１', '1').replaceAll('２', '2').replaceAll('３', '3').replaceAll('４', '4').replaceAll('５', '5').replaceAll('６', '6').replaceAll('７', '7').replaceAll('８', '8').replaceAll('９', '9').replaceAll('０', '0');
@@ -1498,8 +1543,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
         }
         keepImg ??= imageUrl;
-        String displayEntry = "${_facilityController.text}: ${_addressController.text} ($destLat, $destLng)";
+        final entryFacility = _facilityController.text.trim().isEmpty ? '個人宅' : _facilityController.text.trim();
+        String displayEntry = "$entryFacility: ${_addressController.text} ($destLat, $destLng)";
         if (keepImg != null) displayEntry += " [IMG:$keepImg]";
+        final entryRemarks = _remarksController.text.replaceAll(RegExp(r'[\[\]]'), '').trim();
+        if (entryRemarks.isNotEmpty) displayEntry += " [RMK:$entryRemarks]";
         final newList = List<String>.from(updatedCustomer.deliveryAddresses);
         if (idx == -1) {
           newList.add(displayEntry); // 新規配達先を履歴へ登録
@@ -2044,6 +2092,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); },
           onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); },
           onSearchSubmit: _onSearchSubmit,
+          onLoadMore: _loadMoreResults,
+          loadingMoreListenable: _loadingMoreNotifier,
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog,
           onCancelOrder: _confirmCancelOrder,
@@ -2100,6 +2150,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onCategoryChanged: (v) { setState(() { _searchCategory = v; _searchGenre = null; }); _syncSearchQuery(); }, 
           onGenreChanged: (v) { setState(() => _searchGenre = v); _syncSearchQuery(); }, 
           onSearchSubmit: _onSearchSubmit,
+          onLoadMore: _loadMoreResults,
+          loadingMoreListenable: _loadingMoreNotifier,
           onDialogVisibilityChanged: (v) => setState(() => _isSearchResultsDialogOpen = v),
           onAdjustTap: _showLocationAdjustmentDialog
       );

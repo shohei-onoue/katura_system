@@ -124,6 +124,12 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const KDialogTitle('住所・郵便番号で検索'),
+                const Spacer(),
+                // 住所検索／郵便番号検索の切り替え（ラジオボタン）
+                _buildModeRadio('住所検索', !isNumericMode),
+                SizedBox(width: rs(context, 24)),
+                _buildModeRadio('郵便番号検索', isNumericMode),
+                SizedBox(width: rs(context, 16)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
@@ -278,7 +284,8 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         setState(() {
-                          tempPref = res['name'] ?? "";
+                          // 候補カードの住所（都道府県・市区町村・町名）をすべて反映する
+                          tempPref = res['pref'] ?? res['name'] ?? "";
                           tempCity = res['city'] ?? "";
                           tempTown = res['town'] ?? "";
                           phase = 3;
@@ -334,38 +341,37 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
   Widget _buildRightDialArea() {
     if (phase == 3) return _buildNumericDialPad();
 
-    return Column(
-      children: [
-        _buildModeSwitchButton(),
-        SizedBox(height: rs(context, 16)),
-        Expanded(
-          child: isNumericMode ? _buildNumericDialPad() : _buildKanaDialPad(),
-        ),
-      ],
-    );
+    return isNumericMode ? _buildNumericDialPad() : _buildKanaDialPad();
   }
 
-  Widget _buildModeSwitchButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: rs(context, 50),
-      child: OutlinedButton.icon(
-        onPressed: () {
-          setState(() {
-            isNumericMode = !isNumericMode;
-            if (isNumericMode) {
-              tempZip = "";
-            } else {
-              selectedInitial = 'すべて';
-            }
-          });
-        },
-        icon: Icon(isNumericMode ? Icons.abc : Icons.pin_drop),
-        label: Text(isNumericMode ? '地域名で選択' : '郵便番号で入力',
-          style: const TextStyle(fontWeight: FontWeight.bold)),
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: AppColors.accentPurple, width: rs(context, 2)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+  /// 大きめのラジオボタン（住所検索／郵便番号検索）
+  Widget _buildModeRadio(String label, bool selected) {
+    return InkWell(
+      onTap: () {
+        final toNumeric = label == '郵便番号検索';
+        if (toNumeric == isNumericMode) return;
+        setState(() {
+          isNumericMode = toNumeric;
+          if (isNumericMode) {
+            tempZip = '';
+            zipResults = [];
+          } else {
+            selectedInitial = 'すべて';
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(rs(context, 8)),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 4)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                size: rs(context, 34), color: selected ? AppColors.accentPurple : Colors.grey),
+            SizedBox(width: rs(context, 8)),
+            Text(label,
+                style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: selected ? AppColors.primaryText : Colors.grey)),
+          ],
         ),
       ),
     );

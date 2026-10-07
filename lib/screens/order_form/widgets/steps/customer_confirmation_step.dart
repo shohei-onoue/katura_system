@@ -1,4 +1,5 @@
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
@@ -45,6 +46,8 @@ class CustomerConfirmationStep extends StatefulWidget {
   final Function(String?) onCategoryChanged;
   final Function(String?) onGenreChanged;
   final Future<void> Function() onSearchSubmit;
+  final Future<void> Function()? onLoadMore;
+  final ValueListenable<bool>? loadingMoreListenable;
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
   final VoidCallback onCancelOrder;
@@ -85,6 +88,8 @@ class CustomerConfirmationStep extends StatefulWidget {
     required this.onCategoryChanged,
     required this.onGenreChanged,
     required this.onSearchSubmit,
+    this.onLoadMore,
+    this.loadingMoreListenable,
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
     required this.onCancelOrder,
@@ -190,6 +195,8 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
               onCategoryChanged: widget.onCategoryChanged,
               onGenreChanged: widget.onGenreChanged,
               onSearchSubmit: widget.onSearchSubmit,
+              onLoadMore: widget.onLoadMore,
+              loadingMoreListenable: widget.loadingMoreListenable,
               onDialogVisibilityChanged: widget.onDialogVisibilityChanged,
               onAdjustTap: widget.onAdjustTap,
             ),

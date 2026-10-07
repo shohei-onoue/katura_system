@@ -46,7 +46,7 @@ class AppColors {
   static const Color rejectButton = Colors.grey;
   static const Color cancelButton = Colors.red;
   static const Color selectButton = Color(
-    0x80B2FF59,
+    0x7AB2FF59,
   ); // lightGreenAccent 透過率50%
 
   // スナックバー

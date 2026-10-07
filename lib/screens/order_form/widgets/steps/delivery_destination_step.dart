@@ -1,5 +1,7 @@
 import '../../../../widgets/k_dialog_title.dart';
+import '../../../../utils/history_entry.dart';
 import '../../../../services/address_service.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import '../../../../models/customer_model.dart';
 import '../../../../widgets/k_button.dart';
@@ -61,6 +63,8 @@ class DeliveryDestinationStep extends StatelessWidget {
   final Function(String?) onCategoryChanged;
   final Function(String?) onGenreChanged;
   final Future<void> Function() onSearchSubmit;
+  final Future<void> Function()? onLoadMore;
+  final ValueListenable<bool>? loadingMoreListenable;
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
   /// 履歴カードは手動タップされるまで未選択にする
@@ -118,6 +122,8 @@ class DeliveryDestinationStep extends StatelessWidget {
     required this.onCategoryChanged,
     required this.onGenreChanged,
     required this.onSearchSubmit,
+    this.onLoadMore,
+    this.loadingMoreListenable,
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
     this.historyManuallySelected = false,
@@ -215,9 +221,10 @@ class DeliveryDestinationStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...filteredAddresses.map((fullAddr) {
+        ...filteredAddresses.map((rawAddr) {
+          final fullAddr = normalizeHistoryEntry(rawAddr);
           final parts = fullAddr.split(': ');
-          final fName = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '名称なし');
+          final fName = parts.length > 1 ? parts[0] : (fullAddr.startsWith('[') ? fullAddr.split(']')[0].replaceAll('[', '') : '個人宅');
           final aOnly = parts.length > 1 ? parts[1].split(' (')[0] : fullAddr.split(' (')[0].split(']').last.trim();
           // デフォルト未選択：手動タップされて初めて選択状態にする
           final isSelected = historyManuallySelected && addressControllerText == aOnly && facilityControllerText == fName;
@@ -320,10 +327,19 @@ class DeliveryDestinationStep extends StatelessWidget {
       onCategoryChanged: onCategoryChanged,
       onGenreChanged: onGenreChanged,
       onSearchSubmit: onSearchSubmit,
+      onLoadMore: onLoadMore,
+      loadingMoreListenable: loadingMoreListenable,
       onDialogVisibilityChanged: onDialogVisibilityChanged,
       onAdjustTap: onAdjustTap,
     );
   }
+}
+
+/// キーワード入力（施設・企業名／最寄り施設／その他）の個別の値。検索結果を選んだとき、備考への反映に使う。
+class KeywordParts {
+  static String facility = '';
+  static String nearby = '';
+  static String other = '';
 }
 
 /// 施設・住所の検索フォーム（地域・カテゴリ／地域・キーワード／住所・郵便番号）
@@ -358,6 +374,8 @@ class FacilitySearchForm extends StatelessWidget {
   final Function(String?) onCategoryChanged;
   final Function(String?) onGenreChanged;
   final Future<void> Function() onSearchSubmit;
+  final Future<void> Function()? onLoadMore;
+  final ValueListenable<bool>? loadingMoreListenable;
   final Function(bool) onDialogVisibilityChanged;
   final Future<void> Function() onAdjustTap;
 
@@ -390,6 +408,8 @@ class FacilitySearchForm extends StatelessWidget {
     required this.onCategoryChanged,
     required this.onGenreChanged,
     required this.onSearchSubmit,
+    this.onLoadMore,
+    this.loadingMoreListenable,
     required this.onDialogVisibilityChanged,
     required this.onAdjustTap,
   });
@@ -666,10 +686,24 @@ class FacilitySearchForm extends StatelessWidget {
                           )
                         else
                           Flexible(
-                            child: ListView.builder(
+                            // 最後までスクロールしたら、続きの検索結果を取得して追加する
+                            child: NotificationListener<ScrollNotification>(
+                              onNotification: (n) {
+                                if (onLoadMore != null && n.metrics.extentAfter < 40) onLoadMore!();
+                                return false;
+                              },
+                              child: ValueListenableBuilder<bool>(
+                                valueListenable: loadingMoreListenable ?? ValueNotifier<bool>(false),
+                                builder: (context, loadingMore, _) => ListView.builder(
                               shrinkWrap: true,
-                              itemCount: candidates.length,
+                              itemCount: candidates.length + (loadingMore ? 1 : 0),
                               itemBuilder: (context, i) {
+                                if (i == candidates.length) {
+                                  return Padding(
+                                    padding: EdgeInsets.all(rs(context, 16)),
+                                    child: const Center(child: CircularProgressIndicator()),
+                                  );
+                                }
                                 final item = candidates[i];
                                 final isSelected = addressControllerText == item['address'] && facilityControllerText == item['name'];
                                 final isNearby = item['isNearby'] == true;
@@ -690,10 +724,17 @@ class FacilitySearchForm extends StatelessWidget {
                                     trailing: isSelected ? Icon(Icons.check_circle, color: AppColors.accentOrange) : Icon(Icons.chevron_right),
                                     onTap: () {
                                       final cleanAddress = _cleanResultAddress(item['address'] ?? '');
-                                      var payload = "${item['name']}: $cleanAddress (${item['lat']}, ${item['lng']})";
+                                      // キーワード検索で「施設・企業名」が未入力なら、施設名は「個人宅」にする
+                                      final facilityName = (searchTabIndex == 1 && KeywordParts.facility.isEmpty) ? '個人宅' : item['name'];
+                                      var payload = "$facilityName: $cleanAddress (${item['lat']}, ${item['lng']})";
                                       // キーワード検索の結果は、入力したキーワードを添えて親へ渡す（企業名かの確認に使う）
                                       final kw = keywordQueryController.text.trim();
-                                      if (searchTabIndex == 1 && kw.isNotEmpty) payload += '[KW:$kw]';
+                                      if (searchTabIndex == 1 && kw.isNotEmpty) {
+                                        String clean(String v) => v.replaceAll(RegExp(r'[\[\]]'), '');
+                                        payload += '[KW:${clean(kw)}]';
+                                        if (KeywordParts.nearby.isNotEmpty) payload += '[NEAR:${clean(KeywordParts.nearby)}]';
+                                        if (KeywordParts.other.isNotEmpty) payload += '[OTH:${clean(KeywordParts.other)}]';
+                                      }
                                       // 1タップで確実に閉じてから選択を伝搬する
                                       Navigator.of(dialogContext).pop();
                                       onAddressSelected(payload);
@@ -701,6 +742,8 @@ class FacilitySearchForm extends StatelessWidget {
                                   ),
                                 );
                               },
+                            ),
+                              ),
                             ),
                           ),
                       ],
@@ -809,6 +852,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   List<({String town, String detail})> _azaCandidates = [];
   bool _azaLoading = false;
   String _azaError = '';
+  bool _azaAllTown = false; // 候補を読み込んだとき、町名が「すべて」だったか
   final TextEditingController _otherController = TextEditingController();
   String? tempCategory;
   String? tempGenre;
@@ -856,6 +900,11 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         _keywords[i] = parts[i];
       }
       _recognizedKeyword = _keywords.where((k) => k.trim().isNotEmpty).join(' ');
+      if (_recognizedKeyword.isEmpty) {
+        KeywordParts.facility = '';
+        KeywordParts.nearby = '';
+        KeywordParts.other = '';
+      }
     }
 
     if (tempPref.isNotEmpty && tempCity.isNotEmpty) {
@@ -968,11 +1017,17 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         final step = steps[index];
         final isActive = phase == step['phase'];
         final isCompleted = step['value'].toString().isNotEmpty;
-        final isAvailable = index == 0 || steps[index - 1]['value'].toString().isNotEmpty;
+        // カテゴリ／キーワードのカードは、町名まで決まっていればいつでもタップできる（「その他」は未選択＝なし扱い）
+        final isAvailable = step['phase'] == 4 ? tempTown.isNotEmpty : (index == 0 || steps[index - 1]['value'].toString().isNotEmpty);
 
         return Expanded(
           child: GestureDetector(
             onTap: isAvailable ? () {
+              if (step['phase'] == 4) {
+                // 「その他」を飛ばしてカテゴリ／キーワードへ（未選択なら「その他」は なし）
+                _finishOther(_otherDone ? tempOther : '');
+                return;
+              }
               setState(() {
                 phase = step['phase'];
                 selectedInitial = 'すべて';
@@ -1140,62 +1195,86 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
         .join(' ');
     setState(() => _recognizedKeyword = joined);
     widget.keywordController?.text = joined;
+    KeywordParts.facility = _keywords[0].trim();
+    KeywordParts.nearby = _keywords[1].trim();
+    KeywordParts.other = _keywords[2].trim();
   }
 
   Widget _buildKeywordHandwritingUI(BuildContext context) {
+    const labels = ['施設・企業名', '最寄り施設', 'その他'];
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('判定されたキーワード', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
+        Center(child: Text('キーワード入力', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey))),
         SizedBox(height: rs(context, 8)),
-        for (int i = 0; i < _keywords.length; i++) ...[
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => _openKeywordPenInput(i),
-                  borderRadius: BorderRadius.circular(rs(context, 12)),
-                  child: Container(
-                    height: rs(context, 56),
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple.shade50,
-                      borderRadius: BorderRadius.circular(rs(context, 12)),
-                      border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        _keywords[i].isEmpty ? "タップしてペン入力で書いてください" : _keywords[i],
-                        style: TextStyle(
-                          fontSize: rf(context, 24),
-                          fontWeight: FontWeight.bold,
-                          color: _keywords[i].isEmpty ? Colors.grey : Colors.deepPurple.shade900,
+        // ラベルと入力欄は、このエリアの上下中央に配置する
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < _keywords.length; i++) ...[
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: rs(context, 120),
+                          child: Text(labels[i], style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => _openKeywordPenInput(i),
+                            borderRadius: BorderRadius.circular(rs(context, 12)),
+                            child: Container(
+                              height: rs(context, 56),
+                              width: double.infinity,
+                              alignment: Alignment.center,
+                              padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+                              decoration: BoxDecoration(
+                                color: Colors.deepPurple.shade50,
+                                borderRadius: BorderRadius.circular(rs(context, 12)),
+                                border: Border.all(color: Colors.deepPurple.shade200, width: rs(context, 2)),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  _keywords[i],
+                                  style: TextStyle(fontSize: rf(context, 24), fontWeight: FontWeight.bold, color: Colors.deepPurple.shade900),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: rs(context, 8)),
+                        IconButton(
+                          onPressed: _keywords[i].isEmpty
+                              ? null
+                              : () {
+                                  setState(() => _keywords[i] = "");
+                                  _syncKeywords();
+                                },
+                          icon: const Icon(Icons.delete_outline),
+                          color: Colors.red,
+                          tooltip: 'このキーワードを削除',
+                        ),
+                      ],
                     ),
-                  ),
-                ),
+                    // 施設・企業名の欄の外（下）に、未入力のときの扱いを説明する
+                    if (i == 0)
+                      Padding(
+                        padding: EdgeInsets.only(left: rs(context, 120), top: rs(context, 4)),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('未入力の場合は「個人宅」になります', style: TextStyle(fontSize: rf(context, 13), color: Colors.grey.shade700)),
+                        ),
+                      ),
+                    SizedBox(height: rs(context, 12)),
+                  ],
+                ],
               ),
-              SizedBox(width: rs(context, 8)),
-              IconButton(
-                onPressed: _keywords[i].isEmpty
-                    ? null
-                    : () {
-                        setState(() => _keywords[i] = "");
-                        _syncKeywords();
-                      },
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.red,
-                tooltip: 'このキーワードを削除',
-              ),
-            ],
+            ),
           ),
-          SizedBox(height: rs(context, 12)),
-        ],
+        ),
       ],
     );
   }
@@ -1382,6 +1461,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       tempOther = '';
       _otherDone = false;
       _azaCandidates = [];
+      _azaAllTown = tempTown == '（すべて）';
     });
     try {
       final city = tempCity == '（すべて）' ? '' : tempCity;
@@ -1477,7 +1557,7 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
 
   /// 「その他」ステップ：町名・市区町村と同じ一覧で選ぶ（候補がなければ自動で次へ進む）。
   Widget _buildOtherInput(BuildContext context) {
-    final allTown = tempTown == '（すべて）';
+    final allTown = _azaAllTown;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1497,9 +1577,23 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           child: _azaCandidates.isEmpty
               ? Center(child: Text(_azaError, style: const TextStyle(color: Colors.red)))
               : ListView.builder(
-                  itemCount: _azaCandidates.length,
+                  itemCount: _azaCandidates.length + 1,
                   itemBuilder: (context, index) {
-                    final c = _azaCandidates[index];
+                    // 先頭は「なし」（町名までで検索する）
+                    if (index == 0) {
+                      final none = tempOther.isEmpty;
+                      return ListTile(
+                        tileColor: none ? AppColors.selectButton : null,
+                        title: Text('なし', style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+                        trailing: Icon(none ? Icons.check_circle : Icons.chevron_right, color: AppColors.accentPurple),
+                        // 「なし」を選んだら、そのままカテゴリ／キーワードのステップへ進む
+                        onTap: () {
+                          if (allTown) tempTown = '（すべて）';
+                          _finishOther('');
+                        },
+                      );
+                    }
+                    final c = _azaCandidates[index - 1];
                     final isSelected = tempOther.isNotEmpty && tempOther == c.detail && (!allTown || tempTown == c.town);
                     return ListTile(
                       tileColor: isSelected ? AppColors.selectButton : null,
@@ -1507,12 +1601,8 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
                           style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
                       trailing: Icon(isSelected ? Icons.check_circle : Icons.chevron_right, color: AppColors.accentPurple),
                       onTap: () => setState(() {
-                        if (isSelected) {
-                          tempOther = '';
-                        } else {
-                          tempOther = c.detail;
-                          if (allTown) tempTown = c.town;
-                        }
+                        tempOther = c.detail;
+                        if (allTown) tempTown = c.town;
                       }),
                     );
                   },
@@ -1523,19 +1613,14 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
   }
 
   Future<void> _handleAllTap() async {
-    // 市区町村・町名で「すべて」→ 選択結果を「すべて」として次のステップへ進む
+    // 市区町村・町名で「すべて」→ 選択結果を「すべて」として、そのままカテゴリ／キーワードのステップへ進む
     if (phase == 1 || phase == 2) {
       setState(() {
         if (phase == 1) tempCity = '（すべて）';
         tempTown = '（すべて）';
-        tempOther = '';
-        _otherDone = false;
-        _otherController.clear();
-        phase = 3;
         selectedInitial = 'すべて';
       });
-      _confirmTownWithOther();
-      _loadAza();
+      _finishOther('');
       return;
     }
     setState(() {
@@ -1595,10 +1680,15 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
       widget.onAddressConfirmed(tempPref, tempCity, item);
       setState(() {
         tempTown = item;
-        phase = 3; 
         isSearching = false;
       });
-      _loadAza();
+      if (item == '（すべて）') {
+        // 町名が「すべて」なら、そのままカテゴリ／キーワードのステップへ
+        _finishOther('');
+      } else {
+        setState(() => phase = 3);
+        _loadAza();
+      }
     }
   }
 

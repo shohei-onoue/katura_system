@@ -53,46 +53,22 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
 
   @override
   Widget build(BuildContext context) {
-    final menu = FadeTransition(
-      opacity: _controller,
-      child: ScaleTransition(
-        scale: _scale,
-        alignment: widget.anchor != null ? Alignment.topRight : Alignment.topCenter,
-        child: _buildMenuBody(context),
-      ),
-    );
-
-    if (widget.anchor != null) {
-      final screen = MediaQuery.of(context).size;
-      final double maxW = rs(context, 380);
-      final double right = (screen.width - widget.anchor!.dx).clamp(rs(context, 8), screen.width - rs(context, 40));
-      final double top = widget.anchor!.dy.clamp(rs(context, 8), screen.height - rs(context, 200));
-      return Stack(
-        children: [
-          Positioned(
-            top: top,
-            right: right,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxW),
-              child: menu,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: EdgeInsets.only(top: rs(context, 90)),
-        child: menu,
+    // 画面の中心に表示する
+    return Center(
+      child: FadeTransition(
+        opacity: _controller,
+        child: ScaleTransition(
+          scale: _scale,
+          alignment: Alignment.center,
+          child: _buildMenuBody(context),
+        ),
       ),
     );
   }
 
   Widget _buildMenuBody(BuildContext context) {
     return Material(
-              color: AppColors.primary,
+              color: AppColors.dialogBackground,
               elevation: 12,
               borderRadius: BorderRadius.circular(rs(context, 14)),
               child: ConstrainedBox(
@@ -108,23 +84,16 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                       padding: EdgeInsets.fromLTRB(
                           rs(context, 16), rs(context, 14), rs(context, 16), rs(context, 6)),
                       child: Text(
-                        '配達元店舗',
+                        '｜配達元店舗',
                         style: TextStyle(
-                          color: AppColors.mainBackground,
+                          color: AppColors.dialogLabel,
                           fontWeight: FontWeight.bold,
                           fontSize: rf(context, 15),
                         ),
                       ),
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
-                      child: Text(
-                        '配達先から最も近い店舗を選択しています。',
-                        style: TextStyle(color: Colors.white70, fontSize: rf(context, 11)),
-                      ),
-                    ),
                     SizedBox(height: rs(context, 8)),
-                    Divider(height: 1, color: Colors.white24),
+                    Divider(height: 1, color: Colors.black26),
                     ...widget.branches.map((b) {
                       final bool isNearest = b == widget.initialSelected;
                       return InkWell(
@@ -138,14 +107,14 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                                 isNearest
                                     ? Icons.radio_button_checked
                                     : Icons.radio_button_unchecked,
-                                color: AppColors.mainBackground,
+                                color: isNearest ? AppColors.acceptButton : AppColors.dialogText,
                                 size: rs(context, 22),
                               ),
                               SizedBox(width: rs(context, 12)),
                               Text(
                                 b,
                                 style: TextStyle(
-                                  color: AppColors.mainBackground,
+                                  color: AppColors.dialogText,
                                   fontWeight: FontWeight.bold,
                                   fontSize: rf(context, 16),
                                 ),

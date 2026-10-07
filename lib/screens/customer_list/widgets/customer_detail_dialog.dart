@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/history_entry.dart';
 import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
@@ -235,9 +236,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                       if (widget.customer.deliveryAddresses.isEmpty)
                         const Text('履歴なし', style: TextStyle(color: Colors.grey))
                       else
-                        ...widget.customer.deliveryAddresses.map((addr) {
+                        ...widget.customer.deliveryAddresses.map((rawAddr) {
+                          final addr = normalizeHistoryEntry(rawAddr);
                           final parts = addr.split(': ');
-                          final facilityName = parts.length > 1 ? parts[0] : '名称なし';
+                          final facilityName = parts.length > 1 ? parts[0] : '個人宅';
                           final rest = parts.length > 1 ? parts.sublist(1).join(': ') : addr;
                           final addressOnly = rest.split(' (')[0];
                           return Container(

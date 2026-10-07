@@ -292,7 +292,7 @@ class AddressService {
         [cleanZip, query]
       );
       if (postResults.isNotEmpty) {
-        return postResults.map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
+        return postResults.map((r) => {'name': r['name'], 'pref': r['name'], 'city': r['city'], 'town': r['town'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
       }
 
       return _db!.select("SELECT company_name as name, COALESCE(prefecture, '') || COALESCE(city, '') || COALESCE(town, '') || COALESCE(address, '') as address, lat, lng, '郵便番号一致' as type FROM kigyou WHERE zip_code = ? OR zip_code = ? LIMIT 100", [cleanZip, query]).map((r) => {'name': r['name'], 'address': r['address'], 'lat': r['lat'], 'lng': r['lng'], 'type': r['type']}).toList();
