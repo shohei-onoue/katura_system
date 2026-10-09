@@ -213,6 +213,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         databaseId: 'katura-system-database'
       ).collection('settings').doc('sms_config').get();
       
+      if (!mounted) return;
       if (doc.exists) {
         setState(() {
           _preConfirmationSmsTime = doc.data()?['sendingTime'] ?? '09:00';

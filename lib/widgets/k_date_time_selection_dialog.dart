@@ -753,7 +753,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
                             fontWeight: FontWeight.bold,
                           ),
-                          // 今日：マークなし。文字を4px大きく太字・オレンジにする
+                          // 今日：マークなし。文字を太字・オレンジにする
                           todayDecoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
                           todayTextStyle: TextStyle(fontSize: _dayFontSize(context, today: true), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                         ),
@@ -797,7 +797,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 ),
                           defaultBuilder: (context, day, focusedDay) => _dayMark(context, day),
                           todayBuilder: (context, day, focusedDay) => _dayMark(context, day, today: true),
-                          // 選択中の日が今日のときも、文字を4px大きく太字にする
+                          // 選択中の日が今日のときも、他の日と同じ文字サイズにする
                           selectedBuilder: (context, day, focusedDay) {
                             if (!isSameDay(day, DateTime.now())) return null;
                             return Container(

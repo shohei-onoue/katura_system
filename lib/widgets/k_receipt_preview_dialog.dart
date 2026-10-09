@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'html_view/k_html_view.dart';
 import '../models/branch_model.dart';
 import '../services/branch_service.dart';
 import '../services/receipt_service.dart';
@@ -35,7 +35,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
   final _branchService = BranchService();
   final _receiptService = ReceiptService();
   BranchModel? _branch;
-  WebViewController? _controller;
+  KHtmlController? _controller;
   bool _loading = true;
   bool _printing = false;
   int _issueNo = 1; // この領収書に付く通し番号（発行数 + 1）
@@ -71,11 +71,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
     final issued = await _receiptService.issuedCount();
     final no = issued + 1;
     final html = _buildHtml(branch, no);
-    final controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..enableZoom(false)
-      ..setBackgroundColor(const Color(0xFFE5E5E5))
-      ..loadHtmlString(html);
+    final controller = KHtmlController(enableZoom: false, backgroundColor: const Color(0xFFE5E5E5))..loadHtml(html);
     if (!mounted) return;
     setState(() {
       _branch = branch;
@@ -94,7 +90,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
       final html = _buildHtml(_branch, committedNo);
       if (mounted) {
         setState(() => _issueNo = committedNo);
-        await _controller?.loadHtmlString(html);
+        await _controller?.loadHtml(html);
       }
       await Printing.layoutPdf(
         name: '領収書_${widget.branchName}_${_no4(committedNo)}',
@@ -538,7 +534,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
                       child: SizedBox(
                         width: 972,
                         height: 688,
-                        child: WebViewWidget(controller: _controller!),
+                        child: KHtmlView(controller: _controller!),
                       ),
                     ),
                   ),

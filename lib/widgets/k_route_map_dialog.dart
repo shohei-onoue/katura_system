@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'html_view/k_html_view.dart';
 import '../firebase_options.dart';
 import '../services/google_maps_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
@@ -36,7 +36,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   static const Color _selectedLine = Colors.blue;
 
   final GoogleMapsService _maps = GoogleMapsService();
-  WebViewController? _controller;
+  KHtmlController? _controller;
   String _summary = 'ルートを読み込み中...';
   List<LatLng> _points = []; // 出発地 → 各配達先の座標
   List<RouteLeg?> _legs = []; // 各配達先へ向かう区間
@@ -137,9 +137,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     setState(() {
       _updateSummary();
       _mapReady = true;
-      _controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadHtmlString(html);
+      _controller = KHtmlController()..loadHtml(html);
     });
   }
 
@@ -293,7 +291,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
                     flex: 7,
                     child: _controller == null
                         ? const Center(child: CircularProgressIndicator())
-                        : WebViewWidget(controller: _controller!),
+                        : KHtmlView(controller: _controller!),
                   ),
                   Expanded(
                     flex: 3,

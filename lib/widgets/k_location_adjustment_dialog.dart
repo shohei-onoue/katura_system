@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:webview_flutter/webview_flutter.dart';
+import 'html_view/k_html_view.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_dialog_title.dart';
@@ -27,7 +27,7 @@ class KLocationAdjustmentDialog extends StatefulWidget {
 class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
   late LatLng _currentPosition;
   String _currentAddress = "";
-  late WebViewController _webViewController;
+  late KHtmlController _webViewController;
   double _currentHeading = 0;
   double _currentPitch = 0;
 
@@ -167,21 +167,18 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
 </html>
 ''';
 
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel(
-        'ToFlutter',
-        onMessageReceived: (message) {
-          final data = json.decode(message.message);
-          setState(() {
-            _currentPosition = LatLng(data['lat'], data['lng']);
-            _currentHeading = (data['heading'] as num).toDouble();
-            _currentPitch = (data['pitch'] as num).toDouble();
-          });
-          _updateAddress(_currentPosition);
-        },
-      )
-      ..loadHtmlString(html);
+    _webViewController = KHtmlController(
+      channelName: 'ToFlutter',
+      onMessage: (message) {
+        final data = json.decode(message);
+        setState(() {
+          _currentPosition = LatLng(data['lat'], data['lng']);
+          _currentHeading = (data['heading'] as num).toDouble();
+          _currentPitch = (data['pitch'] as num).toDouble();
+        });
+        _updateAddress(_currentPosition);
+      },
+    )..loadHtml(html);
   }
 
   Future<void> _updateAddress(LatLng pos) async {
@@ -245,7 +242,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
               ),
             ),
             Expanded(
-              child: WebViewWidget(controller: _webViewController),
+              child: KHtmlView(controller: _webViewController),
             ),
             Container(
               padding: EdgeInsets.all(rs(context, 20)),
