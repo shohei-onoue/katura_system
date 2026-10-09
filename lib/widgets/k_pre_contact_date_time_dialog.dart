@@ -111,8 +111,8 @@ class _KPreContactDateTimeDialogState extends State<KPreContactDateTimeDialog> {
     );
   }
 
-  /// 今日の日付文字サイズ（標準より2px大きく）。
-  double _todayFontSize(BuildContext context) => (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + 2;
+  /// 今日の日付文字サイズ（標準より4px大きく）。
+  double _todayFontSize(BuildContext context) => (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + 4;
 
   Widget _calendar() {
     final now = DateTime.now();
@@ -135,12 +135,12 @@ class _KPreContactDateTimeDialogState extends State<KPreContactDateTimeDialog> {
         calendarStyle: CalendarStyle(
           selectedDecoration: const BoxDecoration(color: AppColors.selectButton, shape: BoxShape.circle),
           selectedTextStyle: const TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold),
-          // 今日：マークなし。文字を2px大きく太字にする
+          // 今日：マークなし。文字を4px大きく太字・オレンジにする
           todayDecoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
-          todayTextStyle: TextStyle(fontSize: _todayFontSize(context), fontWeight: FontWeight.bold),
+          todayTextStyle: TextStyle(fontSize: _todayFontSize(context), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
         ),
         calendarBuilders: CalendarBuilders(
-          // 選択中の日が今日のときも、文字を2px大きく太字にする
+          // 選択中の日が今日のときも、文字を4px大きく太字にする
           selectedBuilder: (context, day, focusedDay) {
             if (!isSameDay(day, now)) return null;
             return Container(

@@ -586,13 +586,14 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
 
   /// カレンダーの日付文字サイズ。今日は標準より2px大きくする。
   double _dayFontSize(BuildContext context, {bool today = false}) =>
-      (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + (today ? 2 : 0);
+      (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + (today ? 4 : 0);
 
   /// 日付セルのマーク（参考日の輪／予約あり・引取りあり・回収ありの印）。マークが無い日は null。
   Widget? _dayMark(BuildContext context, DateTime day, {bool today = false}) {
     final textStyle = TextStyle(
       fontSize: _dayFontSize(context, today: today),
       fontWeight: today ? FontWeight.bold : null,
+      color: today ? AppColors.accentOrange : null,
     );
     Widget cell(Widget child) => Center(child: SizedBox(width: rs(context, 36), height: rs(context, 36), child: child));
     if (widget.highlightDate != null && isSameDay(day, widget.highlightDate)) {
@@ -752,9 +753,9 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
                             fontWeight: FontWeight.bold,
                           ),
-                          // 今日：マークなし。文字を2px大きく太字にする
+                          // 今日：マークなし。文字を4px大きく太字・オレンジにする
                           todayDecoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
-                          todayTextStyle: TextStyle(fontSize: _dayFontSize(context, today: true), fontWeight: FontWeight.bold),
+                          todayTextStyle: TextStyle(fontSize: _dayFontSize(context, today: true), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) async {
@@ -796,7 +797,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 ),
                           defaultBuilder: (context, day, focusedDay) => _dayMark(context, day),
                           todayBuilder: (context, day, focusedDay) => _dayMark(context, day, today: true),
-                          // 選択中の日が今日のときも、文字を2px大きく太字にする
+                          // 選択中の日が今日のときも、文字を4px大きく太字にする
                           selectedBuilder: (context, day, focusedDay) {
                             if (!isSameDay(day, DateTime.now())) return null;
                             return Container(
