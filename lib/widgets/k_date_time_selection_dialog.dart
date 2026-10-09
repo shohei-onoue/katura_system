@@ -274,7 +274,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.popupBackground,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(rs(context, 28)),
           side: const BorderSide(color: AppColors.snackbarRed),
         ),
         title: const Center(
@@ -557,24 +557,90 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     );
   }
 
-  Widget _legendItem(BuildContext context, String label, {Color? border, Color? fill, Color? dot}) {
+  Widget _legendItem(BuildContext context, String label,
+      {Color? border, Color? fill, Color? dot, IconData? icon, Color? iconColor, Color? square}) {
     final size = rs(context, dot != null ? 8 : 14);
+    final Widget mark = icon != null
+        ? Icon(icon, size: rs(context, 16), color: iconColor)
+        : Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: square != null ? BoxShape.rectangle : BoxShape.circle,
+              borderRadius: square != null ? BorderRadius.circular(rs(context, 2)) : null,
+              color: dot ?? fill,
+              border: square != null
+                  ? Border.all(color: square, width: rs(context, 2))
+                  : (border != null ? Border.all(color: border, width: rs(context, 1.5)) : null),
+            ),
+          );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: dot ?? fill,
-            border: border != null ? Border.all(color: border, width: rs(context, 1.5)) : null,
-          ),
-        ),
+        mark,
         SizedBox(width: rs(context, 6)),
         Text(label, style: TextStyle(fontSize: rf(context, 12))),
       ],
     );
+  }
+
+  /// カレンダーの日付文字サイズ。今日は標準より2px大きくする。
+  double _dayFontSize(BuildContext context, {bool today = false}) =>
+      (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + (today ? 2 : 0);
+
+  /// 日付セルのマーク（参考日の輪／予約あり・引取りあり・回収ありの印）。マークが無い日は null。
+  Widget? _dayMark(BuildContext context, DateTime day, {bool today = false}) {
+    final textStyle = TextStyle(
+      fontSize: _dayFontSize(context, today: today),
+      fontWeight: today ? FontWeight.bold : null,
+    );
+    Widget cell(Widget child) => Center(child: SizedBox(width: rs(context, 36), height: rs(context, 36), child: child));
+    if (widget.highlightDate != null && isSameDay(day, widget.highlightDate)) {
+      return cell(Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
+        ),
+        child: Text('${day.day}', style: textStyle.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
+      ));
+    }
+    if (widget.trashMode) {
+      final has = widget.previewOrders.any((o) => o.trashPickupRequested && o.trashPickupDateTime != null && isSameDay(o.trashPickupDateTime!, day));
+      if (!has) return null;
+      // ゴミ箱アイコンで日付を囲む
+      return Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(Icons.delete_outline, size: rs(context, 44), color: AppColors.dialogLine),
+            Padding(padding: EdgeInsets.only(top: rs(context, 6)), child: Text('${day.day}', style: textStyle)),
+          ],
+        ),
+      );
+    }
+    if (widget.pickupMode) {
+      final has = widget.previewOrders.any((o) => o.deliveryType == '引取' && isSameDay(o.deliveryDate, day));
+      if (!has) return null;
+      // 日付を四角の枠で囲む
+      return cell(Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(rs(context, 4)),
+          border: Border.all(color: AppColors.cautionCardBackground, width: rs(context, 2)),
+        ),
+        child: Text('${day.day}', style: textStyle),
+      ));
+    }
+    if (!widget.previewOrders.any((o) => isSameDay(o.deliveryDate, day))) return null;
+    return cell(Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.accentOrange, width: rs(context, 1.5)),
+      ),
+      child: Text('${day.day}', style: textStyle),
+    ));
   }
 
   @override
@@ -686,13 +752,9 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
                             fontWeight: FontWeight.bold,
                           ),
-                          // 今日：丸枠のみ・塗りつぶしなし
-                          todayDecoration: BoxDecoration(
-                            color: Colors.transparent,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: widget.themeColor, width: rs(context, 1.5)),
-                          ),
-                          todayTextStyle: TextStyle(color: widget.themeColor, fontWeight: FontWeight.bold),
+                          // 今日：マークなし。文字を2px大きく太字にする
+                          todayDecoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
+                          todayTextStyle: TextStyle(fontSize: _dayFontSize(context, today: true), fontWeight: FontWeight.bold),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
                         onDaySelected: (selectedDay, focusedDay) async {
@@ -725,51 +787,29 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           markerBuilder: (context, day, events) => events.isEmpty
                               ? null
                               : Positioned(
-                                  bottom: rs(context, 2),
+                                  bottom: rs(context, 1),
                                   left: 0,
                                   right: 0,
                                   child: Center(
-                                    child: Container(
-                                      width: rs(context, 7),
-                                      height: rs(context, 7),
-                                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                                    ),
+                                    child: Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: rs(context, 14)),
                                   ),
                                 ),
-                          defaultBuilder: (context, day, focusedDay) {
-                            if (widget.highlightDate != null && isSameDay(day, widget.highlightDate)) {
-                              return Center(
-                                child: Container(
-                                  width: rs(context, 36),
-                                  height: rs(context, 36),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
-                                  ),
-                                  child: Text('${day.day}',
-                                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                                ),
-                              );
-                            }
-                            final hasMark = widget.trashMode
-                                ? widget.previewOrders.any((o) => o.trashPickupRequested && o.trashPickupDateTime != null && isSameDay(o.trashPickupDateTime!, day))
-                                : (!widget.pickupMode && widget.previewOrders.any((o) => isSameDay(o.deliveryDate, day)));
-                            if (hasMark) {
-                              return Center(
-                                child: Container(
-                                  width: rs(context, 36),
-                                  height: rs(context, 36),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: widget.trashMode ? AppColors.dialogLine : AppColors.accentOrange, width: rs(context, 1.5)),
-                                  ),
-                                  child: Text('${day.day}'),
-                                ),
-                              );
-                            }
-                            return null;
+                          defaultBuilder: (context, day, focusedDay) => _dayMark(context, day),
+                          todayBuilder: (context, day, focusedDay) => _dayMark(context, day, today: true),
+                          // 選択中の日が今日のときも、文字を2px大きく太字にする
+                          selectedBuilder: (context, day, focusedDay) {
+                            if (!isSameDay(day, DateTime.now())) return null;
+                            return Container(
+                              margin: EdgeInsets.all(rs(context, 6)),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: widget.selectedDayColor ?? widget.themeColor, shape: BoxShape.circle),
+                              child: Text('${day.day}',
+                                  style: TextStyle(
+                                    fontSize: _dayFontSize(context, today: true),
+                                    fontWeight: FontWeight.bold,
+                                    color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
+                                  )),
+                            );
                           },
                         ),
                       ),
@@ -781,12 +821,15 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           spacing: rs(context, 14),
                           runSpacing: rs(context, 4),
                           children: [
-                            _legendItem(context, '今日', border: widget.themeColor),
-                            if (!widget.pickupMode)
-                              _legendItem(context, widget.trashMode ? '回収あり' : '予約あり',
-                                  border: widget.trashMode ? AppColors.dialogLine : AppColors.accentOrange),
+                            if (widget.trashMode)
+                              _legendItem(context, '回収あり', icon: Icons.delete_outline, iconColor: AppColors.dialogLine)
+                            else if (widget.pickupMode)
+                              _legendItem(context, '引取りあり', square: AppColors.cautionCardBackground)
+                            else
+                              _legendItem(context, '予約あり', border: AppColors.accentOrange),
                             _legendItem(context, '選択中', fill: widget.selectedDayColor ?? widget.themeColor),
-                            if (!widget.pickupMode && !widget.trashMode) _legendItem(context, '警告あり', dot: Colors.red),
+                            if (!widget.pickupMode && !widget.trashMode)
+                              _legendItem(context, '警告あり', icon: Icons.warning_amber_rounded, iconColor: AppColors.warningText),
                           ],
                         ),
                       ),

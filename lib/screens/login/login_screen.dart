@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isSubmitting = false;
   bool _keepLoggedIn = false;
+  bool _obscurePassword = true; // パスワードを隠すか（目のアイコンで切替）
 
   @override
   void initState() {
@@ -64,14 +65,14 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: AppColors.mainBackground,
-          insetPadding: const EdgeInsets.all(12),
+          insetPadding: EdgeInsets.all(rs(context, 12)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(rs(context, 20)),
           ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(rs(context, 12)),
               child: KEmailKeyboardPad(
                 controller: controller,
                 isEmailMode: isEmailMode,
@@ -230,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: fieldHeight,
                       child: TextField(
                         controller: _passwordController,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         readOnly: useOnScreenKeyboard,
                         onTap: useOnScreenKeyboard
                             ? () => _openKeyboard(
@@ -253,6 +254,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontSize: fieldFont,
                             fontWeight: FontWeight.bold,
                             color: AppColors.secondaryText,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              color: AppColors.secondaryText,
+                              size: fieldFont * 1.3,
+                            ),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
                           filled: true,
                           fillColor: AppColors.mainBackground,

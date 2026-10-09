@@ -238,8 +238,8 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
         child: Center(child: CircularProgressIndicator()),
       );
     }
@@ -472,8 +472,8 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: rs(context, 16)),
         child: Center(child: CircularProgressIndicator()),
       );
     }

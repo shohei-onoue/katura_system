@@ -3,6 +3,7 @@ import 'k_responsive.dart';
 import 'k_pen_input_dialog.dart';
 import '../services/settings_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/platform_utils.dart';
 
 class KMultimodalTextField extends StatefulWidget {
   final String label;
@@ -85,7 +86,8 @@ class _KMultimodalTextFieldState extends State<KMultimodalTextField> {
                   child: ValueListenableBuilder<KInputMode>(
                     valueListenable: SettingsService.inputMode,
                     builder: (context, mode, _) {
-                      final bool isPenMode = mode == KInputMode.pen;
+                      // PC（Web/デスクトップ）は設定に関わらず、キーボードで直接入力する
+                      final bool isPenMode = mode == KInputMode.pen && useOnScreenKeyboard;
                       return TextField(
                         controller: widget.controller,
                         maxLines: fixedHeight ? null : widget.maxLines,

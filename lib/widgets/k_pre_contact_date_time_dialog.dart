@@ -111,6 +111,9 @@ class _KPreContactDateTimeDialogState extends State<KPreContactDateTimeDialog> {
     );
   }
 
+  /// 今日の日付文字サイズ（標準より2px大きく）。
+  double _todayFontSize(BuildContext context) => (Theme.of(context).textTheme.bodyMedium?.fontSize ?? 14) + 2;
+
   Widget _calendar() {
     final now = DateTime.now();
     final first = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 30));
@@ -132,14 +135,22 @@ class _KPreContactDateTimeDialogState extends State<KPreContactDateTimeDialog> {
         calendarStyle: CalendarStyle(
           selectedDecoration: const BoxDecoration(color: AppColors.selectButton, shape: BoxShape.circle),
           selectedTextStyle: const TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold),
-          todayDecoration: BoxDecoration(
-            color: Colors.transparent,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 1.5),
-          ),
-          todayTextStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+          // 今日：マークなし。文字を2px大きく太字にする
+          todayDecoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle),
+          todayTextStyle: TextStyle(fontSize: _todayFontSize(context), fontWeight: FontWeight.bold),
         ),
         calendarBuilders: CalendarBuilders(
+          // 選択中の日が今日のときも、文字を2px大きく太字にする
+          selectedBuilder: (context, day, focusedDay) {
+            if (!isSameDay(day, now)) return null;
+            return Container(
+              margin: const EdgeInsets.all(6),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: AppColors.selectButton, shape: BoxShape.circle),
+              child: Text('${day.day}',
+                  style: TextStyle(fontSize: _todayFontSize(context), color: AppColors.primaryText, fontWeight: FontWeight.bold)),
+            );
+          },
           prioritizedBuilder: (context, day, focusedDay) {
             final dd = widget.deliveryDate;
             if (dd == null || !isSameDay(dd, day)) return null;

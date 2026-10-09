@@ -267,10 +267,10 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
       height: rs(context, 44),
       child: Material(
         color: isSelected ? AppColors.selectButton : Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(rs(context, 8)),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(rs(context, 8)),
           child: Center(
             child: Text(
               label,

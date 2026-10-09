@@ -5,8 +5,10 @@ import 'k_button.dart';
 import 'k_pen_canvas.dart';
 import '../services/ink_recognition_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'package:katura_system/utils/platform_utils.dart';
 
-class KPenInputDialog extends StatefulWidget {
+/// 手書き入力ダイアログ。タブレットは手書き（AI判定）、PC（Web/デスクトップ）はキーボード直接入力に切り替える。
+class KPenInputDialog extends StatelessWidget {
   final Function(String) onTextRecognized;
   /// すでにフィールドへ反映済みのテキスト。AI判定表示エリアの先頭に表示する。
   final String initialText;
@@ -18,10 +20,22 @@ class KPenInputDialog extends StatefulWidget {
   });
 
   @override
-  State<KPenInputDialog> createState() => _KPenInputDialogState();
+  Widget build(BuildContext context) => useOnScreenKeyboard
+      ? _PenInputBody(onTextRecognized: onTextRecognized, initialText: initialText)
+      : _KeyboardInputDialog(onTextRecognized: onTextRecognized, initialText: initialText);
 }
 
-class _KPenInputDialogState extends State<KPenInputDialog> {
+class _PenInputBody extends StatefulWidget {
+  final Function(String) onTextRecognized;
+  final String initialText;
+
+  const _PenInputBody({required this.onTextRecognized, required this.initialText});
+
+  @override
+  State<_PenInputBody> createState() => _PenInputBodyState();
+}
+
+class _PenInputBodyState extends State<_PenInputBody> {
   final List<mlkit.Ink> _pagesInks = [mlkit.Ink()];
   final List<List<DrawingPoint?>> _pagesPoints = [[]];
   final List<String> _pagesTexts = [""];
@@ -38,18 +52,28 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   /// すでに判定済み（フィールド反映済み）のテキスト。ここでも削除できるようにする。
   late String _baseText;
 
+  /// 判定済みテキストの編集（表示エリアをタップした位置にカーソルを出して直す）
+  final TextEditingController _editController = TextEditingController();
+  final FocusNode _editFocus = FocusNode();
+  bool _editing = false;
+
   final InkRecognitionService _ink = InkRecognitionService.instance;
 
   @override
   void initState() {
     super.initState();
     _baseText = widget.initialText;
+    _editFocus.addListener(() {
+      if (!_editFocus.hasFocus && _editing && mounted) setState(() => _editing = false);
+    });
     _checkModel();
   }
 
   @override
   void dispose() {
     _canvasController.dispose();
+    _editController.dispose();
+    _editFocus.dispose();
     super.dispose();
   }
 
@@ -73,6 +97,7 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   }
 
   void _handlePointDown(Offset offset, int timestamp) {
+    if (_editing) _editFocus.unfocus(); // 書き始めたら編集モードを終える
     if (_currentTool == KPenTool.eraser) return;
     _currentStrokePoints = [
       mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: timestamp)
@@ -202,12 +227,83 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
   void _backspaceBaseText() {
     if (_baseText.isEmpty) return;
     setState(() => _baseText = _baseText.substring(0, _baseText.length - 1));
+    _syncEditor();
   }
 
   /// 判定済みテキストをすべて削除する。
   void _clearBaseText() {
     if (_baseText.isEmpty) return;
     setState(() => _baseText = "");
+    _syncEditor();
+  }
+
+  /// 編集中なら、入力欄の内容をボタン操作後の判定済みテキストに合わせる。
+  void _syncEditor() {
+    if (!_editing) return;
+    _editController.value = TextEditingValue(
+      text: _baseText,
+      selection: TextSelection.collapsed(offset: _baseText.length),
+    );
+  }
+
+  /// 表示エリアのタップ位置にカーソルを出して編集できるようにする。
+  /// 手書き途中の判定分は先に確定し、タップした文字位置へカーソルを置く。
+  void _startEditing(Offset local, Size box) {
+    if (_isRecognizing) return;
+    final span = _previewSpan();
+    final tp = TextPainter(text: span, textAlign: TextAlign.center, textDirection: TextDirection.ltr)
+      ..layout(maxWidth: box.width);
+    final origin = Offset((box.width - tp.width) / 2, (box.height - tp.height) / 2);
+    final combined = _baseText + _pagesTexts.join("");
+    final offset = tp.getPositionForOffset(local - origin).offset.clamp(0, combined.length);
+    setState(() {
+      _baseText = combined;
+      _pagesInks
+        ..clear()
+        ..add(mlkit.Ink());
+      _pagesPoints
+        ..clear()
+        ..add(<DrawingPoint?>[]);
+      _pagesTexts
+        ..clear()
+        ..add("");
+      _currentPageIndex = 0;
+      _canvasController.clear();
+      _editing = true;
+      _editController.value = TextEditingValue(
+        text: combined,
+        selection: TextSelection.collapsed(offset: offset),
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _editFocus.requestFocus();
+    });
+  }
+
+  /// 表示エリアの文字（判定済み＋手書き途中の判定分）。
+  TextSpan _previewSpan() {
+    final newText = _pagesTexts.join("");
+    return TextSpan(
+      style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
+      children: [
+        if (_baseText.isNotEmpty)
+          TextSpan(text: _baseText, style: const TextStyle(color: Colors.black54)),
+        for (int i = 0; i < _pagesTexts.length; i++)
+          TextSpan(
+            text: _pagesTexts[i],
+            style: TextStyle(
+              color: i == _currentPageIndex ? AppColors.accentPurple : Colors.black87,
+              fontWeight: i == _currentPageIndex ? FontWeight.bold : FontWeight.normal,
+              backgroundColor: i == _currentPageIndex ? AppColors.accentPurple.withValues(alpha: 0.1) : null,
+            ),
+          ),
+        if (_baseText.isEmpty && newText.isEmpty && _statusMessage.isEmpty)
+          TextSpan(
+            text: 'ここにAIにより判定された文字が表示されます',
+            style: TextStyle(color: Colors.grey.shade400, fontSize: rf(context, 18)),
+          ),
+      ],
+    );
   }
 
   void _goToNextPage() {
@@ -284,34 +380,30 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    Center(
-                      child: RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
-                          children: [
-                            if (_baseText.isNotEmpty)
-                              TextSpan(
-                                text: _baseText,
-                                style: const TextStyle(color: Colors.black54),
-                              ),
-                            for (int i = 0; i < _pagesTexts.length; i++)
-                              TextSpan(
-                                text: _pagesTexts[i],
-                                style: TextStyle(
-                                  color: i == _currentPageIndex ? AppColors.accentPurple : Colors.black87,
-                                  fontWeight: i == _currentPageIndex ? FontWeight.bold : FontWeight.normal,
-                                  backgroundColor: i == _currentPageIndex ? AppColors.accentPurple.withValues(alpha: 0.1) : null,
-                                ),
-                              ),
-                            if (_baseText.isEmpty && newText.isEmpty && _statusMessage.isEmpty)
-                              TextSpan(
-                                text: 'ここにAIにより判定された文字が表示されます',
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: rf(context, 18)),
-                              ),
-                          ],
-                        ),
-                      ),
+                    LayoutBuilder(
+                      builder: (context, c) {
+                        if (_editing) {
+                          return Center(
+                            child: TextField(
+                              controller: _editController,
+                              focusNode: _editFocus,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              minLines: 1,
+                              style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2), color: Colors.black87),
+                              decoration: const InputDecoration.collapsed(hintText: ''),
+                              onChanged: (v) => setState(() => _baseText = v),
+                            ),
+                          );
+                        }
+                        return GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapUp: (d) => _startEditing(d.localPosition, c.biggest),
+                          child: Center(
+                            child: RichText(textAlign: TextAlign.center, text: _previewSpan()),
+                          ),
+                        );
+                      },
                     ),
                     if (_isRecognizing)
                       Positioned(right: 0, top: 0, child: SizedBox(width: rs(context, 16), height: rs(context, 16), child: CircularProgressIndicator(strokeWidth: 2))),
@@ -494,6 +586,79 @@ class _KPenInputDialogState extends State<KPenInputDialog> {
             icon, 
             color: onPressed != null ? AppColors.mainBackground : Colors.grey.shade800,
             size: rav(context, 32),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// PC用：手書きの代わりにキーボードで直接入力するダイアログ。
+class _KeyboardInputDialog extends StatefulWidget {
+  final Function(String) onTextRecognized;
+  final String initialText;
+
+  const _KeyboardInputDialog({required this.onTextRecognized, required this.initialText});
+
+  @override
+  State<_KeyboardInputDialog> createState() => _KeyboardInputDialogState();
+}
+
+class _KeyboardInputDialogState extends State<_KeyboardInputDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+    _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _done() {
+    widget.onTextRecognized(_controller.text);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.popupBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: rs(context, 560)),
+        child: Padding(
+          padding: EdgeInsets.all(rs(context, 20)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                minLines: 1,
+                maxLines: 3,
+                style: TextStyle(fontSize: rf(context, 18)),
+                onSubmitted: (_) => _done(),
+                decoration: InputDecoration(
+                  hintText: 'キーボードで入力してください',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(rs(context, 12))),
+                ),
+              ),
+              SizedBox(height: rs(context, 16)),
+              Row(
+                children: [
+                  Expanded(child: KButton(label: 'キャンセル', color: AppColors.cancelButton, onPressed: () => Navigator.pop(context))),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(child: KButton(label: '完了', color: AppColors.accentPurple, onPressed: _done)),
+                ],
+              ),
+            ],
           ),
         ),
       ),

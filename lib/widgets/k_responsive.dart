@@ -6,11 +6,17 @@ class KR {
   /// 基準とする画面寸法 (iPad Pro 11インチなどの横幅を想定)
   static const double baseWidth = 1280.0;
   static const double baseHeight = 832.0;
+
+  /// 全体の拡大率の基準とする高さ。横長のPC画面で縦にはみ出さないよう、
+  /// 幅と高さの小さい方の比率で拡大する（タブレットでは従来とほぼ同じ）。
+  static const double fitHeight = 760.0;
   
   /// 現在の画面幅に基づくスケーリング係数を取得
   static double scale(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    return screenWidth / baseWidth;
+    final size = MediaQuery.of(context).size;
+    final w = size.width / baseWidth;
+    final h = size.height / fitHeight;
+    return w < h ? w : h;
   }
 
   /// 現在の画面高さに基づくスケーリング係数を取得
