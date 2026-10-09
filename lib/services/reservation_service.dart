@@ -38,7 +38,7 @@ class ReservationService {
     final prefs = await SharedPreferences.getInstance();
     var id = prefs.getString('reservation_device_id');
     if (id == null || id.isEmpty) {
-      id = '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(1 << 32)}';
+      id = '${DateTime.now().microsecondsSinceEpoch}-${Random().nextInt(0x7FFFFFFF)}';
       await prefs.setString('reservation_device_id', id);
     }
     return id;

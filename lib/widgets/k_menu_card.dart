@@ -45,7 +45,7 @@ class _KMenuCardState extends State<KMenuCard> {
   Widget build(BuildContext context) {
     final bool hasSelection = _qty > 0;
 
-    return Container(
+    final card = Container(
       decoration: BoxDecoration(
         color: AppColors.mainBackground,
         borderRadius: BorderRadius.circular(rs(context, 12)),
@@ -163,6 +163,26 @@ class _KMenuCardState extends State<KMenuCard> {
           ),
         ],
       ),
+    );
+    if (!widget.isLastOrdered) return card;
+    // 前回注文の商品は左上に「前回注文」バッジを重ねる
+    return Stack(
+      children: [
+        card,
+        Positioned(
+          top: rs(context, 8),
+          left: rs(context, 8),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: rs(context, 8), vertical: rs(context, 3)),
+            decoration: BoxDecoration(
+              color: AppColors.accentOrange,
+              borderRadius: BorderRadius.circular(rs(context, 6)),
+            ),
+            child: Text('前回注文',
+                style: TextStyle(fontSize: rf(context, 11), fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        ),
+      ],
     );
   }
 

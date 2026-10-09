@@ -107,6 +107,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _paymentMethod = ''; // 支払い方法（未選択は空）
   String _preConfirmationPhoneNumber = '';
   DateTime? _preConfirmationDateTime;
+  bool _preConfirmationDateTimeManual = false; // ユーザーが手動で変更したら true（自動設定で上書きしない）
   String _preConfirmationSmsTime = '09:00';
   String _preConfirmationCallbackPhone = ''; // 設定画面で登録する事前連絡（電話）用の折り返し番号
   DateTime? _scheduledSmsDateTime; // 追加
@@ -354,7 +355,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _isDeliveryTimeSelected = true;
       _isDeliveryTypeSelected = true;
       // 受注一覧からの編集は「注文内容」ステップから開始し、直後に配達日時ダイヤログを表示する
-      _currentStep = widget.initialSection == '配達先' ? 2 : 3;
+      _currentStep = (widget.initialSection == '配達先' && order.deliveryType != '引取') ? 2 : 3;
       _maxStepReached = _stepLabels.length - 1;
     });
     // 受注一覧からの編集では顧客が未ロードのため、電話番号から引き当てて
@@ -488,6 +489,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _paymentMethod = '';
       _preConfirmationPhoneNumber = '';
       _preConfirmationDateTime = null;
+      _preConfirmationDateTimeManual = false;
       _preConfirmationSmsTime = '09:00';
       _scheduledSmsDateTime = null;
       _markers = {};
@@ -605,7 +607,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     // 「日程調整」を押すたびにダイアログを開く（確定済みでも日程を変更できる。
     // 決め直すと、前の予約枠は _showDeliveryDateDialog 内で削除される）
     if (await _runIntakeAndSchedule() && mounted) {
-      _updateStep(2);
+      _updateStep(_deliveryType == '引取' ? 3 : 2); // 引取りは配達先の確定をスキップ
     }
   }
 
@@ -694,25 +696,96 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _deliveryDate.year, _deliveryDate.month, _deliveryDate.day,
       _selectedTime.hour, _selectedTime.minute,
     );
-    final minMinutes = _timePickerMin.hour * 60 + _timePickerMin.minute;
-    final maxMinutes = _timePickerMax.hour * 60 + _timePickerMax.minute;
+    final picked = await _pickDayThenTime(
+      pickup: true,
+      title: 'ご来店日',
+      highlightLabel: '引取り日',
+      timeTitle: 'ご来店時間',
+      initial: initial,
+      min: _timePickerMin,
+      max: _timePickerMax,
+    );
+    if (!mounted || picked == null) return false;
+    // 引取りは号車の予約枠を使わない（前に取った予約枠があれば消す）
+    if (_reservationId != null) {
+      await _reservationService.delete(_reservationId);
+      _reservationId = null;
+    }
+    if (!mounted) return false;
+    setState(() {
+      _deliveryVehicleNumber = 0;
+      _deliveryDate = picked;
+      _selectedTime = picked;
+      _isDeliveryDateSelected = true;
+      _isDeliveryTimeSelected = true;
+      _applyDefaultPreConfirmationDateTime();
+    });
+    // 時間設定後に「ご来店店舗」を選ぶ（配送元店舗ダイアログを共有）。
+    // 選ばず閉じた場合は時間設定は維持し、店舗は現在の値のまま。
+    final store = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black26,
+      builder: (_) => KBranchSelectDialog(
+        branches: _branchCoordinates.keys.toList(),
+        initialSelected: _branchName,
+        title: '｜ご来店店舗',
+        selectedLabel: '',
+      ),
+    );
+    if (store != null && mounted) setState(() => _branchName = store);
+    return true;
+  }
+
+  /// 配達と同じカレンダー（KDateTimeSelectionDialog calendarOnly）で日付 → 時間（HHMM）の順に決める共通部品。
+  /// 引取り・ゴミ回収で使う。キャンセル時は null。時間入力を閉じたらカレンダーに戻る。
+  Future<DateTime?> _pickDayThenTime({
+    bool pickup = false,
+    bool trash = false,
+    required String title,
+    required String highlightLabel,
+    required String timeTitle,
+    required DateTime initial,
+    required TimeOfDay min,
+    required TimeOfDay max,
+    String? nextLabel,
+  }) async {
+    List<OrderModel> preview = const [];
+    try {
+      preview = await _orderService.getAllOrders(forceRefresh: true);
+    } catch (e) {
+      debugPrint('previewOrders load error: $e');
+    }
+    if (!mounted) return null;
+    final related = await _computeRelatedOrders(preview);
+    if (!mounted) return null;
+    final minMinutes = min.hour * 60 + min.minute;
+    final maxMinutes = max.hour * 60 + max.minute;
     while (true) {
       final day = await showDialog<DateTime>(
         context: context,
         builder: (_) => KDateTimeSelectionDialog(
           initialDateTime: initial,
-          title: '引取り日時',
+          previewOrders: preview,
+          relatedOrders: related,
+          relatedReasons: _relatedReasons(related),
+          calendarOnly: true,
+          pickupMode: pickup,
+          orderTypeFilter: pickup ? '引取' : null,
+          trashMode: trash,
           selectedDayColor: AppColors.selectButton,
-          pickDayOnly: true,
+          title: title,
+          highlightLabel: highlightLabel,
+          nextLabel: nextLabel,
         ),
       );
-      if (!mounted || day == null) return false;
+      if (!mounted || day == null) return null;
 
       String? entered;
       await showDialog<void>(
         context: context,
         builder: (_) => KNumericInputDialog(
-          title: 'ご来店時間',
+          title: timeTitle,
           timeFormat: true,
           initialValue: '${initial.hour.toString().padLeft(2, '0')}${initial.minute.toString().padLeft(2, '0')}',
           emptyHint: '',
@@ -722,7 +795,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           onConfirmed: (v) => entered = v,
         ),
       );
-      if (!mounted) return false;
+      if (!mounted) return null;
       if (entered == null) continue; // 時間を決めずに閉じた → カレンダーに戻る
 
       final digits = entered!.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
@@ -733,29 +806,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text('${_timePickerMin.hour}:00〜${_timePickerMax.hour}:00の間で入力してください'),
+            title: Text('${min.hour}:00〜${max.hour}:00の間で入力してください'),
             actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
           ),
         );
-        if (!mounted) return false;
+        if (!mounted) return null;
         continue;
       }
-
-      // 引取りは号車の予約枠を使わない（前に取った予約枠があれば消す）
-      if (_reservationId != null) {
-        await _reservationService.delete(_reservationId);
-        _reservationId = null;
-      }
-      if (!mounted) return false;
-      final picked = DateTime(day.year, day.month, day.day, h, m);
-      setState(() {
-        _deliveryVehicleNumber = 0;
-        _deliveryDate = picked;
-        _selectedTime = picked;
-        _isDeliveryDateSelected = true;
-        _isDeliveryTimeSelected = true;
-      });
-      return true;
+      return DateTime(day.year, day.month, day.day, h, m);
     }
   }
 
@@ -795,6 +853,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             relatedOrders: related,
             relatedReasons: _relatedReasons(related),
             calendarOnly: true,
+            orderTypeFilter: '配送',
             selectedDayColor: AppColors.selectButton,
             title: '$handoverLabel日時',
             highlightLabel: '$handoverLabel日',
@@ -870,12 +929,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _selectedTime = picked;
       _isDeliveryDateSelected = true;
       _isDeliveryTimeSelected = true;
+      _applyDefaultPreConfirmationDateTime();
     });
     return true;
   }
 
   /// 注文内容「次へ」→ ゴミ回収ダイヤログ → 支払・完了ステップ（4）へ。
   Future<void> _showTrashPickupDialogThenAdvance() async {
+    if (_deliveryType == '引取') {
+      _updateStep(4); // 引取りはゴミ回収の設定をスキップ
+      return;
+    }
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => KTrashPickupDialog(
@@ -887,6 +951,16 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         trashTimeMin: _trashTimePickerMin,
         trashTimeMax: _trashTimePickerMax,
         trashTimeInterval: _trashTimePickerInterval,
+        dateTimePicker: (initial) => _pickDayThenTime(
+          trash: true,
+          title: 'ゴミ回収日時の設定',
+          highlightLabel: 'ゴミ回収日',
+          timeTitle: 'ゴミ回収時間',
+          nextLabel: '時間設定',
+          initial: initial,
+          min: _trashTimePickerMin,
+          max: _trashTimePickerMax,
+        ),
       ),
     );
     if (!mounted) return;
@@ -1073,7 +1147,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (!await _runIntakeAndSchedule() || !mounted) return;
       _pendingIntake = false;
     }
-    _updateStep(2);
+    _updateStep(_deliveryType == '引取' ? 3 : 2); // 引取りは配達先の確定をスキップ
   }
 
   String _formatPhone(String phone) {
@@ -1676,7 +1750,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   maxReachedStep: _maxStepReached,
                   isFinalStepAvailable: _confirmedItems.isNotEmpty,
                   steps: _stepLabels,
-                  hiddenSteps: _newCustomerFlow ? const {} : const {1},
+                  hiddenSteps: {if (!_newCustomerFlow) 1, if (_deliveryType == '引取') 2},
                   onStepTapped: (s) {
                     // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
                     bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 4;
@@ -2172,15 +2246,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
           onAddItem: (itemsList) => setState(() {
-            for (var newItem in itemsList) {
-              final String id = newItem['id'];
-              // 特注がないシンプルな追加の場合は、既存の同IDアイテム（特注なし）を削除してから追加（置換）
-              if ((newItem['specialOrder'] as String? ?? '').isEmpty && (newItem['teaOption'] as String? ?? 'なし') == 'なし') {
-                _confirmedItems.removeWhere((i) => i['id'] == id && (i['specialOrder'] as String? ?? '').isEmpty && (i['teaOption'] as String? ?? 'なし') == 'なし');
+            // 同じ商品・特注内容・お茶設定・単価がすべて同じ行だけ数量を合算。違えば別行
+            String key(Map<String, dynamic> i) => [
+                  i['id'],
+                  i['specialOrder'] ?? '',
+                  i['teaOption'] ?? 'なし',
+                  i['teaType'] ?? '',
+                  i['topping'] ?? '',
+                  i['price'],
+                ].join('|');
+            final list = _confirmedItems.map((e) => Map<String, dynamic>.from(e)).toList();
+            for (final newItem in itemsList) {
+              final idx = list.indexWhere((e) => key(e) == key(newItem));
+              if (idx != -1) {
+                list[idx]['quantity'] = (list[idx]['quantity'] as int) + (newItem['quantity'] as int);
+                final sq = (list[idx]['specialOrderQuantity'] as int? ?? 0) + (newItem['specialOrderQuantity'] as int? ?? 0);
+                list[idx]['specialOrderQuantity'] = sq;
+              } else {
+                list.add(Map<String, dynamic>.from(newItem));
               }
             }
-            _confirmedItems = List.from(_confirmedItems)..addAll(itemsList);
-            
+            _confirmedItems = list;
+
             // 数量マップを全再計算して整合性を保つ
             _selectedQuantities.clear();
             for (var item in _confirmedItems) {
@@ -2239,7 +2326,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             _preConfirmationPhoneNumber = v;
             _preConfirmationPhoneController.text = v;
           }),
-          onPreConfirmationDateTimeChanged: (v) => setState(() => _preConfirmationDateTime = v),
+          onPreConfirmationDateTimeChanged: (v) => setState(() {
+            _preConfirmationDateTime = v;
+            _preConfirmationDateTimeManual = true;
+          }),
           onScheduledSmsDateTimeChanged: (v) => setState(() => _scheduledSmsDateTime = v),
           onSave: _handleSave,
           onCancelOrder: _confirmCancelOrder,
@@ -2343,6 +2433,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         ),
       ),
     );
+  }
+
+  /// 新規受注で、手動変更前なら事前連絡日時を「配達日(引取り日)の前日15:00」にする。
+  /// 前日15:00がすでに過去なら自動設定しない（未設定に戻す）。編集中の受注では何もしない。
+  void _applyDefaultPreConfirmationDateTime() {
+    if (_isEditingOrder || _preConfirmationDateTimeManual) return;
+    final d = DateTime(_deliveryDate.year, _deliveryDate.month, _deliveryDate.day - 1, 15);
+    _preConfirmationDateTime = d.isAfter(DateTime.now()) ? d : null;
   }
 
   DateTime? _calculateScheduledSmsDateTime() {

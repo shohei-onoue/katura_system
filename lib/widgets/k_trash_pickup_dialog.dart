@@ -3,8 +3,8 @@ import 'package:intl/intl.dart';
 import 'k_responsive.dart';
 import 'k_button.dart';
 import 'k_choice_group.dart';
+import 'k_dialog_title.dart';
 import 'k_multimodal_text_field.dart';
-import 'k_date_time_selection_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 注文内容ステップの「次へ」で開く、ゴミ回収の要否・日時・場所を決めるダイヤログ。
@@ -19,6 +19,8 @@ class KTrashPickupDialog extends StatefulWidget {
   final TimeOfDay trashTimeMin;
   final TimeOfDay trashTimeMax;
   final int trashTimeInterval;
+  /// 配達と同じカレンダーで日時を選ぶ処理（呼び出し側から渡す）
+  final Future<DateTime?> Function(DateTime initial) dateTimePicker;
 
   const KTrashPickupDialog({
     super.key,
@@ -30,6 +32,7 @@ class KTrashPickupDialog extends StatefulWidget {
     this.trashTimeMin = const TimeOfDay(hour: 9, minute: 0),
     this.trashTimeMax = const TimeOfDay(hour: 18, minute: 0),
     this.trashTimeInterval = 15,
+    required this.dateTimePicker,
   });
 
   @override
@@ -41,6 +44,7 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
   late DateTime? _dateTime;
   late String _location;
   late final TextEditingController _detailController;
+  bool _detailStage = false; // false=あり/なし選択、true=「あり」の詳細（日時・場所）
 
   @override
   void initState() {
@@ -58,19 +62,26 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
   }
 
   Future<void> _showDateTimeDialog() async {
-    final result = await showDialog<DateTime>(
-      context: context,
-      builder: (context) => KDateTimeSelectionDialog(
-        initialDateTime: _dateTime ?? widget.deliveryDate,
-        minTime: widget.trashTimeMin,
-        maxTime: widget.trashTimeMax,
-        interval: widget.trashTimeInterval,
-        title: 'ゴミ回収日時の設定',
-        themeColor: AppColors.accentOrange,
-        highlightDate: widget.deliveryDate,
-      ),
-    );
+    final result = await widget.dateTimePicker(_dateTime ?? widget.deliveryDate);
     if (result != null) setState(() => _dateTime = result);
+  }
+
+  void _onNext() {
+    if (!_requested) {
+      _submit();
+      return;
+    }
+    _goDetail();
+  }
+
+  /// 「あり」→「次へ」：先に配達日時と同じデザインの日時ダイアログを開き、決まったら場所の設定へ進む
+  Future<void> _goDetail() async {
+    final result = await widget.dateTimePicker(_dateTime ?? widget.deliveryDate);
+    if (!mounted || result == null) return; // 閉じたら「あり/なし」選択に戻る
+    setState(() {
+      _dateTime = result;
+      _detailStage = true;
+    });
   }
 
   void _submit() {
@@ -99,29 +110,28 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
           children: [
             Row(
               children: [
-                Text('ゴミ回収の設定',
-                    style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+                const Flexible(child: KDialogTitle('ゴミ回収の設定')),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
               ],
             ),
             SizedBox(height: rs(context, 16)),
 
-            _header(context, 'ゴミ回収'),
-            SizedBox(height: rs(context, 8)),
-            KChoiceGroup<bool>(
-              label: '',
-              showLabel: false,
-              selectedValue: _requested,
-              items: [
-                KChoiceItem(label: 'なし', value: false),
-                KChoiceItem(label: 'あり', value: true),
-              ],
-              onSelected: (v) => setState(() => _requested = v),
-            ),
+            if (!_detailStage)
+              KChoiceGroup<bool>(
+                label: '',
+                showLabel: false,
+                selectedValue: _requested,
+                selectedColor: AppColors.selectButton,
+                selectedTextColor: AppColors.primaryText,
+                items: [
+                  KChoiceItem(label: 'なし', value: false),
+                  KChoiceItem(label: 'あり', value: true),
+                ],
+                onSelected: (v) => setState(() => _requested = v),
+              ),
 
-            if (_requested) ...[
-              SizedBox(height: rs(context, 20)),
+            if (_detailStage) ...[
               _header(context, '回収日時'),
               SizedBox(height: rs(context, 8)),
               InkWell(
@@ -163,6 +173,8 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
                 label: '',
                 showLabel: false,
                 selectedValue: _location,
+                selectedColor: AppColors.selectButton,
+                selectedTextColor: AppColors.primaryText,
                 items: [
                   KChoiceItem(label: '引渡し場所', value: '引渡し場所'),
                   KChoiceItem(label: '指定場所', value: '指定場所'),
@@ -187,17 +199,16 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
                 Expanded(
                   child: KButton(
                     label: 'キャンセル',
-                    isSecondary: true,
-                    color: Colors.blueGrey,
+                    color: AppColors.cancelButton,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ),
                 SizedBox(width: rs(context, 16)),
                 Expanded(
                   child: KButton(
-                    label: '確定',
-                    color: Colors.orange.shade800,
-                    onPressed: _submit,
+                    label: _detailStage ? '確定' : '次へ',
+                    color: AppColors.acceptButton,
+                    onPressed: _detailStage ? _submit : _onNext,
                   ),
                 ),
               ],

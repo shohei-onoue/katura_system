@@ -9,12 +9,18 @@ class KBranchSelectDialog extends StatefulWidget {
   final String initialSelected;
   /// 指定した場合、この画面座標（履歴カード右端のチェックアイコン中心）を起点にメニューを展開する
   final Offset? anchor;
+  /// 見出し（共有ダイアログなので用途に合わせて切り替える）
+  final String title;
+  /// 選択中の店舗の横に出す文言（空なら出さない）
+  final String selectedLabel;
 
   const KBranchSelectDialog({
     super.key,
     required this.branches,
     required this.initialSelected,
     this.anchor,
+    this.title = '｜配達元店舗',
+    this.selectedLabel = '（最寄り）',
   });
 
   @override
@@ -84,7 +90,7 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                       padding: EdgeInsets.fromLTRB(
                           rs(context, 16), rs(context, 14), rs(context, 16), rs(context, 6)),
                       child: Text(
-                        '｜配達元店舗',
+                        widget.title,
                         style: TextStyle(
                           color: AppColors.dialogLabel,
                           fontWeight: FontWeight.bold,
@@ -119,10 +125,10 @@ class _KBranchSelectDialogState extends State<KBranchSelectDialog>
                                   fontSize: rf(context, 16),
                                 ),
                               ),
-                              if (isNearest) ...[
+                              if (isNearest && widget.selectedLabel.isNotEmpty) ...[
                                 SizedBox(width: rs(context, 8)),
                                 Text(
-                                  '（最寄り）',
+                                  widget.selectedLabel,
                                   style: TextStyle(
                                     color: AppColors.accentOrange,
                                     fontWeight: FontWeight.bold,

@@ -5,7 +5,7 @@ import '../../../../widgets/k_responsive.dart';
 import '../../../../widgets/k_multimodal_text_field.dart';
 import '../../../../widgets/k_shared_quantity_input.dart';
 import '../../../../widgets/k_date_time_display.dart';
-import '../../../../widgets/k_date_time_selection_dialog.dart';
+import '../../../../widgets/k_pre_contact_date_time_dialog.dart';
 import '../../../../widgets/k_numeric_input_dialog.dart';
 import '../order_form_parts.dart';
 import 'package:katura_system/utils/app_colors.dart';
@@ -499,9 +499,11 @@ class FinalizeStep extends StatelessWidget {
             onTap: () async {
               final result = await showDialog<DateTime>(
                 context: context,
-                builder: (context) => KDateTimeSelectionDialog(
-                  initialDateTime: preConfirmationDateTime ?? DateTime.now().add(const Duration(days: 1)),
-                  title: '電話連絡日時の設定',
+                builder: (context) => KPreContactDateTimeDialog(
+                  initialDateTime: preConfirmationDateTime ??
+                      DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day + 1, 15, 0),
+                  title: '事前確認日',
+                  deliveryDate: deliveryDate,
                 ),
               );
               if (result != null) {

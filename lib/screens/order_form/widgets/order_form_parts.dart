@@ -23,7 +23,7 @@ class PhoneReceivedBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (phoneNumber.isEmpty) return const SizedBox.shrink();
-    return Text(phoneNumber, style: TextStyle(color: AppColors.accentText, fontWeight: FontWeight.bold, fontSize: rf(context, 22)));
+    return Text(phoneNumber, style: TextStyle(color: AppColors.whiteText, fontWeight: FontWeight.bold, fontSize: rf(context, 22)));
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/email_auth_service.dart';
 import '../../utils/app_colors.dart';
+import '../../utils/platform_utils.dart';
 import '../../widgets/k_email_keyboard_pad.dart';
 import '../../widgets/k_responsive.dart';
 import '../main_screen.dart';
@@ -174,11 +175,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: fieldHeight,
                       child: TextField(
                         controller: _emailController,
-                        readOnly: true,
-                        onTap: () => _openKeyboard(
-                          controller: _emailController,
-                          isEmailMode: true,
-                        ),
+                        readOnly: useOnScreenKeyboard,
+                        keyboardType: TextInputType.emailAddress,
+                        onTap: useOnScreenKeyboard
+                            ? () => _openKeyboard(
+                                controller: _emailController,
+                                isEmailMode: true,
+                              )
+                            : null,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: fieldFont,
@@ -227,11 +231,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextField(
                         controller: _passwordController,
                         obscureText: true,
-                        readOnly: true,
-                        onTap: () => _openKeyboard(
-                          controller: _passwordController,
-                          isEmailMode: false,
-                        ),
+                        readOnly: useOnScreenKeyboard,
+                        onTap: useOnScreenKeyboard
+                            ? () => _openKeyboard(
+                                controller: _passwordController,
+                                isEmailMode: false,
+                              )
+                            : null,
+                        onSubmitted: useOnScreenKeyboard
+                            ? null
+                            : (_) => _handleLogin(),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: fieldFont,

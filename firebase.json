@@ -52,5 +52,20 @@
       ],
       "predeploy": []
     }
-  ]
+  ],
+  "hosting": {
+    "site": "katura-system-app",
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }

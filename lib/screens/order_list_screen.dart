@@ -277,26 +277,56 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   Widget _buildOrderList() {
     final orders = _visibleOrders;
-    if (orders.isEmpty) {
-      return Center(child: Text('この日の受注はありません', style: TextStyle(fontSize: rf(context, 16))));
-    }
-    return ListView.builder(
-      padding: EdgeInsets.fromLTRB(rav(context, 24), rav(context, 24), 0, rav(context, 24)),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        return OrderListCard(
-          order: orders[index],
-          displayName: _displayNames[orders[index].id],
-          expanded: _expandedOrderId == orders[index].id,
-          onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == orders[index].id ? null : orders[index].id),
-          onEdit: (order, section) {
-            widget.onEditOrder?.call(order, section);
-          },
-          onCancel: (order) {
-            _cancelOrder(order);
-          },
-        );
-      },
+    final delivery = orders.where((o) => o.deliveryType != '引取').toList();
+    final pickup = orders.where((o) => o.deliveryType == '引取').toList();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: _buildOrderColumn('配達', Icons.directions_car, delivery)),
+        VerticalDivider(width: 1, color: Colors.grey[300]),
+        Expanded(child: _buildOrderColumn('引取り', Icons.volunteer_activism, pickup)),
+      ],
+    );
+  }
+
+  Widget _buildOrderColumn(String label, IconData icon, List<OrderModel> orders) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(rav(context, 24), rav(context, 12), 0, 0),
+          child: Row(
+            children: [
+              Icon(icon, size: rf(context, 20), color: AppColors.primaryText),
+              SizedBox(width: rs(context, 6)),
+              Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: orders.isEmpty
+              ? Center(child: Text('この日の受注はありません', style: TextStyle(fontSize: rf(context, 16))))
+              : ListView.builder(
+                  padding: EdgeInsets.fromLTRB(rav(context, 24), rav(context, 12), 0, rav(context, 24)),
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
+                    final order = orders[index];
+                    return OrderListCard(
+                      order: order,
+                      displayName: _displayNames[order.id],
+                      expanded: _expandedOrderId == order.id,
+                      onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
+                      onEdit: (order, section) {
+                        widget.onEditOrder?.call(order, section);
+                      },
+                      onCancel: (order) {
+                        _cancelOrder(order);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }

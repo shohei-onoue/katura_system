@@ -12,6 +12,10 @@ class KSharedQuantityInput extends StatelessWidget {
   final Color themeColor;
   /// true の場合、直接入力ダイヤログは現在値をプリセットせず 0（空）から開始する
   final bool clearOnDirectInput;
+  /// false の場合「＋」「ー」ボタンを非表示にし、数値ボックスのみ表示する
+  final bool showButtons;
+  /// 直接入力ダイヤログに表示する単位（例：個、円）
+  final String unit;
 
   const KSharedQuantityInput({
     super.key,
@@ -22,6 +26,8 @@ class KSharedQuantityInput extends StatelessWidget {
     this.height,
     this.themeColor = AppColors.accentPurple,
     this.clearOnDirectInput = false,
+    this.showButtons = true,
+    this.unit = '個',
   });
 
   @override
@@ -29,10 +35,12 @@ class KSharedQuantityInput extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildButton(context, Icons.remove, () {
-          if (value > 0) onChanged(value - 1);
-        }),
-        SizedBox(width: rs(context, 4)),
+        if (showButtons) ...[
+          _buildButton(context, Icons.remove, () {
+            if (value > 0) onChanged(value - 1);
+          }),
+          SizedBox(width: rs(context, 4)),
+        ],
         GestureDetector(
           onTap: () => _showDialDialog(context),
           child: Container(
@@ -54,8 +62,10 @@ class KSharedQuantityInput extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(width: rs(context, 4)),
-        _buildButton(context, Icons.add, () => onChanged(value + 1)),
+        if (showButtons) ...[
+          SizedBox(width: rs(context, 4)),
+          _buildButton(context, Icons.add, () => onChanged(value + 1)),
+        ],
       ],
     );
   }
@@ -88,7 +98,7 @@ class KSharedQuantityInput extends StatelessWidget {
         initialValue: (clearOnDirectInput || value == 0) ? '' : value.toString(),
         maxLength: 4,
         emptyHint: '0',
-        unit: '個',
+        unit: unit,
         themeColor: themeColor,
         onConfirmed: (text) => onChanged(int.tryParse(text) ?? 0),
       ),
