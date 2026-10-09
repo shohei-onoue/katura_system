@@ -453,6 +453,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 child: Image.network(
                   widget.deliveryDestinationImageUrl!,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                   width: double.infinity,
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,
@@ -687,6 +688,7 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
                 borderRadius: BorderRadius.circular(rs(context, 8)),
                 child: Image.network(
                   widget.deliveryDestinationImageUrl!,
+                  webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                   width: double.infinity,
                   fit: BoxFit.contain,
                   alignment: Alignment.topCenter,

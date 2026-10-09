@@ -720,7 +720,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   }
 
   /// 予定カード。「|」・配達時間・市区町村を上下中央に並べる。タップで詳細ダイアログ。
-  Widget _buildCard(BuildContext context, OrderModel o, double cardH) {
+  Widget _buildCard(BuildContext context, OrderModel o, double cardH, double colW) {
     final white = TextStyle(
       fontSize: rf(context, 14),
       fontWeight: FontWeight.bold,
@@ -762,7 +762,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       feedback: Material(
         color: Colors.transparent,
         child: SizedBox(
-          width: rs(context, 176),
+          width: colW,
           child: Opacity(opacity: 0.85, child: card),
         ),
       ),
@@ -918,7 +918,6 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   @override
   Widget build(BuildContext context) {
     final screen = MediaQuery.of(context).size;
-    final double dialogWidth = screen.width < 900 ? screen.width * 0.95 : 850;
     final double hourH = rs(context, 160); // 10分＝約27（カードを10分単位で置けるよう間隔を広く）
     final double labelW = rs(context, 64);
     final double slotH = _cardMinutes / 60 * hourH;
@@ -928,9 +927,22 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final double totalH = hourH * (_endHour - _startHour) + baseTop;
     double yOf(int minutes) =>
         baseTop + (minutes - _startHour * 60) / 60 * hourH;
-    final double colW = rs(context, 176); // 号車1列の幅（カードは配達時間と市区町村だけなので細くする）
+    // 横幅：号車の数だけ並べたときの必要幅を画面比率で求め、画面に収まらなければ列幅を縮める
+    final double maxW = screen.width - rs(context, 32); // ダイアログ左右の余白(16×2)を除いた最大幅
+    final double sidePad = rav(context, 24);
+    final double leftPad = rs(context, 33.67);
+    final double laneStart = labelW + rs(context, 24);
+    final double baseColW = rs(context, 176); // 号車1列の幅（カードは配達時間と市区町村だけなので細くする）
+    final double baseGap = rs(context, 12);
+    final double fixedW = sidePad * 2 + leftPad + laneStart;
+    final double need = fixedW + _laneCount * (baseColW + baseGap);
+    final double fit = need <= maxW
+        ? 1.0
+        : ((maxW - fixedW) / (_laneCount * (baseColW + baseGap))).clamp(0.3, 1.0);
+    final double colW = baseColW * fit;
+    final double colGap = baseGap * fit;
+    final double dialogWidth = math.min(math.max(need, rs(context, 850)), maxW);
     final double stackH = totalH + rs(context, 16);
-    final double colGap = rs(context, 12);
     double colX(int lane) => labelW + rs(context, 24) + lane * (colW + colGap);
 
     final content = Listener(
@@ -1215,7 +1227,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                                 _cardInset(context),
                             left: colX(_lanes[o.id]!),
                             width: colW,
-                            child: _buildCard(context, o, cardH),
+                            child: _buildCard(context, o, cardH, colW),
                           ),
                       ],
                     ),

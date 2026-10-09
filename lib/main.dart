@@ -9,6 +9,7 @@ import 'firebase_options.dart';
 import 'services/settings_service.dart';
 import 'services/ink_recognition_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'widgets/k_responsive.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,19 @@ class KaturaSystemApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: AppColors.mainBackground,
       ),
+      // サイズ指定のない文字・アイコンも、画面比率に合わせて拡大縮小する（小さくなりすぎないよう下限0.8）
+      builder: (context, child) {
+        final f = KR.scale(context).clamp(0.8, 3.0).toDouble();
+        final theme = Theme.of(context);
+        return Theme(
+          data: theme.copyWith(
+            textTheme: theme.textTheme.apply(fontSizeFactor: f),
+            iconTheme: theme.iconTheme.copyWith(size: 24 * f),
+            iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(iconSize: 24 * f)),
+          ),
+          child: child!,
+        );
+      },
       home: const LoginScreen(),
     );
   }

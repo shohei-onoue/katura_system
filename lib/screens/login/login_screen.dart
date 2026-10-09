@@ -70,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(rs(context, 20)),
           ),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
+            constraints: BoxConstraints(maxWidth: rs(context, 640)),
             child: SingleChildScrollView(
               padding: EdgeInsets.all(rs(context, 12)),
               child: KEmailKeyboardPad(

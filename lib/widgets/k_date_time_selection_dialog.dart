@@ -651,7 +651,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
     final String formattedDate = DateFormat('yyyy/MM/dd (E)', 'ja_JP').format(_tempDate);
     
     // タブレットなどの広い画面を想定し、横長に調整
-    final double dialogWidth = screenWidth < 900 ? screenWidth * 0.95 : 850;
+    final double dialogWidth = rs(context, 850).clamp(0.0, screenWidth * 0.95).toDouble();
 
     return Dialog(
       backgroundColor: AppColors.popupBackground,

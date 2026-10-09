@@ -58,17 +58,26 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     }
   }
 
-  ImageProvider _getImageProvider(String url) {
-    if (url.isEmpty) {
-      return const AssetImage('assets/img/placeholder.png');
-    }
-    if (url.startsWith('http')) {
-      return NetworkImage(url);
-    }
-    if (url.startsWith('assets/')) {
-      return AssetImage(url);
-    }
-    return const AssetImage('assets/img/placeholder.png');
+  /// メニュー画像。画像が無い・読み込めないときは、灰色の背景にレストランのアイコンを出す。
+  Widget _menuImage(String url, {double? width, double? height}) {
+    final fallback = Container(
+      width: width,
+      height: height,
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: Icon(Icons.restaurant, color: Colors.grey.shade400),
+    );
+    if (!url.startsWith('http') && !url.startsWith('assets/')) return fallback;
+    final ImageProvider provider = url.startsWith('http')
+        ? NetworkImage(url, webHtmlElementStrategy: WebHtmlElementStrategy.fallback)
+        : AssetImage(url);
+    return Image(
+      image: provider,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => fallback,
+    );
   }
 
   void _showEditMenuDialog([MenuModel? menu]) {
@@ -131,7 +140,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                           : currentImageUrl.isNotEmpty
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(rs(context, 12)),
-                                  child: Image(image: _getImageProvider(currentImageUrl), fit: BoxFit.cover),
+                                  child: _menuImage(currentImageUrl),
                                 )
                               : Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -332,11 +341,11 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
                                   margin: EdgeInsets.only(bottom: rs(context, 12)),
                                   child: ListTile(
                                     selected: isSelected,
-                                    leading: Container(
-                                      width: rs(context, 50), height: rs(context, 50),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(rs(context, 8)),
-                                        image: DecorationImage(image: _getImageProvider(menu.imageUrl), fit: BoxFit.cover),
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(rs(context, 8)),
+                                      child: SizedBox(
+                                        width: rs(context, 50), height: rs(context, 50),
+                                        child: _menuImage(menu.imageUrl),
                                       ),
                                     ),
                                     title: Text(menu.name, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -470,7 +479,7 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(rs(context, 12)),
-            child: Image(image: _getImageProvider(menu.imageUrl), width: double.infinity, height: rs(context, 200), fit: BoxFit.cover),
+            child: _menuImage(menu.imageUrl, width: double.infinity, height: rs(context, 200)),
           ),
           SizedBox(height: rs(context, 24)),
           Text(menu.name, style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold)),

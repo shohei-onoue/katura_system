@@ -195,7 +195,7 @@ class _KMenuCardState extends State<KMenuCard> {
     }
 
     final imageWidget = url.startsWith('http')
-        ? Image.network(url, fit: BoxFit.cover)
+        ? Image.network(url, webHtmlElementStrategy: WebHtmlElementStrategy.fallback, fit: BoxFit.cover)
         : Image.asset(url, fit: BoxFit.cover);
 
     return imageWidget;

@@ -521,6 +521,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   )
                 : Image.network(
                     img,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stack) => Container(
                       color: Colors.grey.shade200,

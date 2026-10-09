@@ -96,7 +96,7 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double dialogWidth = screenWidth < 900 ? screenWidth * 0.92 : 560;
+    final double dialogWidth = rs(context, 560).clamp(0.0, screenWidth * 0.92).toDouble();
 
     return Dialog(
       backgroundColor: AppColors.popupBackground,

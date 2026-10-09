@@ -519,6 +519,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                   )
                 : Image.network(
                     row.branch.imageUrl,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stack) => Center(
                       child: Icon(Icons.broken_image_outlined, size: rs(context, 40), color: Colors.grey.shade400),
