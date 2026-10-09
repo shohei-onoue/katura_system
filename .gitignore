@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 秘密情報・自動生成
+.codex/config.toml
+.firebase/
