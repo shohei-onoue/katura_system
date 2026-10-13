@@ -59,9 +59,9 @@ class CustomerDataTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 列幅の定義 (レスポンスシブ)
-    final double nameWidth = rs(context, 120);
-    final double companyWidth = rs(context, 180);
-    final double elapsedWidth = rs(context, 96);
+    final double nameWidth = rs(context, 180);
+    final double companyWidth = rs(context, 270);
+    final double elapsedWidth = rs(context, 144);
     final double actionWidth = rs(context, 50);
 
     return Padding(
@@ -126,7 +126,7 @@ class CustomerDataTable extends StatelessWidget {
                               withHonorific(customer.name),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: rf(context, 13),
+                                fontSize: rf(context, 19.5),
                                 color: isSelected ? AppColors.accentPurple : Colors.black87,
                               ),
                             ),
@@ -136,7 +136,7 @@ class CustomerDataTable extends StatelessWidget {
                             width: companyWidth,
                             child: Text(
                               customer.companyName,
-                              style: TextStyle(fontSize: rf(context, 12), color: Colors.grey[700]),
+                              style: TextStyle(fontSize: rf(context, 18), color: Colors.grey[700]),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -144,7 +144,7 @@ class CustomerDataTable extends StatelessWidget {
                           Expanded(
                             child: Text(
                               customer.phoneNumber,
-                              style: TextStyle(fontSize: rf(context, 13)),
+                              style: TextStyle(fontSize: rf(context, 19.5)),
                             ),
                           ),
                           // 前回注文経過日
@@ -153,7 +153,7 @@ class CustomerDataTable extends StatelessWidget {
                             child: Text(
                               days == null ? '—' : '$days日',
                               style: TextStyle(
-                                fontSize: rf(context, 13),
+                                fontSize: rf(context, 19.5),
                                 fontWeight: FontWeight.bold,
                                 color: elapsedColor ?? Colors.grey,
                               ),
@@ -214,7 +214,7 @@ class CustomerDataTable extends StatelessWidget {
   TextStyle _headerStyle(BuildContext context) {
     return TextStyle(
       fontWeight: FontWeight.bold,
-      fontSize: rf(context, 13),
+      fontSize: rf(context, 19.5),
       color: Colors.blueGrey[800],
     );
   }

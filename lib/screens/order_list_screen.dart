@@ -142,37 +142,68 @@ class _OrderListScreenState extends State<OrderListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text('受注一覧・工程管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
-        backgroundColor: AppColors.mainBackground,
-        foregroundColor: AppColors.primaryText,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              _loadOrders();
-            },
-          ),
-        ],
-      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SafeArea(bottom: false, child: _buildTopBar()),
           _buildDateTabs(),
           const Divider(height: 1),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildBranchTabs(),
-                      const Divider(height: 1),
-                      Expanded(child: _buildOrderList()),
-                    ],
-                  ),
+                : _buildOrderList(),
           ),
+        ],
+      ),
+    );
+  }
+
+  double _dateTabsViewW = 0;
+
+  void _scrollToDay(DateTime day, {required bool center}) {
+    final c = _dateTabsController;
+    if (c == null || !c.hasClients) return;
+    final itemW = rs(context, 64);
+    final index = _dateOnly(day).difference(_dateTabsStart).inDays;
+    final off = center ? index * itemW - (_dateTabsViewW - itemW) / 2 : index * itemW;
+    c.animateTo(off.clamp(0.0, c.position.maxScrollExtent), duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+  }
+
+  void _changeMonth(int delta) {
+    final first = DateTime(_focusedDay.year, _focusedDay.month + delta, 1);
+    setState(() => _focusedDay = first);
+    _scrollToDay(first, center: false);
+  }
+
+  void _goToday() {
+    final today = _dateOnly(DateTime.now());
+    setState(() {
+      _selectedDay = today;
+      _focusedDay = today;
+    });
+    _filterOrdersByDay(today);
+    _scrollToDay(today, center: true);
+  }
+
+  // 最上部の1行：月変更「<」「>」・店舗タブ・今日・更新
+  Widget _buildTopBar() {
+    return Container(
+      color: AppColors.mainBackground,
+      padding: EdgeInsets.symmetric(horizontal: rav(context, 12), vertical: rs(context, 4)),
+      child: Row(
+        children: [
+          IconButton(icon: const Icon(Icons.chevron_left), tooltip: '前の月', onPressed: () => _changeMonth(-1)),
+          Text('${_focusedDay.year}年${_focusedDay.month}月', style: TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+          IconButton(icon: const Icon(Icons.chevron_right), tooltip: '次の月', onPressed: () => _changeMonth(1)),
+          SizedBox(width: rs(context, 8)),
+          Expanded(child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: _buildBranchTabs())),
+          SizedBox(width: rs(context, 8)),
+          TextButton(
+            style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
+            onPressed: _goToday,
+            child: Text('今日', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
+          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: () => _loadOrders()),
         ],
       ),
     );
@@ -185,6 +216,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
       color: AppColors.mainBackground,
       height: rs(context, 78),
       child: LayoutBuilder(builder: (context, c) {
+        _dateTabsViewW = c.maxWidth;
         final todayIndex = _dateTabsStart.difference(_dateOnly(DateTime.now())).inDays.abs();
         if (!_dateTabsScrolled) {
           _dateTabsScrolled = true;
@@ -204,7 +236,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
             final hasOrder = _allOrders.any((o) => isSameDay(o.deliveryDate, day));
             final wd = day.weekday;
             final baseColor = wd == DateTime.sunday ? Colors.red : (wd == DateTime.saturday ? Colors.blue : AppColors.primaryText);
-            final fg = selected ? AppColors.mainBackground : baseColor;
+            final fg = selected ? AppColors.primaryText : (isToday ? AppColors.mainBackground : baseColor);
             return Padding(
               padding: EdgeInsets.symmetric(horizontal: rs(context, 3)),
               child: InkWell(
@@ -218,7 +250,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.accentOrange : (isToday ? AppColors.accentOrange.withValues(alpha: 0.3) : Colors.transparent),
+                    color: selected ? AppColors.selectButton : (isToday ? AppColors.acceptButton : Colors.transparent),
                     borderRadius: BorderRadius.circular(rs(context, 8)),
                   ),
                   child: Column(
@@ -229,7 +261,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       Text(weeks[wd - 1], style: TextStyle(fontSize: rf(context, 11), color: fg)),
                       SizedBox(
                         height: rs(context, 6),
-                        child: hasOrder ? Icon(Icons.circle, size: rs(context, 5), color: selected ? AppColors.mainBackground : AppColors.accentOrange) : null,
+                        child: hasOrder ? Icon(Icons.circle, size: rs(context, 5), color: (selected || isToday) ? fg : AppColors.accentOrange) : null,
                       ),
                     ],
                   ),
@@ -256,10 +288,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   }
 
   Widget _buildBranchTabs() {
-    return Container(
-      color: AppColors.mainBackground,
-      padding: EdgeInsets.symmetric(horizontal: rav(context, 12), vertical: rs(context, 6)),
-      child: Row(
+    return Row(
         children: _branchTabs.map((tab) {
           final bool selected = _selectedBranch == tab;
           final Color color = _branchTabColor(tab);
@@ -286,7 +315,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
             ),
           );
         }).toList(),
-      ),
     );
   }
 

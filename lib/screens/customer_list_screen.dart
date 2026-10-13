@@ -339,7 +339,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               children: [
                 // 左側: 顧客リスト
                 Expanded(
-                  flex: 6,
+                  flex: 2,
                   child: CustomerDataTable(
                     customers: _filteredCustomers,
                     lastOrderDates: _lastOrderDates,
@@ -354,8 +354,9 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   ),
                 ),
                 // 右側: 詳細サイドバー
-                Container(
-                  width: rs(context, 380),
+                Expanded(
+                  flex: 1,
+                  child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.mainBackground,
                     border: Border(left: BorderSide(color: Colors.grey.shade200)),
@@ -364,6 +365,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   child: _selectedCustomer == null
                       ? const Center(child: Text('顧客を選択してください'))
                       : _buildDetailSidebar(_selectedCustomer!),
+                  ),
                 ),
               ],
             ),

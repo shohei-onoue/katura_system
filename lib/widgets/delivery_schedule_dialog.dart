@@ -1276,6 +1276,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                     ),
                   ),
                 ),
+                if (widget.allowTimePick) ...[
                 SizedBox(width: rs(context, 24)),
                 Expanded(
                   child: SizedBox(
@@ -1306,6 +1307,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                     ),
                   ),
                 ),
+                ],
               ],
             ),
           ],
