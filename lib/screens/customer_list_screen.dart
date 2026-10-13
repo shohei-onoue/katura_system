@@ -37,9 +37,12 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   static final _dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
 
+  /// 顧客ID → 前回の配達日（注文データから求める。orderHistory は書き込まれていないため）
+  Map<String, DateTime> _lastOrderDates = {};
+
   /// 前回注文からの経過日数（履歴なしは null）
   int? _elapsedDays(Customer c) {
-    DateTime? latest;
+    DateTime? latest = _lastOrderDates[c.id];
     for (final h in c.orderHistory) {
       final m = _dateRe.firstMatch(h);
       if (m == null) continue;
@@ -47,7 +50,37 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       if (latest == null || d.isAfter(latest)) latest = d;
     }
     if (latest == null) return null;
-    return DateTime.now().difference(latest).inDays;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day).difference(DateTime(latest.year, latest.month, latest.day)).inDays;
+  }
+
+  /// 各顧客の「今日以前で一番新しい配達日」を注文データから求める。
+  Future<Map<String, DateTime>> _calcLastOrderDates(List<Customer> customers) async {
+    try {
+      final orders = await _orderService.getAllOrders(forceRefresh: true);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      String digits(String s) => s.replaceAll(RegExp(r'[^0-9]'), '');
+      String norm(String s) => s.replaceAll(RegExp(r'\s+'), '');
+      final result = <String, DateTime>{};
+      for (final c in customers) {
+        final p = digits(c.phoneNumber);
+        final n = norm(c.name);
+        DateTime? latest;
+        for (final o in orders) {
+          final same = o.customerId.isNotEmpty ? o.customerId == c.id : (digits(o.phoneNumber) == p && norm(o.customerName) == n);
+          if (!same) continue;
+          final d = DateTime(o.deliveryDate.year, o.deliveryDate.month, o.deliveryDate.day);
+          if (d.isAfter(today)) continue;
+          if (latest == null || d.isAfter(latest)) latest = d;
+        }
+        if (latest != null) result[c.id] = latest;
+      }
+      return result;
+    } catch (e) {
+      debugPrint('lastOrderDates error: $e');
+      return {};
+    }
   }
 
   Customer? _selectedCustomer;
@@ -148,9 +181,11 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
   Future<void> _loadCustomers() async {
     try {
       final data = await _customerService.getAllCustomers();
+      final lastDates = await _calcLastOrderDates(data);
       if (mounted) {
         setState(() {
           _customers = data;
+          _lastOrderDates = lastDates;
           _applyView();
           _isLoading = false;
         });
@@ -307,6 +342,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   flex: 6,
                   child: CustomerDataTable(
                     customers: _filteredCustomers,
+                    lastOrderDates: _lastOrderDates,
                     selectedCustomerId: _selectedCustomer?.id,
                     onSelect: _onCustomerSelect,
                     onShowDetail: _showCustomerDetail,

@@ -758,6 +758,12 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                           todayTextStyle: TextStyle(fontSize: _dayFontSize(context, today: true), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
                         ),
                         selectedDayPredicate: (day) => isSameDay(_tempDate, day),
+                        // ゴミ回収は、お渡し日より前の日付は選べない
+                        enabledDayPredicate: (day) {
+                          final h = widget.highlightDate;
+                          if (!widget.trashMode || h == null) return true;
+                          return !DateTime(day.year, day.month, day.day).isBefore(DateTime(h.year, h.month, h.day));
+                        },
                         onDaySelected: (selectedDay, focusedDay) async {
                           if (widget.pickDayOnly) {
                             Navigator.of(this.context).pop(DateTime(selectedDay.year, selectedDay.month, selectedDay.day));
@@ -797,16 +803,22 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 ),
                           defaultBuilder: (context, day, focusedDay) => _dayMark(context, day),
                           todayBuilder: (context, day, focusedDay) => _dayMark(context, day, today: true),
-                          // 選択中の日が今日のときも、他の日と同じ文字サイズにする
+                          // 選択中の日が今日のとき、またはお渡し日のときは専用に描く（お渡し日は丸枠を残す）
                           selectedBuilder: (context, day, focusedDay) {
-                            if (!isSameDay(day, DateTime.now())) return null;
+                            final isToday = isSameDay(day, DateTime.now());
+                            final isHighlight = widget.highlightDate != null && isSameDay(day, widget.highlightDate);
+                            if (!isToday && !isHighlight) return null;
                             return Container(
                               margin: EdgeInsets.all(rs(context, 6)),
                               alignment: Alignment.center,
-                              decoration: BoxDecoration(color: widget.selectedDayColor ?? widget.themeColor, shape: BoxShape.circle),
+                              decoration: BoxDecoration(
+                                color: widget.selectedDayColor ?? widget.themeColor,
+                                shape: BoxShape.circle,
+                                border: isHighlight ? Border.all(color: AppColors.acceptButton, width: rs(context, 2)) : null,
+                              ),
                               child: Text('${day.day}',
                                   style: TextStyle(
-                                    fontSize: _dayFontSize(context, today: true),
+                                    fontSize: _dayFontSize(context, today: isToday),
                                     fontWeight: FontWeight.bold,
                                     color: widget.selectedDayColor != null ? AppColors.primaryText : AppColors.whiteText,
                                   )),

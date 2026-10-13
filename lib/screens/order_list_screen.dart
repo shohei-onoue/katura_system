@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:table_calendar/table_calendar.dart' show isSameDay;
 import '../models/order_model.dart';
 import '../services/customer_service.dart';
 import '../services/order_service.dart';
@@ -27,8 +27,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
   bool _isLoading = true;
   String? _expandedOrderId; // 展開中の受注（1枚だけ）
   
-  DateTime _focusedDay = DateTime.now();
+  DateTime _focusedDay = _dateOnly(DateTime.now());
   DateTime? _selectedDay;
+  static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+  final DateTime _dateTabsStart = DateTime(2020, 1, 1);
+  final int _dateTabsCount = 365 * 11;
+  bool _dateTabsScrolled = false;
+  ScrollController? _dateTabsController;
   String _selectedBranch = '全店舗';
 
   static const List<String> _branchTabs = ['全店舗', '岡崎店', '名古屋店', '岐阜店'];
@@ -47,6 +52,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   @override
   void dispose() {
     _ordersSub?.cancel();
+    _dateTabsController?.dispose();
     super.dispose();
   }
 
@@ -150,60 +156,11 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         ],
       ),
-      body: Row(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: rs(context, 350),
-            color: AppColors.mainBackground,
-            padding: EdgeInsets.all(rav(context, 16)),
-            child: Column(
-              children: [
-                TableCalendar(
-                  locale: 'ja_JP',
-                  firstDay: DateTime.utc(2020, 1, 1),
-                  lastDay: DateTime.utc(2030, 12, 31),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_selectedDay, day);
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
-                    _filterOrdersByDay(selectedDay);
-                  },
-                  calendarStyle: CalendarStyle(
-                    todayDecoration: BoxDecoration(color: AppColors.accentOrange.withValues(alpha: 0.3), shape: BoxShape.circle),
-                    selectedDecoration: const BoxDecoration(color: AppColors.accentOrange, shape: BoxShape.circle),
-                    defaultTextStyle: TextStyle(fontSize: rf(context, 14)),
-                    weekendTextStyle: TextStyle(fontSize: rf(context, 14), color: Colors.red),
-                  ),
-                  headerStyle: HeaderStyle(
-                    formatButtonVisible: false, 
-                    titleCentered: true,
-                    titleTextStyle: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
-                  ),
-                  calendarBuilders: CalendarBuilders(
-                    markerBuilder: (context, day, events) {
-                      if (_allOrders.any((order) {
-                        return isSameDay(order.deliveryDate, day);
-                      })) {
-                        return Container(
-                          margin: EdgeInsets.all(rav(context, 4.0)),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.5), width: rs(context, 2)),
-                          ),
-                        );
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildDateTabs(),
+          const Divider(height: 1),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -218,6 +175,70 @@ class _OrderListScreenState extends State<OrderListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // 日付の横並びタブ（横スクロール）。今日を最初に選択・中央表示する
+  Widget _buildDateTabs() {
+    final itemW = rs(context, 64);
+    return Container(
+      color: AppColors.mainBackground,
+      height: rs(context, 78),
+      child: LayoutBuilder(builder: (context, c) {
+        final todayIndex = _dateTabsStart.difference(_dateOnly(DateTime.now())).inDays.abs();
+        if (!_dateTabsScrolled) {
+          _dateTabsScrolled = true;
+          _dateTabsController = ScrollController(initialScrollOffset: (todayIndex * itemW - (c.maxWidth - itemW) / 2).clamp(0.0, double.infinity));
+        }
+        const weeks = ['月', '火', '水', '木', '金', '土', '日'];
+        return ListView.builder(
+          controller: _dateTabsController,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: rav(context, 8), vertical: rs(context, 8)),
+          itemCount: _dateTabsCount,
+          itemExtent: itemW,
+          itemBuilder: (context, i) {
+            final day = _dateTabsStart.add(Duration(days: i));
+            final selected = isSameDay(_selectedDay, day);
+            final isToday = isSameDay(day, DateTime.now());
+            final hasOrder = _allOrders.any((o) => isSameDay(o.deliveryDate, day));
+            final wd = day.weekday;
+            final baseColor = wd == DateTime.sunday ? Colors.red : (wd == DateTime.saturday ? Colors.blue : AppColors.primaryText);
+            final fg = selected ? AppColors.mainBackground : baseColor;
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 3)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(rs(context, 8)),
+                onTap: () {
+                  setState(() {
+                    _selectedDay = day;
+                    _focusedDay = day;
+                  });
+                  _filterOrdersByDay(day);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.accentOrange : (isToday ? AppColors.accentOrange.withValues(alpha: 0.3) : Colors.transparent),
+                    borderRadius: BorderRadius.circular(rs(context, 8)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(day.day == 1 || i == 0 ? '${day.month}月' : '', style: TextStyle(fontSize: rf(context, 10), color: fg)),
+                      Text('${day.day}', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: fg)),
+                      Text(weeks[wd - 1], style: TextStyle(fontSize: rf(context, 11), color: fg)),
+                      SizedBox(
+                        height: rs(context, 6),
+                        child: hasOrder ? Icon(Icons.circle, size: rs(context, 5), color: selected ? AppColors.mainBackground : AppColors.accentOrange) : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 

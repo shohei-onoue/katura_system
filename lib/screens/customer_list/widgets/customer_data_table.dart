@@ -7,6 +7,8 @@ import 'package:katura_system/utils/name_format.dart';
 class CustomerDataTable extends StatelessWidget {
   final List<Customer> customers;
   final String? selectedCustomerId;
+  /// 顧客ID → 前回の配達日（注文データから求めたもの）
+  final Map<String, DateTime> lastOrderDates;
   final Function(Customer) onSelect;
   final Function(Customer) onShowDetail;
   final Function(Customer) onEdit;
@@ -21,6 +23,7 @@ class CustomerDataTable extends StatelessWidget {
     super.key,
     required this.customers,
     this.selectedCustomerId,
+    this.lastOrderDates = const {},
     required this.onSelect,
     required this.onShowDetail,
     required this.onEdit,
@@ -33,7 +36,7 @@ class CustomerDataTable extends StatelessWidget {
   static final _dateRe = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})');
 
   int? _elapsedDays(Customer c) {
-    DateTime? latest;
+    DateTime? latest = lastOrderDates[c.id];
     for (final h in c.orderHistory) {
       final m = _dateRe.firstMatch(h);
       if (m == null) continue;
@@ -41,7 +44,8 @@ class CustomerDataTable extends StatelessWidget {
       if (latest == null || d.isAfter(latest)) latest = d;
     }
     if (latest == null) return null;
-    return DateTime.now().difference(latest).inDays;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day).difference(DateTime(latest.year, latest.month, latest.day)).inDays;
   }
 
   Color? _elapsedColor(int? days) {
