@@ -1,4 +1,5 @@
 import 'package:katura_system/utils/history_entry.dart';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../models/customer_model.dart';
@@ -30,7 +31,6 @@ class CustomerDetailDialog extends StatefulWidget {
 class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   late String _name;
   late String _furigana;
-  late String _email;
   late String _phone;
   late String _companyName;
   late String _address;
@@ -38,6 +38,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   late double? _longitude;
   bool _saving = false;
   bool _busy = false; // 配達先の調整（地図・画像保存）中
+  int _selected = 0; // 選択中の配達先履歴
   late List<String> _addresses; // 配達先履歴（調整した分は「保存」で確定）
   String? _svUrl;
   String? _svPath;
@@ -47,7 +48,6 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     super.initState();
     _name = widget.customer.name;
     _furigana = widget.customer.furigana;
-    _email = widget.customer.email;
     _phone = widget.customer.phoneNumber;
     _addresses = List.of(widget.customer.deliveryAddresses);
     _svUrl = widget.customer.streetViewImageUrl;
@@ -178,7 +178,6 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     final updated = widget.customer.copyWith(
       name: _name,
       furigana: _furigana,
-      email: _email,
       phoneNumber: _phone,
       companyName: _companyName,
       address: _address,
@@ -207,9 +206,9 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       child: Stack(
         children: [
           SizedBox(
-        width: rs(context, 760),
+        width: math.min(rs(context, 1180), MediaQuery.of(context).size.width * 0.95),
+        height: math.min(rs(context, 680), MediaQuery.of(context).size.height * 0.92),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             // ヘッダー
             Container(
@@ -227,134 +226,43 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                 ],
               ),
             ),
-            // 詳細情報エリア（白背景）
-            Flexible(
+            // 詳細情報エリア（白背景）：左＝顧客情報／中央＝配達先履歴／右＝地図と写真
+            Expanded(
               child: Container(
                 color: AppColors.mainBackground,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(rs(context, 24)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 顧客名 / 所属企業
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _editableField(context, '顧客名', _name,
-                                onEdit: () => _editText(_name, (t) => _name = t)),
-                          ),
-                          SizedBox(width: rs(context, 24)),
-                          Expanded(
-                            child: _editableField(context, '所属企業', _companyName.isEmpty ? '未設定' : _companyName,
-                                searchMenu: true),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: rs(context, 14)),
-                      // ふりがな / 住所
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _editableField(context, 'ふりがな', _furigana.isEmpty ? '未設定' : _furigana,
+                padding: EdgeInsets.all(rs(context, 20)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 10,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _editableField(context, '顧客名', _name, onEdit: () => _editText(_name, (t) => _name = t)),
+                            SizedBox(height: rs(context, 12)),
+                            _editableField(context, 'ふりがな', _furigana.isEmpty ? '未設定' : _furigana,
                                 onEdit: () => _editText(_furigana, (t) => _furigana = t)),
-                          ),
-                          SizedBox(width: rs(context, 24)),
-                          Expanded(
-                            child: _editableField(context, '住所', _address.isEmpty ? '未設定' : _address,
+                            SizedBox(height: rs(context, 12)),
+                            _editableField(context, '電話番号', _phone.isEmpty ? '未設定' : _phone, onEdit: _editPhone),
+                            SizedBox(height: rs(context, 12)),
+                            _editableField(context, '企業名', _companyName.isEmpty ? '未設定' : _companyName, searchMenu: true),
+                            SizedBox(height: rs(context, 12)),
+                            _editableField(context, '住所', _address.isEmpty ? '未設定' : _address,
                                 onEdit: () => _openFacilitySearch(2)),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: rs(context, 14)),
-                      // 電話番号 / 位置座標
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _editableField(context, '電話番号', _phone.isEmpty ? '未設定' : _phone, onEdit: _editPhone),
-                          ),
-                          SizedBox(width: rs(context, 24)),
-                          Expanded(
-                            child: _editableField(context, '位置座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}',
+                            SizedBox(height: rs(context, 12)),
+                            _editableField(context, '座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}',
                                 onEdit: () => _openFacilitySearch(2)),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      SizedBox(height: rs(context, 14)),
-                      // メールアドレス
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _editableField(context, 'メールアドレス', _email.isEmpty ? '未設定' : _email,
-                                onEdit: () => _editText(_email, (t) => _email = t)),
-                          ),
-                          SizedBox(width: rs(context, 24)),
-                          const Expanded(child: SizedBox()),
-                        ],
-                      ),
-                      Divider(height: rs(context, 40), thickness: 1),
-                      Text('配達先履歴',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18), color: Colors.blueGrey)),
-                      SizedBox(height: rs(context, 16)),
-                      if (_addresses.isEmpty)
-                        const Text('履歴なし', style: TextStyle(color: Colors.grey))
-                      else
-                        ..._addresses.asMap().entries.map((e) {
-                          final rawAddr = e.value;
-                          final addr = normalizeHistoryEntry(rawAddr);
-                          final parts = addr.split(': ');
-                          final facilityName = parts.length > 1 ? parts[0] : '個人宅';
-                          final rest = parts.length > 1 ? parts.sublist(1).join(': ') : addr;
-                          final addressOnly = rest.split(' (')[0];
-                          return Container(
-                            margin: EdgeInsets.only(bottom: rs(context, 12)),
-                            padding: EdgeInsets.all(rs(context, 16)),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(rs(context, 8)),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.business, size: rs(context, 18), color: AppColors.accentOrange),
-                                    SizedBox(width: rs(context, 8)),
-                                    Expanded(
-                                      child: Text(facilityName,
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: rs(context, 6)),
-                                Padding(
-                                  padding: EdgeInsets.only(left: rs(context, 26)),
-                                  child: Text(addressOnly, style: const TextStyle(color: Colors.black87)),
-                                ),
-                              ],
-                            )),
-                                SizedBox(width: rs(context, 12)),
-                                OutlinedButton(
-                                  onPressed: () => _adjustAddress(e.key),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppColors.accentOrange,
-                                    side: const BorderSide(color: AppColors.accentOrange),
-                                  ),
-                                  child: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ],
-                            ),
-                          );
-                        }),
-                    ],
-                  ),
+                    ),
+                    VerticalDivider(width: rs(context, 32), thickness: 1),
+                    Expanded(flex: 11, child: _buildHistoryColumn(context)),
+                    VerticalDivider(width: rs(context, 32), thickness: 1),
+                    Expanded(flex: 11, child: _buildMapAndPhoto(context)),
+                  ],
                 ),
               ),
             ),
@@ -399,6 +307,144 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
             ),
         ],
       ),
+    );
+  }
+
+  /// 履歴1件の施設名・住所・座標・画像URLを取り出す。
+  ({String facility, String address, LatLng? pos, String? img}) _info(String raw) {
+    final entry = normalizeHistoryEntry(raw);
+    final parts = entry.split(': ');
+    final facility = parts.length > 1 ? parts[0] : '個人宅';
+    final address = (parts.length > 1 ? parts.sublist(1).join(': ') : entry)
+        .split(' (')[0]
+        .replaceAll(RegExp(r'\[[^\]]*\]'), '')
+        .trim();
+    final img = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(entry)?.group(1);
+    final m = RegExp(r'[(（]([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)[)）]').allMatches(entry);
+    LatLng? pos;
+    if (m.isNotEmpty) {
+      final la = double.tryParse(m.last.group(1)!);
+      final ln = double.tryParse(m.last.group(2)!);
+      if (la != null && ln != null && !(la == 0 && ln == 0)) pos = LatLng(la, ln);
+    }
+    return (facility: facility, address: address, pos: pos, img: img);
+  }
+
+  /// 中央：配達先履歴（上下にスクロール）。タップで選択すると右側の地図・写真が切り替わる。
+  Widget _buildHistoryColumn(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('配達先履歴',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18), color: Colors.blueGrey)),
+        SizedBox(height: rs(context, 12)),
+        Expanded(
+          child: _addresses.isEmpty
+              ? const Text('履歴なし', style: TextStyle(color: Colors.grey))
+              : ListView.builder(
+                  itemCount: _addresses.length,
+                  itemBuilder: (context, i) {
+                    final info = _info(_addresses[i]);
+                    final selected = i == _selected;
+                    return Container(
+                      margin: EdgeInsets.only(bottom: rs(context, 10)),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.selectButton : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(rs(context, 8)),
+                        border: selected ? null : Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(rs(context, 8)),
+                        onTap: () => setState(() => _selected = i),
+                        child: Padding(
+                          padding: EdgeInsets.all(rs(context, 14)),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.business, size: rs(context, 18), color: AppColors.accentOrange),
+                                        SizedBox(width: rs(context, 8)),
+                                        Expanded(
+                                          child: Text(info.facility,
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: rf(context, 16),
+                                                  color: AppColors.primaryText)),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: rs(context, 6)),
+                                    Padding(
+                                      padding: EdgeInsets.only(left: rs(context, 26)),
+                                      child: Text(info.address, style: const TextStyle(color: Colors.black87)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: rs(context, 8)),
+                              OutlinedButton(
+                                onPressed: () => _adjustAddress(i),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.accentOrange,
+                                  side: const BorderSide(color: AppColors.accentOrange),
+                                ),
+                                child: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  /// 右：選択中の配達先履歴の地図（上）と撮影した写真（下）。
+  Widget _buildMapAndPhoto(BuildContext context) {
+    final info = (_addresses.isEmpty || _selected >= _addresses.length) ? null : _info(_addresses[_selected]);
+    final pos = info?.pos;
+    final img = info?.img;
+    Widget placeholder(String text) => Center(child: Text(text, style: const TextStyle(color: Colors.grey)));
+    return Column(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+            child: Container(
+              color: Colors.grey.shade100,
+              child: pos == null
+                  ? placeholder('地図を表示できる座標がありません')
+                  : GoogleMap(
+                      key: ValueKey('${pos.latitude},${pos.longitude}'),
+                      initialCameraPosition: CameraPosition(target: pos, zoom: 16),
+                      markers: {Marker(markerId: const MarkerId('dest'), position: pos)},
+                      myLocationButtonEnabled: false,
+                      mapToolbarEnabled: false,
+                    ),
+            ),
+          ),
+        ),
+        SizedBox(height: rs(context, 12)),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(rs(context, 8)),
+            child: Container(
+              width: double.infinity,
+              color: Colors.grey.shade100,
+              child: img == null
+                  ? placeholder('撮影した写真がありません')
+                  : Image.network(img, fit: BoxFit.cover, errorBuilder: (c, e, st) => placeholder('写真を読み込めません')),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
