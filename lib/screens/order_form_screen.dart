@@ -681,10 +681,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     // 関連する注文は過去1週間まで遡る（それ以前は除外）
     final now = DateTime.now();
     final oldest = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
+    final today = DateTime(now.year, now.month, now.day);
     return all.where((o) {
       if (o.id == widget.initialOrder?.id) return false;
+      // 同じお客様がすでに注文済みの日（今日以降の有効な受注）は重複として警告する
+      final sameCustomer = (o.customerId.isNotEmpty && o.customerId == customer.id) ||
+          (digits(o.phoneNumber) == phone && norm(o.customerName) == name);
+      if (sameCustomer) return OrderService.isActive(o) && !o.deliveryDate.isBefore(today);
       if (o.deliveryDate.isBefore(oldest)) return false;
-      if (digits(o.phoneNumber) == phone && norm(o.customerName) == name) return false;
       final sameCompany = company.isNotEmpty && norm(o.facilityName) == company;
       final sameDest = (destName.isNotEmpty && norm(o.facilityName) == destName) ||
           (destAddr.isNotEmpty && norm(o.address) == destAddr);
@@ -701,8 +705,13 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     final destName = norm(_selectedFacilityName);
     final destAddr = norm(_selectedFacilityAddress);
     final map = <String, String>{};
+    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
     for (final o in related) {
       final r = <String>[];
+      if ((o.customerId.isNotEmpty && o.customerId == customer.id) ||
+          (digits(o.phoneNumber) == digits(customer.phoneNumber) && norm(o.customerName) == norm(customer.name))) {
+        r.add('同じお客様がこの日に注文済み');
+      }
       if (company.isNotEmpty && norm(o.facilityName) == company) r.add('同じ会社名（${o.facilityName}）');
       if (destName.isNotEmpty && norm(o.facilityName) == destName) r.add('同じ届け先名（${o.facilityName}）');
       if (destAddr.isNotEmpty && norm(o.address) == destAddr) r.add('同じ住所（${o.address}）');

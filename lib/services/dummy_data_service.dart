@@ -111,6 +111,18 @@ class DummyDataService {
     final menus = await _loadMenus();
     await _resolveCompanyCoords();
     final customers = _buildCustomers(rnd);
+    // 配達先履歴：自社（所属先）に加え、0〜2件の別の配達先（他の寺院）を持たせる
+    final dests = <String, List<_Dest>>{};
+    for (final c in customers) {
+      final list = <_Dest>[_Dest(c.companyName, c.address, c.latitude, c.longitude)];
+      for (var k = rnd.nextInt(3); k > 0; k--) {
+        final co = _companies[rnd.nextInt(_companies.length)];
+        if (list.any((d) => d.address == co.address)) continue;
+        final xy = _coords[co.address];
+        list.add(_Dest(co.name, co.address, xy?.$1 ?? co.lat, xy?.$2 ?? co.lng));
+      }
+      dests[c.id] = list;
+    }
 
     // 1年以上注文のない顧客をランダムに選ぶ
     final idx = List.generate(customers.length, (i) => i)..shuffle(rnd);
@@ -123,7 +135,7 @@ class DummyDataService {
       final id = 'dummy_o${(++seq).toString().padLeft(4, '0')}';
       (history[c.id] ??= []).add(id);
       final lines = _pickItems(rnd, menus);
-      final facility = c.companyName;
+      final dest = dests[c.id]![rnd.nextInt(dests[c.id]!.length)];
       final reception = future
           ? baseDate.subtract(Duration(days: rnd.nextInt(8)))
           : delivery.subtract(Duration(days: 1 + rnd.nextInt(10)));
@@ -133,20 +145,20 @@ class DummyDataService {
         customerName: c.name,
         customerId: c.id,
         receiverName: c.name,
-        facilityName: facility,
-        address: c.address,
+        facilityName: dest.facility,
+        address: dest.address,
         phoneNumber: c.phoneNumber,
         receptionDate: reception,
         deliveryDate: delivery,
         deliveryTime: '${delivery.hour}:${delivery.minute.toString().padLeft(2, '0')}',
-        deliveryType: rnd.nextInt(10) == 0 ? '引取' : '配達',
+        deliveryType: rnd.nextInt(10) == 0 ? '引取' : '配送',
         items: lines,
         totalCount: lines.fold(0, (s, i) => s + (i['quantity'] as int)),
         orderSource: _orderSources[rnd.nextInt(_orderSources.length)],
         teaOption: rnd.nextBool() ? '込み' : '別',
         status: future ? '受注済み' : (isCancel ? 'キャンセル済み' : '配送済み'),
-        latitude: c.latitude,
-        longitude: c.longitude,
+        latitude: dest.lat,
+        longitude: dest.lng,
         vehicleNumber: 1 + rnd.nextInt(4),
       );
     }
@@ -177,7 +189,17 @@ class DummyDataService {
       orders.add(make(c, at(rnd.nextInt(14)), future: true));
     }
 
-    final saved = customers.map((c) => c.copyWith(orderHistory: history[c.id] ?? const [])).toList();
+    final saved = customers
+        .map((c) => c.copyWith(
+              orderHistory: history[c.id] ?? const [],
+              deliveryAddresses: [
+                for (final d in dests[c.id]!) '${d.facility}: ${d.address} (${d.lat}, ${d.lng})',
+              ],
+              facilityReceivers: {
+                for (final d in dests[c.id]!) d.facility: [c.name],
+              },
+            ))
+        .toList();
     await _customerService.saveAllCustomers(saved);
     await _orderService.saveAllOrders(orders);
     return (customers: saved.length, orders: orders.length - _reservationCount, reservations: _reservationCount);
@@ -289,4 +311,13 @@ class _Company {
   final double lat;
   final double lng;
   const _Company(this.name, this.address, this.lat, this.lng);
+}
+
+/// 配達先（施設名・住所・座標）
+class _Dest {
+  final String facility;
+  final String address;
+  final double? lat;
+  final double? lng;
+  const _Dest(this.facility, this.address, this.lat, this.lng);
 }
