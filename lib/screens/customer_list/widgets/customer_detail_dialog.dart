@@ -1,7 +1,10 @@
 import 'package:katura_system/utils/history_entry.dart';
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
+import '../../../services/street_view_image_service.dart';
+import '../../../widgets/k_location_adjustment_dialog.dart';
 import '../../../widgets/k_responsive.dart';
 import '../../../widgets/k_pen_input_dialog.dart';
 import '../../../widgets/k_numeric_input_dialog.dart';
@@ -34,6 +37,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   late double? _latitude;
   late double? _longitude;
   bool _saving = false;
+  bool _busy = false; // 配達先の調整（地図・画像保存）中
+  late List<String> _addresses; // 配達先履歴（調整した分は「保存」で確定）
+  String? _svUrl;
+  String? _svPath;
 
   @override
   void initState() {
@@ -42,6 +49,9 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     _furigana = widget.customer.furigana;
     _email = widget.customer.email;
     _phone = widget.customer.phoneNumber;
+    _addresses = List.of(widget.customer.deliveryAddresses);
+    _svUrl = widget.customer.streetViewImageUrl;
+    _svPath = widget.customer.streetViewImagePath;
     _companyName = widget.customer.companyName;
     _address = widget.customer.address;
     _latitude = widget.customer.latitude;
@@ -102,6 +112,67 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     });
   }
 
+  /// 配達先履歴の1件を、Googleマップ（ストリートビュー）で位置調整・画像撮影して更新する。
+  Future<void> _adjustAddress(int index) async {
+    final entry = normalizeHistoryEntry(_addresses[index]);
+    final parts = entry.split(': ');
+    final facility = parts.length > 1 ? parts[0] : '個人宅';
+    final address = (parts.length > 1 ? parts.sublist(1).join(': ') : entry)
+        .split(' (')[0]
+        .replaceAll(RegExp(r'\[[^\]]*\]'), '')
+        .trim();
+    final remarks = RegExp(r'\[RMK:([^\]]*)\]').firstMatch(entry)?.group(1);
+    final oldImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(entry)?.group(1);
+    final m = RegExp(r'[(（]([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)[)）]').allMatches(entry);
+    LatLng? pos;
+    if (m.isNotEmpty) {
+      final la = double.tryParse(m.last.group(1)!);
+      final ln = double.tryParse(m.last.group(2)!);
+      if (la != null && ln != null && !(la == 0 && ln == 0)) pos = LatLng(la, ln);
+    }
+    final maps = widget.customerService.getGoogleMapsService();
+    if (pos == null) {
+      setState(() => _busy = true);
+      final geo = await maps.getLatLngFromAddress(address);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      if (geo != null) pos = LatLng(geo['lat'] as double, geo['lng'] as double);
+    }
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => KLocationAdjustmentDialog(
+        initialPosition: pos ?? const LatLng(34.9546, 137.1744),
+        initialAddress: '$facility $address'.trim(),
+        getAddressFromLatLng: (p) => maps.getAddressFromLatLng(p),
+      ),
+    );
+    if (result == null || !mounted) return;
+    final newPos = result['position'] as LatLng;
+    final imageUrl = result['staticImageUrl'] as String;
+    setState(() => _busy = true);
+    String? img = oldImg;
+    try {
+      final svc = StreetViewImageService();
+      final bytes = await svc.downloadBytes(imageUrl);
+      if (bytes != null) {
+        final up = await svc.uploadHistoryImage(widget.customer.id, bytes);
+        img = up.url;
+        _svUrl = up.url;
+        _svPath = up.path;
+      }
+    } catch (e) {
+      debugPrint('Street View history save error: $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _addresses[index] = '$facility: $address (${newPos.latitude}, ${newPos.longitude})'
+          '${img != null ? ' [IMG:$img]' : ''}'
+          '${(remarks ?? '').isNotEmpty ? ' [RMK:$remarks]' : ''}';
+      _busy = false;
+    });
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     final updated = widget.customer.copyWith(
@@ -113,6 +184,9 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       address: _address,
       latitude: _latitude,
       longitude: _longitude,
+      deliveryAddresses: _addresses,
+      streetViewImageUrl: _svUrl,
+      streetViewImagePath: _svPath,
     );
     try {
       await widget.customerService.updateCustomer(updated);
@@ -130,7 +204,9 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     return Dialog(
       backgroundColor: AppColors.popupBackground,
       clipBehavior: Clip.antiAlias,
-      child: SizedBox(
+      child: Stack(
+        children: [
+          SizedBox(
         width: rs(context, 760),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -223,10 +299,11 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                       Text('配達先履歴',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18), color: Colors.blueGrey)),
                       SizedBox(height: rs(context, 16)),
-                      if (widget.customer.deliveryAddresses.isEmpty)
+                      if (_addresses.isEmpty)
                         const Text('履歴なし', style: TextStyle(color: Colors.grey))
                       else
-                        ...widget.customer.deliveryAddresses.map((rawAddr) {
+                        ..._addresses.asMap().entries.map((e) {
+                          final rawAddr = e.value;
                           final addr = normalizeHistoryEntry(rawAddr);
                           final parts = addr.split(': ');
                           final facilityName = parts.length > 1 ? parts[0] : '個人宅';
@@ -240,7 +317,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                               borderRadius: BorderRadius.circular(rs(context, 8)),
                               border: Border.all(color: Colors.grey.shade200),
                             ),
-                            child: Column(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
@@ -257,6 +337,17 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                                 Padding(
                                   padding: EdgeInsets.only(left: rs(context, 26)),
                                   child: Text(addressOnly, style: const TextStyle(color: Colors.black87)),
+                                ),
+                              ],
+                            )),
+                                SizedBox(width: rs(context, 12)),
+                                OutlinedButton(
+                                  onPressed: () => _adjustAddress(e.key),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.accentOrange,
+                                    side: const BorderSide(color: AppColors.accentOrange),
+                                  ),
+                                  child: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
@@ -296,6 +387,18 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
           ],
         ),
       ),
+          // 読み込み中は灰色にしてクルクルを出し、操作を受け付けない
+          if (_busy)
+            const Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: Color(0x80000000),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -308,10 +411,11 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        _fieldLabel(context, label),
         Row(
           children: [
-            _fieldLabel(context, label),
-            const Spacer(),
+            Expanded(child: _readonlyValue(context, value)),
+            SizedBox(width: rs(context, 4)),
             if (searchMenu)
               PopupMenuButton<int>(
                 icon: pencil,
@@ -327,11 +431,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
             else
               InkWell(
                 onTap: onEdit,
-                child: Padding(padding: EdgeInsets.all(rs(context, 4)), child: pencil),
+                child: Padding(padding: EdgeInsets.all(rs(context, 6)), child: pencil),
               ),
           ],
         ),
-        _readonlyValue(context, value),
       ],
     );
   }

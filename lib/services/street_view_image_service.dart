@@ -26,6 +26,14 @@ class StreetViewImageService {
     return (url: await ref.getDownloadURL(), path: path);
   }
 
+  /// 配達先履歴の1件ごとの画像をStorageへ保存してURLとパスを返す（顧客単位の画像を上書きしない）
+  Future<({String url, String path})> uploadHistoryImage(String customerId, Uint8List bytes) async {
+    final path = 'delivery_destinations/${customerId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ref = FirebaseStorage.instance.ref().child(path);
+    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+    return (url: await ref.getDownloadURL(), path: path);
+  }
+
   /// 画像URLからバイト列を取得（失敗時null）
   Future<Uint8List?> downloadBytes(String imageUrl) async {
     try {

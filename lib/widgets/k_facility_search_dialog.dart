@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../services/customer_service.dart';
 import 'k_responsive.dart';
@@ -133,7 +134,7 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
       backgroundColor: AppColors.popupBackground,
       child: SizedBox(
         width: rs(context, 560),
-        height: rs(context, 640),
+        height: math.min(rs(context, 720), MediaQuery.of(context).size.height * 0.95),
         child: Column(
           children: [
             Container(
@@ -160,8 +161,9 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
                 Tab(text: '住所'),
               ],
             ),
-            Expanded(
-              flex: 5,
+            // 入力欄はスクロールなしで全部見える高さにし、検索ボタンはその下へ置く（検索結果だけスクロール）
+            SizedBox(
+              height: rs(context, const [310.0, 200.0, 120.0][_tab.index]),
               child: Padding(
                 padding: EdgeInsets.all(rs(context, 16)),
                 child: TabBarView(
@@ -190,7 +192,6 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
               ),
             ),
             Expanded(
-              flex: 6,
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _results.isEmpty
