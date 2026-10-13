@@ -1742,6 +1742,28 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 読み込み中は画面をグレーアウトし、中央にクルクルを出して操作を受け付けない
+    return Stack(
+      children: [
+        _buildScaffold(context),
+        ValueListenableBuilder<bool>(
+          valueListenable: _isLoadingNotifier,
+          builder: (context, loading, _) => loading
+              ? const Positioned.fill(
+                  child: AbsorbPointer(
+                    child: ColoredBox(
+                      color: Color(0x80000000),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 900;
 
