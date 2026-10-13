@@ -535,8 +535,8 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
         ButtonStyle btn(Color c) => ElevatedButton.styleFrom(
           backgroundColor: c,
           foregroundColor: Colors.white,
-          fixedSize: Size(rs(context, 200), rs(context, 56)),
-          textStyle: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
+          fixedSize: Size(rs(context, 140), rs(context, 48)),
+          textStyle: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold),
         );
         return AlertDialog(
           insetPadding: EdgeInsets.symmetric(horizontal: rs(context, 24), vertical: rs(context, 24)),
@@ -549,7 +549,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
           ),
           title: Text('${lane + 1}号車のルートを表示しますか？', textAlign: TextAlign.center),
           titleTextStyle: TextStyle(
-            fontSize: rf(context, 36),
+            fontSize: rf(context, 20),
             fontWeight: FontWeight.bold,
             color: AppColors.primaryText,
           ),

@@ -110,12 +110,21 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
       ? null
       : _branches.firstWhere((b) => b.name == _branchName);
 
+  bool _opening = false; // 「ルート確認」の読み込み中（連打防止＋クルクル表示）
+
   Future<void> _openSchedule(DateTime day) async {
+    if (_opening) return;
+    setState(() => _opening = true);
     final branch = _selectedBranch;
-    final reservations = await _reservationService.listByDate(_branchName, day);
+    List<ReservationSlot> reservations = const [];
+    try {
+      reservations = await _reservationService.listByDate(_branchName, day);
+    } catch (e) {
+      debugPrint('reservation load error: $e'); // 取得できなくても画面は開く
+    }
     if (!mounted) return;
     // ダイアログではなく画面として表示する（配達日時ダイアログと同じ内容）
-    await Navigator.of(context).push<DeliverySlot>(
+    final pushed = Navigator.of(context).push<DeliverySlot>(
       MaterialPageRoute(
         builder: (_) => DeliveryScheduleDialog(
           asPage: true,
@@ -134,6 +143,8 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         ),
       ),
     );
+    setState(() => _opening = false); // 画面が開いたらクルクルを消す
+    await pushed;
     // ここでは閲覧のみ（この画面から受注を作らないため、決定結果は使わない）。
   }
 
@@ -141,6 +152,24 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
+    return Stack(
+      children: [
+        _buildMain(context),
+        // 読み込み中は画面をグレーアウトし、中央にクルクルを出して操作を受け付けない
+        if (_opening)
+          const Positioned.fill(
+            child: AbsorbPointer(
+              child: ColoredBox(
+                color: Color(0x80000000),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMain(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
       body: Padding(
@@ -209,7 +238,9 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         borderRadius: BorderRadius.circular(rs(context, 12)),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: TableCalendar(
+      child: Column(
+        children: [
+          Expanded(child: TableCalendar(
         firstDay: DateTime.now().subtract(const Duration(days: 30)),
         lastDay: DateTime.now().add(const Duration(days: 365)),
         focusedDay: _focusedDay,
@@ -217,8 +248,8 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         locale: 'ja_JP',
         headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
         calendarStyle: CalendarStyle(
-          selectedDecoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-          selectedTextStyle: const TextStyle(color: AppColors.whiteText, fontWeight: FontWeight.bold),
+          selectedDecoration: const BoxDecoration(color: AppColors.selectButton, shape: BoxShape.circle),
+          selectedTextStyle: const TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold),
           todayDecoration: BoxDecoration(
             color: Colors.transparent,
             shape: BoxShape.circle,
@@ -254,7 +285,40 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
             );
           },
         ),
+      )),
+          SizedBox(height: rs(context, 8)),
+          // カレンダーのマークの意味
+          Wrap(
+            spacing: rs(context, 16),
+            runSpacing: rs(context, 4),
+            children: [
+              _legendItem(context, '配送予定あり', border: AppColors.accentOrange),
+              _legendItem(context, '今日', border: AppColors.primary),
+              _legendItem(context, '選択中', fill: AppColors.selectButton),
+            ],
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _legendItem(BuildContext context, String label, {Color? border, Color? fill}) {
+    final size = rs(context, 14);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: fill,
+            border: border != null ? Border.all(color: border, width: rs(context, 1.5)) : null,
+          ),
+        ),
+        SizedBox(width: rs(context, 6)),
+        Text(label, style: TextStyle(fontSize: rf(context, 12))),
+      ],
     );
   }
 

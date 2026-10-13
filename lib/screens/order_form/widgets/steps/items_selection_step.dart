@@ -113,6 +113,8 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
             child: Row(
               children: categories.map((cat) {
                 final isSelected = selectedCategory == cat;
+                // 前回注文のメニューがこのタブ内にあれば、オレンジの枠で囲む
+                final hasLastOrdered = widget.menus.any((m) => m.category == cat && widget.lastOrderMenuIds.contains(m.id));
                 return Padding(
                   padding: EdgeInsets.only(right: rs(context, 8)),
                   child: ChoiceChip(
@@ -127,6 +129,9 @@ class _ItemsSelectionStepState extends State<ItemsSelectionStep> {
                       fontSize: rf(context, 13),
                     ),
                     showCheckmark: false,
+                    side: hasLastOrdered
+                        ? BorderSide(color: AppColors.accentOrange, width: rs(context, 2))
+                        : null,
                   ),
                 );
               }).toList(),
