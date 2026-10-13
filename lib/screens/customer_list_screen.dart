@@ -5,6 +5,7 @@ import '../models/menu_model.dart';
 import '../services/customer_service.dart';
 import '../services/order_service.dart';
 import '../services/menu_service.dart';
+import '../services/dummy_data_service.dart';
 import 'customer_list/widgets/customer_detail_dialog.dart';
 import 'customer_list/widgets/customer_edit_dialog.dart';
 import 'customer_list/widgets/customer_data_table.dart';
@@ -281,6 +282,67 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
+  /// 確認ダイアログを出し、OKなら処理中表示つきで [job] を実行して一覧を読み直す。
+  Future<void> _runBulk({
+    required String title,
+    required String message,
+    required String okLabel,
+    required Color okColor,
+    required Future<String> Function() job,
+  }) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.popupBackground,
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('キャンセル')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: okColor, foregroundColor: AppColors.mainBackground),
+            child: Text(okLabel),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _isLoading = true);
+    String result;
+    try {
+      result = await job();
+    } catch (e) {
+      result = '失敗しました: $e';
+    }
+    if (!mounted) return;
+    _selectedCustomer = null;
+    await _loadCustomers();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+  }
+
+  void _generateDummy() => _runBulk(
+        title: 'ダミーデータの生成',
+        message: '顧客100名と、過去1年の注文・2週間分の受注予約を作成します。\n同じIDのダミーは上書きされます。',
+        okLabel: '生成する',
+        okColor: AppColors.accentPurple,
+        job: () async {
+          final r = await DummyDataService().generate();
+          return 'ダミーデータを生成しました（顧客${r.customers}名・注文${r.orders}件・受注予約${r.reservations}件）';
+        },
+      );
+
+  void _deleteAllData() => _runBulk(
+        title: '全データの一括削除',
+        message: '顧客データと受注データを「すべて」削除します。\nダミーかどうかは区別せず、元に戻せません。',
+        okLabel: 'すべて削除する',
+        okColor: Colors.red,
+        job: () async {
+          await DummyDataService().deleteAll();
+          return '顧客と受注のデータをすべて削除しました';
+        },
+      );
+
   @override
   Widget build(BuildContext context) {
     final bool hasQuery = _searchController.text.isNotEmpty;
@@ -291,6 +353,16 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome),
+            tooltip: 'ダミーデータを生成',
+            onPressed: _generateDummy,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_forever, color: Colors.red),
+            tooltip: '全データを一括削除',
+            onPressed: _deleteAllData,
+          ),
           if (hasQuery)
             InkWell(
               onTap: _openSearchDialog,

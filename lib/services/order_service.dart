@@ -139,6 +139,43 @@ class OrderService {
     }
   }
 
+  /// 受注をまとめて保存する（ダミーデータ生成用）。
+  Future<void> saveAllOrders(List<OrderModel> orders) async {
+    final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database');
+    for (var i = 0; i < orders.length; i += 400) {
+      final batch = db.batch();
+      for (final o in orders.skip(i).take(400)) {
+        batch.set(_orderCollection.doc(o.id), o.toMap());
+      }
+      await batch.commit();
+    }
+    _cache = null;
+    await _initLocalDb();
+    _localDb!.execute('BEGIN TRANSACTION');
+    final stmt = _localDb!.prepare('INSERT OR REPLACE INTO orders (id, data, deliveryDate, updatedAt) VALUES (?, ?, ?, ?)');
+    for (final o in orders) {
+      stmt.execute([o.id, jsonEncode(o.toMap()), o.deliveryDate.toIso8601String(), DateTime.now().millisecondsSinceEpoch]);
+    }
+    stmt.close();
+    _localDb!.execute('COMMIT');
+  }
+
+  /// 受注を全件削除する（Firestore＋端末内キャッシュ）。
+  Future<void> deleteAllOrders() async {
+    final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database');
+    final snap = await _orderCollection.get();
+    for (var i = 0; i < snap.docs.length; i += 400) {
+      final batch = db.batch();
+      for (final d in snap.docs.skip(i).take(400)) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+    _cache = null;
+    await _initLocalDb();
+    _localDb!.execute('DELETE FROM orders');
+  }
+
   Future<void> deleteOrder(String orderId) async {
     await _orderCollection.doc(orderId).delete();
     _cache = null;

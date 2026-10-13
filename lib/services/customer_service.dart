@@ -177,6 +177,37 @@ class CustomerService {
     return finalCustomer;
   }
 
+  /// 顧客をまとめて保存する（ダミーデータ生成用）。
+  Future<void> saveAllCustomers(List<Customer> customers) async {
+    final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database');
+    for (var i = 0; i < customers.length; i += 400) {
+      final batch = db.batch();
+      for (final c in customers.skip(i).take(400)) {
+        batch.set(_customerCollection.doc(c.id), c.toMap());
+      }
+      await batch.commit();
+    }
+    await _initLocalDb();
+    _syncToLocalDb(customers);
+    clearCustomerNameCache();
+  }
+
+  /// 顧客データを全件削除する（Firestore＋端末内キャッシュ）。
+  Future<void> deleteAllCustomers() async {
+    final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database');
+    final snap = await _customerCollection.get();
+    for (var i = 0; i < snap.docs.length; i += 400) {
+      final batch = db.batch();
+      for (final d in snap.docs.skip(i).take(400)) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    }
+    await _initLocalDb();
+    _localDb!.execute('DELETE FROM customers');
+    clearCustomerNameCache();
+  }
+
   Future<void> deleteCustomer(String id) async {
     await _customerCollection.doc(id).delete();
     await _initLocalDb();
