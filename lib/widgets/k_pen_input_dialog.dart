@@ -5,7 +5,7 @@ import 'k_button.dart';
 import 'k_pen_canvas.dart';
 import '../services/ink_recognition_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
-import 'package:katura_system/utils/platform_utils.dart';
+import '../services/settings_service.dart';
 
 /// 手書き入力ダイアログ。タブレットは手書き（AI判定）、PC（Web/デスクトップ）はキーボード直接入力に切り替える。
 class KPenInputDialog extends StatelessWidget {
@@ -20,7 +20,7 @@ class KPenInputDialog extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => useOnScreenKeyboard
+  Widget build(BuildContext context) => SettingsService.inputMode.value == KInputMode.pen
       ? _PenInputBody(onTextRecognized: onTextRecognized, initialText: initialText)
       : _KeyboardInputDialog(onTextRecognized: onTextRecognized, initialText: initialText);
 }
