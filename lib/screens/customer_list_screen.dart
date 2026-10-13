@@ -7,7 +7,6 @@ import '../services/order_service.dart';
 import '../services/menu_service.dart';
 import '../services/dummy_data_service.dart';
 import 'customer_list/widgets/customer_detail_dialog.dart';
-import 'customer_list/widgets/customer_edit_dialog.dart';
 import 'customer_list/widgets/customer_data_table.dart';
 import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
@@ -244,17 +243,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     );
   }
 
-  void _showEditCustomerDialog(Customer customer) {
-    showDialog(
-      context: context,
-      builder: (context) => CustomerEditDialog(
-        customer: customer,
-        customerService: _customerService,
-        onSaved: _loadCustomers,
-      ),
-    );
-  }
-
   void _showDeleteConfirmDialog(Customer customer) {
     showDialog(
       context: context,
@@ -418,7 +406,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                     selectedCustomerId: _selectedCustomer?.id,
                     onSelect: _onCustomerSelect,
                     onShowDetail: _showCustomerDetail,
-                    onEdit: _showEditCustomerDialog,
                     onDelete: _showDeleteConfirmDialog,
                     sortKey: _sortKey,
                     sortAscending: _sortAscending,

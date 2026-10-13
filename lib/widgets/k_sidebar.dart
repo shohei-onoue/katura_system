@@ -219,14 +219,14 @@ class _KSidebarState extends State<KSidebar> {
       context,
       isSelected: isSelected,
       onTap: () => widget.onDestinationSelected(index),
-      icon: Icon(icon, color: AppColors.whiteText, size: rs(context, 25)),
+      icon: Icon(icon, color: AppColors.whiteText, size: rs(context, 17.5)),
       label: Text(
         label,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontWeight: FontWeight.bold,
-          fontSize: rf(context, 17.5),
+          fontSize: rf(context, 12.25),
           height: 1.2,
           color: AppColors.whiteText,
         ),
@@ -257,14 +257,14 @@ class _KSidebarState extends State<KSidebar> {
           child: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: widget.collapsed ? 0 : rs(context, 12),
-              vertical: rs(context, 10),
+              vertical: rs(context, 7),
             ),
             child: widget.collapsed
                 ? Center(child: icon)
                 : Row(
                     children: [
                       icon,
-                      SizedBox(width: rs(context, 12)),
+                      SizedBox(width: rs(context, 8.4)),
                       Expanded(child: label),
                     ],
                   ),

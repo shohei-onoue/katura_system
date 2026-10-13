@@ -11,7 +11,6 @@ class CustomerDataTable extends StatelessWidget {
   final Map<String, DateTime> lastOrderDates;
   final Function(Customer) onSelect;
   final Function(Customer) onShowDetail;
-  final Function(Customer) onEdit;
   final Function(Customer) onDelete;
 
   /// 並び替えキー: 'name' | 'company' | 'elapsed' | null
@@ -26,7 +25,6 @@ class CustomerDataTable extends StatelessWidget {
     this.lastOrderDates = const {},
     required this.onSelect,
     required this.onShowDetail,
-    required this.onEdit,
     required this.onDelete,
     this.sortKey,
     this.sortAscending = true,
@@ -60,7 +58,6 @@ class CustomerDataTable extends StatelessWidget {
   Widget build(BuildContext context) {
     // 列幅の定義 (レスポンスシブ)
     final double nameWidth = rs(context, 180);
-    final double companyWidth = rs(context, 270);
     final double elapsedWidth = rs(context, 144);
     final double actionWidth = rs(context, 50);
 
@@ -85,8 +82,7 @@ class CustomerDataTable extends StatelessWidget {
               child: Row(
                 children: [
                   SizedBox(width: nameWidth, child: _sortableHeader(context, '氏名', 'name')),
-                  SizedBox(width: companyWidth, child: _sortableHeader(context, '企業名', 'company')),
-                  Expanded(child: Text('電話番号', style: _headerStyle(context))),
+                  Expanded(child: _sortableHeader(context, '企業名', 'company')),
                   SizedBox(
                     width: elapsedWidth,
                     child: _sortableHeader(context, '前回経過日', 'elapsed'),
@@ -132,19 +128,11 @@ class CustomerDataTable extends StatelessWidget {
                             ),
                           ),
                           // 企業名
-                          SizedBox(
-                            width: companyWidth,
+                          Expanded(
                             child: Text(
                               customer.companyName,
                               style: TextStyle(fontSize: rf(context, 18), color: Colors.grey[700]),
                               overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          // 電話番号
-                          Expanded(
-                            child: Text(
-                              customer.phoneNumber,
-                              style: TextStyle(fontSize: rf(context, 19.5)),
                             ),
                           ),
                           // 前回注文経過日
@@ -169,12 +157,10 @@ class CustomerDataTable extends StatelessWidget {
                                 constraints: const BoxConstraints(),
                                 onSelected: (value) {
                                   if (value == 'detail') onShowDetail(customer);
-                                  if (value == 'edit') onEdit(customer);
                                   if (value == 'delete') onDelete(customer);
                                 },
                                 itemBuilder: (context) => [
                                   _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', AppColors.accentOrange),
-                                  _buildPopupItem(context, 'edit', Icons.edit, '編集', Colors.blue),
                                   _buildPopupItem(context, 'delete', Icons.delete_outline, '削除', Colors.red),
                                 ],
                               ),

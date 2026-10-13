@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../models/customer_model.dart';
 import '../../../services/customer_service.dart';
 import '../../../widgets/k_responsive.dart';
-import '../../../widgets/k_multimodal_text_field.dart';
+import '../../../widgets/k_pen_input_dialog.dart';
+import '../../../widgets/k_numeric_input_dialog.dart';
 import '../../../widgets/k_facility_search_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
@@ -24,8 +25,10 @@ class CustomerDetailDialog extends StatefulWidget {
 }
 
 class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
-  late final TextEditingController _nameController;
-  late final TextEditingController _furiganaController;
+  late String _name;
+  late String _furigana;
+  late String _email;
+  late String _phone;
   late String _companyName;
   late String _address;
   late double? _latitude;
@@ -35,19 +38,57 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.customer.name);
-    _furiganaController = TextEditingController(text: widget.customer.furigana);
+    _name = widget.customer.name;
+    _furigana = widget.customer.furigana;
+    _email = widget.customer.email;
+    _phone = widget.customer.phoneNumber;
     _companyName = widget.customer.companyName;
     _address = widget.customer.address;
     _latitude = widget.customer.latitude;
     _longitude = widget.customer.longitude;
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _furiganaController.dispose();
-    super.dispose();
+  /// 文字の項目（顧客名・ふりがな・メール）を、手書き（またはキーボード）入力ダイアログで編集する。
+  void _editText(String current, ValueChanged<String> apply) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => KPenInputDialog(
+        initialText: current,
+        onTextRecognized: (t) => setState(() => apply(t.trim())),
+      ),
+    );
+  }
+
+  void _editPhone() {
+    showDialog(
+      context: context,
+      builder: (_) => KNumericInputDialog(
+        title: '電話番号の入力',
+        initialValue: _phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        emptyHint: '番号を入力してください',
+        maxLength: 11,
+        onConfirmed: (v) => setState(() => _phone = _formatPhone(v)),
+      ),
+    );
+  }
+
+  String _formatPhone(String phone) {
+    final clean = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (clean.length == 11) {
+      return '${clean.substring(0, 3)}-${clean.substring(3, 7)}-${clean.substring(7)}';
+    } else if (clean.length == 10) {
+      if (clean.startsWith('03') || clean.startsWith('06')) {
+        return '${clean.substring(0, 2)}-${clean.substring(2, 6)}-${clean.substring(6)}';
+      } else if (clean.startsWith('0564')) {
+        return '${clean.substring(0, 4)}-${clean.substring(4, 6)}-${clean.substring(6)}';
+      } else if (clean.startsWith('0120') || clean.startsWith('0800')) {
+        return '${clean.substring(0, 4)}-${clean.substring(4, 7)}-${clean.substring(7)}';
+      } else {
+        return '${clean.substring(0, 3)}-${clean.substring(3, 6)}-${clean.substring(6)}';
+      }
+    }
+    return clean;
   }
 
   Future<void> _openFacilitySearch(int tab) async {
@@ -64,8 +105,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   Future<void> _save() async {
     setState(() => _saving = true);
     final updated = widget.customer.copyWith(
-      name: _nameController.text.trim(),
-      furigana: _furiganaController.text.trim(),
+      name: _name,
+      furigana: _furigana,
+      email: _email,
+      phoneNumber: _phone,
       companyName: _companyName,
       address: _address,
       latitude: _latitude,
@@ -120,113 +163,60 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                     children: [
                       // 顧客名 / 所属企業
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fieldLabel(context, '顧客名'),
-                                KMultimodalTextField(
-                                  label: '',
-                                  showLabel: false,
-                                  controller: _nameController,
-                                  maxLines: 1,
-                                  height: rs(context, 52),
-                                ),
-                              ],
-                            ),
+                            child: _editableField(context, '顧客名', _name,
+                                onEdit: () => _editText(_name, (t) => _name = t)),
                           ),
                           SizedBox(width: rs(context, 24)),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Row(
-                                  children: [
-                                    _fieldLabel(context, '所属企業'),
-                                    const Spacer(),
-                                    PopupMenuButton<int>(
-                                      icon: Icon(Icons.more_vert, size: rs(context, 20), color: Colors.blueGrey),
-                                      padding: EdgeInsets.zero,
-                                      tooltip: '検索して所属企業・住所・座標を反映',
-                                      onSelected: _openFacilitySearch,
-                                      itemBuilder: (_) => const [
-                                        PopupMenuItem(value: 0, child: Text('地域・カテゴリで検索')),
-                                        PopupMenuItem(value: 1, child: Text('地域・キーワードで検索')),
-                                        PopupMenuItem(value: 2, child: Text('住所で検索')),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                _readonlyValue(context, _companyName.isEmpty ? '未設定' : _companyName),
-                              ],
-                            ),
+                            child: _editableField(context, '所属企業', _companyName.isEmpty ? '未設定' : _companyName,
+                                searchMenu: true),
                           ),
                         ],
                       ),
                       SizedBox(height: rs(context, 14)),
                       // ふりがな / 住所
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fieldLabel(context, 'ふりがな'),
-                                KMultimodalTextField(
-                                  label: '',
-                                  showLabel: false,
-                                  controller: _furiganaController,
-                                  maxLines: 1,
-                                  height: rs(context, 52),
-                                ),
-                              ],
-                            ),
+                            child: _editableField(context, 'ふりがな', _furigana.isEmpty ? '未設定' : _furigana,
+                                onEdit: () => _editText(_furigana, (t) => _furigana = t)),
                           ),
                           SizedBox(width: rs(context, 24)),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fieldLabel(context, '住所'),
-                                _readonlyValue(context, _address.isEmpty ? '未設定' : _address),
-                              ],
-                            ),
+                            child: _editableField(context, '住所', _address.isEmpty ? '未設定' : _address,
+                                onEdit: () => _openFacilitySearch(2)),
                           ),
                         ],
                       ),
                       SizedBox(height: rs(context, 14)),
                       // 電話番号 / 位置座標
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fieldLabel(context, '電話番号'),
-                                _readonlyValue(context, widget.customer.phoneNumber),
-                              ],
-                            ),
+                            child: _editableField(context, '電話番号', _phone.isEmpty ? '未設定' : _phone, onEdit: _editPhone),
                           ),
                           SizedBox(width: rs(context, 24)),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _fieldLabel(context, '位置座標'),
-                                _readonlyValue(context, '${_latitude ?? "-"}, ${_longitude ?? "-"}'),
-                              ],
-                            ),
+                            child: _editableField(context, '位置座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}',
+                                onEdit: () => _openFacilitySearch(2)),
                           ),
+                        ],
+                      ),
+                      SizedBox(height: rs(context, 14)),
+                      // メールアドレス
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _editableField(context, 'メールアドレス', _email.isEmpty ? '未設定' : _email,
+                                onEdit: () => _editText(_email, (t) => _email = t)),
+                          ),
+                          SizedBox(width: rs(context, 24)),
+                          const Expanded(child: SizedBox()),
                         ],
                       ),
                       Divider(height: rs(context, 40), thickness: 1),
@@ -306,6 +296,43 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
           ],
         ),
       ),
+    );
+  }
+
+  /// ラベル（右に鉛筆アイコン）＋値。鉛筆から、その項目だけを編集する。
+  /// [searchMenu] が true のときは、所属企業を検索して反映するメニューを開く。
+  Widget _editableField(BuildContext context, String label, String value,
+      {VoidCallback? onEdit, bool searchMenu = false}) {
+    final pencil = Icon(Icons.edit, size: rs(context, 18), color: Colors.blueGrey);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            _fieldLabel(context, label),
+            const Spacer(),
+            if (searchMenu)
+              PopupMenuButton<int>(
+                icon: pencil,
+                padding: EdgeInsets.zero,
+                tooltip: '$labelを編集',
+                onSelected: _openFacilitySearch,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 0, child: Text('地域・カテゴリで検索')),
+                  PopupMenuItem(value: 1, child: Text('地域・キーワードで検索')),
+                  PopupMenuItem(value: 2, child: Text('住所で検索')),
+                ],
+              )
+            else
+              InkWell(
+                onTap: onEdit,
+                child: Padding(padding: EdgeInsets.all(rs(context, 4)), child: pencil),
+              ),
+          ],
+        ),
+        _readonlyValue(context, value),
+      ],
     );
   }
 
