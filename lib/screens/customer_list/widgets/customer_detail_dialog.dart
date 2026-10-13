@@ -161,8 +161,6 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       if (bytes != null) {
         final up = await svc.uploadHistoryImage(widget.customer.id, bytes);
         img = up.url;
-        _svUrl = up.url;
-        _svPath = up.path;
       }
     } catch (e) {
       debugPrint('Street View history save error: $e');

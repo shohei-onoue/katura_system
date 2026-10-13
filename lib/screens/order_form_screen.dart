@@ -1278,7 +1278,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
     // 履歴エントリに保存されたストリートビュー画像URL（[IMG:...]）があれば復元する
     final imgMatch = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(fullAddr);
-    _pendingStreetViewImageUrl = imgMatch?.group(1) ?? _currentCustomer?.streetViewImageUrl;
+    _pendingStreetViewImageUrl = imgMatch?.group(1); // 写真は配達先ごと（他の配達先の写真は使わない）
 
     final matchingOrder = _customerOrderHistory.followedBy(_companyOrderHistory).firstWhere((o) => (facilityNamePart.isNotEmpty && o.facilityName == facilityNamePart) || fullAddr.contains(o.address), orElse: () => OrderModel.empty());
     LatLng? pos = _parseCoordsFromAddress(fullAddr);
@@ -1639,16 +1639,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           ? _markers.firstWhere((m) => m.markerId.value == 'dest').position.longitude : null,
     );
     
-    if (_currentCustomer != null && _currentCustomer!.id.isNotEmpty &&
-        _pendingStreetViewImageUrl != null &&
-        !StreetViewImageService.isStoredUrl(_pendingStreetViewImageUrl) &&
-        _pendingStreetViewImageUrl != _currentCustomer!.streetViewImageUrl) {
-      try {
-        final saved = await StreetViewImageService().saveFromUrl(_currentCustomer!, _pendingStreetViewImageUrl!);
-        if (saved != null) _currentCustomer = saved;
-      } catch (e) { debugPrint('Street View Customer Save Error: $e'); }
-    }
-
     if (_currentCustomer != null) {
       bool customerUpdated = false;
       Customer updatedCustomer = _currentCustomer!;
