@@ -122,7 +122,6 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
         .replaceAll(RegExp(r'\[[^\]]*\]'), '')
         .trim();
     final remarks = RegExp(r'\[RMK:([^\]]*)\]').firstMatch(entry)?.group(1);
-    final oldImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(entry)?.group(1);
     final m = RegExp(r'[(（]([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)[)）]').allMatches(entry);
     LatLng? pos;
     if (m.isNotEmpty) {
@@ -150,8 +149,11 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     if (result == null || !mounted) return;
     final newPos = result['position'] as LatLng;
     final imageUrl = result['staticImageUrl'] as String;
-    setState(() => _busy = true);
-    String? img = oldImg;
+    setState(() {
+      _selected = index; // 右側の地図・写真を、調整したカードに切り替える
+      _busy = true;
+    });
+    String? img = imageUrl; // 保存に失敗しても、撮影した写真が表示されるよう元のURLを使う
     try {
       final svc = StreetViewImageService();
       final bytes = await svc.downloadBytes(imageUrl);
@@ -163,6 +165,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       }
     } catch (e) {
       debugPrint('Street View history save error: $e');
+      img = imageUrl;
     }
     if (!mounted) return;
     setState(() {
