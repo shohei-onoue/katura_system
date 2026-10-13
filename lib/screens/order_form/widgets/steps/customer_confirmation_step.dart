@@ -137,15 +137,15 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
             CustomerInfoBanner(customer: widget.currentCustomer),
           ] else ...[
             // 新規顧客の場合：整列された入力フォームを表示（ペン入力対応）
-            // ふりがな・顧客名はどちらか一方の入力を必須とする
+            // 企業・施設名は任意（未入力なら「個人宅」）、顧客名は必須
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: KMultimodalTextField(
-                    label: 'ふりがな',
+                    label: '企業・施設名',
                     controller: widget.furiganaController,
-                    hintText: 'ふりがなを書いてください',
+                    hintText: '未入力の場合は「個人宅」になります',
                     height: rs(context, 50),
                     maxLines: 1,
                   ),
@@ -235,9 +235,9 @@ class _CustomerConfirmationStepState extends State<CustomerConfirmationStep> {
                   label: isNewCustomer ? '登録して注文へ進む' : 'この顧客で受注する',
                   height: rs(context, 50),
                   onPressed: () {
-                    if (isNewCustomer && widget.nameController.text.isEmpty && widget.furiganaController.text.isEmpty) {
+                    if (isNewCustomer && widget.nameController.text.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('ふりがな・顧客名のいずれかを入力してください'), backgroundColor: Colors.redAccent)
+                        const SnackBar(content: Text('顧客名を入力してください'), backgroundColor: Colors.redAccent)
                       );
                       return;
                     }

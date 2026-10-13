@@ -52,10 +52,8 @@ class _PenInputBodyState extends State<_PenInputBody> {
   /// すでに判定済み（フィールド反映済み）のテキスト。ここでも削除できるようにする。
   late String _baseText;
 
-  /// 判定済みテキストの編集（表示エリアをタップした位置にカーソルを出して直す）
-  final TextEditingController _editController = TextEditingController();
-  final FocusNode _editFocus = FocusNode();
-  bool _editing = false;
+  /// 判定済みテキスト内のカーソル位置（表示エリアをタップした位置。端末キーボードは使わない）
+  int _cursor = 0;
 
   final InkRecognitionService _ink = InkRecognitionService.instance;
 
@@ -63,17 +61,13 @@ class _PenInputBodyState extends State<_PenInputBody> {
   void initState() {
     super.initState();
     _baseText = widget.initialText;
-    _editFocus.addListener(() {
-      if (!_editFocus.hasFocus && _editing && mounted) setState(() => _editing = false);
-    });
+    _cursor = _baseText.length;
     _checkModel();
   }
 
   @override
   void dispose() {
     _canvasController.dispose();
-    _editController.dispose();
-    _editFocus.dispose();
     super.dispose();
   }
 
@@ -97,7 +91,6 @@ class _PenInputBodyState extends State<_PenInputBody> {
   }
 
   void _handlePointDown(Offset offset, int timestamp) {
-    if (_editing) _editFocus.unfocus(); // 書き始めたら編集モードを終える
     if (_currentTool == KPenTool.eraser) return;
     _currentStrokePoints = [
       mlkit.StrokePoint(x: offset.dx, y: offset.dy, t: timestamp)
@@ -205,89 +198,80 @@ class _PenInputBodyState extends State<_PenInputBody> {
     });
   }
 
-  /// 現在の手書き判定分を確定し、末尾に半角スペースを挿入する（スペースキー相当）。
+  /// 手書き途中の判定分をカーソル位置に確定し、キャンバスを空にする。
+  void _commitPending() {
+    final pending = _pagesTexts.join("");
+    _baseText = _baseText.substring(0, _cursor) + pending + _baseText.substring(_cursor);
+    _cursor += pending.length;
+    _pagesInks
+      ..clear()
+      ..add(mlkit.Ink());
+    _pagesPoints
+      ..clear()
+      ..add(<DrawingPoint?>[]);
+    _pagesTexts
+      ..clear()
+      ..add("");
+    _currentPageIndex = 0;
+    _canvasController.clear();
+  }
+
+  /// 現在の手書き判定分を確定し、カーソル位置に半角スペースを挿入する（スペースキー相当）。
   void _insertSpace() {
     setState(() {
-      _baseText = '$_baseText${_pagesTexts.join("")} ';
-      _pagesInks
-        ..clear()
-        ..add(mlkit.Ink());
-      _pagesPoints
-        ..clear()
-        ..add(<DrawingPoint?>[]);
-      _pagesTexts
-        ..clear()
-        ..add("");
-      _currentPageIndex = 0;
-      _canvasController.clear();
+      _commitPending();
+      _baseText = '${_baseText.substring(0, _cursor)} ${_baseText.substring(_cursor)}';
+      _cursor++;
     });
   }
 
-  /// 判定済みテキスト（フィールド反映済み分）を1文字削除する。
+  /// カーソルの直前の1文字を削除する。
   void _backspaceBaseText() {
-    if (_baseText.isEmpty) return;
-    setState(() => _baseText = _baseText.substring(0, _baseText.length - 1));
-    _syncEditor();
+    if (_cursor == 0) return;
+    setState(() {
+      _baseText = _baseText.substring(0, _cursor - 1) + _baseText.substring(_cursor);
+      _cursor--;
+    });
   }
 
   /// 判定済みテキストをすべて削除する。
   void _clearBaseText() {
     if (_baseText.isEmpty) return;
-    setState(() => _baseText = "");
-    _syncEditor();
+    setState(() {
+      _baseText = "";
+      _cursor = 0;
+    });
   }
 
-  /// 編集中なら、入力欄の内容をボタン操作後の判定済みテキストに合わせる。
-  void _syncEditor() {
-    if (!_editing) return;
-    _editController.value = TextEditingValue(
-      text: _baseText,
-      selection: TextSelection.collapsed(offset: _baseText.length),
-    );
+  /// 表示エリアの文字を描くための TextPainter と、その描画開始位置。
+  ({TextPainter tp, Offset origin}) _previewLayout(Size box) {
+    final tp = TextPainter(text: _previewSpan(), textAlign: TextAlign.center, textDirection: TextDirection.ltr)
+      ..layout(maxWidth: box.width);
+    return (tp: tp, origin: Offset((box.width - tp.width) / 2, (box.height - tp.height) / 2));
   }
 
-  /// 表示エリアのタップ位置にカーソルを出して編集できるようにする。
-  /// 手書き途中の判定分は先に確定し、タップした文字位置へカーソルを置く。
+  /// 表示エリアのタップ位置にカーソルを移す。手書き途中の判定分は先に確定する。
   void _startEditing(Offset local, Size box) {
     if (_isRecognizing) return;
-    final span = _previewSpan();
-    final tp = TextPainter(text: span, textAlign: TextAlign.center, textDirection: TextDirection.ltr)
-      ..layout(maxWidth: box.width);
-    final origin = Offset((box.width - tp.width) / 2, (box.height - tp.height) / 2);
-    final combined = _baseText + _pagesTexts.join("");
-    final offset = tp.getPositionForOffset(local - origin).offset.clamp(0, combined.length);
+    final layout = _previewLayout(box);
+    final len = _baseText.length + _pagesTexts.join("").length;
+    final offset = layout.tp.getPositionForOffset(local - layout.origin).offset.clamp(0, len);
     setState(() {
-      _baseText = combined;
-      _pagesInks
-        ..clear()
-        ..add(mlkit.Ink());
-      _pagesPoints
-        ..clear()
-        ..add(<DrawingPoint?>[]);
-      _pagesTexts
-        ..clear()
-        ..add("");
-      _currentPageIndex = 0;
-      _canvasController.clear();
-      _editing = true;
-      _editController.value = TextEditingValue(
-        text: combined,
-        selection: TextSelection.collapsed(offset: offset),
-      );
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _editFocus.requestFocus();
+      _commitPending();
+      _cursor = offset;
     });
   }
 
-  /// 表示エリアの文字（判定済み＋手書き途中の判定分）。
+  /// 表示エリアの文字（カーソルの前 ＋ 手書き途中の判定分 ＋ カーソルの後）。
   TextSpan _previewSpan() {
     final newText = _pagesTexts.join("");
+    final before = _baseText.substring(0, _cursor);
+    final after = _baseText.substring(_cursor);
     return TextSpan(
       style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2)),
       children: [
-        if (_baseText.isNotEmpty)
-          TextSpan(text: _baseText, style: const TextStyle(color: Colors.black54)),
+        if (before.isNotEmpty)
+          TextSpan(text: before, style: const TextStyle(color: Colors.black54)),
         for (int i = 0; i < _pagesTexts.length; i++)
           TextSpan(
             text: _pagesTexts[i],
@@ -297,6 +281,8 @@ class _PenInputBodyState extends State<_PenInputBody> {
               backgroundColor: i == _currentPageIndex ? AppColors.accentPurple.withValues(alpha: 0.1) : null,
             ),
           ),
+        if (after.isNotEmpty)
+          TextSpan(text: after, style: const TextStyle(color: Colors.black54)),
         if (_baseText.isEmpty && newText.isEmpty && _statusMessage.isEmpty)
           TextSpan(
             text: 'ここにAIにより判定された文字が表示されます',
@@ -382,26 +368,32 @@ class _PenInputBodyState extends State<_PenInputBody> {
                   children: [
                     LayoutBuilder(
                       builder: (context, c) {
-                        if (_editing) {
-                          return Center(
-                            child: TextField(
-                              controller: _editController,
-                              focusNode: _editFocus,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              minLines: 1,
-                              style: TextStyle(fontSize: rf(context, 22), height: rs(context, 1.2), color: Colors.black87),
-                              decoration: const InputDecoration.collapsed(hintText: ''),
-                              onChanged: (v) => setState(() => _baseText = v),
+                        final layout = _previewLayout(c.biggest);
+                        final hasText = combinedText.isNotEmpty;
+                        final lineH = layout.tp.preferredLineHeight;
+                        final caret = hasText
+                            ? layout.tp.getOffsetForCaret(TextPosition(offset: _cursor + newText.length), Rect.zero) + layout.origin
+                            : Offset(c.maxWidth / 2, (c.maxHeight - lineH) / 2);
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTapUp: (d) => _startEditing(d.localPosition, c.biggest),
+                                child: Center(
+                                  child: RichText(textAlign: TextAlign.center, text: _previewSpan()),
+                                ),
+                              ),
                             ),
-                          );
-                        }
-                        return GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTapUp: (d) => _startEditing(d.localPosition, c.biggest),
-                          child: Center(
-                            child: RichText(textAlign: TextAlign.center, text: _previewSpan()),
-                          ),
+                            // カーソル（端末キーボードは出さず、このダイアログの手書きで入力する）
+                            Positioned(
+                              left: caret.dx,
+                              top: caret.dy,
+                              child: IgnorePointer(
+                                child: Container(width: rs(context, 2), height: lineH, color: AppColors.accentPurple),
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -466,7 +458,7 @@ class _PenInputBodyState extends State<_PenInputBody> {
                       color: AppColors.accentOrange,
                       onPressed: hasStrokes
                           ? _undoStroke
-                          : (_baseText.isNotEmpty ? _backspaceBaseText : null),
+                          : (_cursor > 0 ? _backspaceBaseText : null),
                     ),
                   ),
                   SizedBox(width: rs(context, 12)),

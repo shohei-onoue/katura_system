@@ -1140,18 +1140,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     // （_hydrateCustomerForEdit が電話番号から _currentCustomer を設定する）
     if (!_isEditingOrder &&
         _currentCustomer == null &&
-        (_nameController.text.isNotEmpty || _furiganaController.text.isNotEmpty)) {
+        _nameController.text.isNotEmpty) {
       _isLoadingNotifier.value = true;
-      // ふりがなのみの登録は、ふりがなを顧客名として扱う
-      if (_nameController.text.trim().isEmpty) _nameController.text = _furiganaController.text;
       final destMarker = _markers.any((m) => m.markerId.value == 'dest') ? _markers.firstWhere((m) => m.markerId.value == 'dest') : null;
       final facility = _facilityController.text;
       final address = _addressController.text;
       final newCustomer = Customer(
         id: '',
         name: _nameController.text,
-        furigana: _furiganaController.text,
-        companyName: facility,
+        companyName: _furiganaController.text.trim().isNotEmpty
+            ? _furiganaController.text.trim()
+            : (facility.trim().isNotEmpty ? facility.trim() : '個人宅'),
         phoneNumber: _phoneController.text,
         address: address,
         latitude: destMarker?.position.latitude,
@@ -1686,8 +1685,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       final newCustomer = Customer(
         id: '',
         name: _nameController.text,
-        furigana: _furiganaController.text,
-        companyName: _facilityController.text,
+        companyName: _furiganaController.text.trim().isNotEmpty
+            ? _furiganaController.text.trim()
+            : (_facilityController.text.trim().isNotEmpty ? _facilityController.text.trim() : '個人宅'),
         phoneNumber: _phoneController.text,
         address: _addressController.text,
         latitude: destMarker?.position.latitude ?? 0,
