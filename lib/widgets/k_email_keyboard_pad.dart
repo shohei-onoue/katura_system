@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
-enum KEmailKeyboardMode { letters, symbols }
-
 /// メール/パスワード欄用のオンスクリーンキーボード。
 /// OS標準キーボードを使わず、独自のキー配列で入力する。
 class KEmailKeyboardPad extends StatefulWidget {
@@ -25,7 +23,6 @@ class KEmailKeyboardPad extends StatefulWidget {
 }
 
 class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
-  KEmailKeyboardMode _mode = KEmailKeyboardMode.letters;
   bool _isUpperCase = false;
   final FocusNode _previewFocus = FocusNode();
 
@@ -42,6 +39,10 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
     '@icloud.com',
   ];
 
+  final List<List<String>> _numberRows = const [
+    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+  ];
+
   final List<List<String>> _letterRows = const [
     ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
     ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
@@ -49,7 +50,6 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
   ];
 
   final List<List<String>> _symbolRows = const [
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
     ['@', '.', '-', '_', '+', '/'],
     ['#', '&', '%', '(', ')', '*'],
   ];
@@ -88,7 +88,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
 
   void _handleKeyTap(String key) {
     String char = key;
-    if (_mode == KEmailKeyboardMode.letters && _isUpperCase) {
+    if (_isUpperCase) {
       char = char.toUpperCase();
     }
     _insert(char);
@@ -130,14 +130,6 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
             _buildDomainRow(context),
             SizedBox(height: rs(context, 12)),
           ],
-          Row(
-            children: [
-              _modeButton(context, 'ABC', KEmailKeyboardMode.letters),
-              SizedBox(width: rs(context, 8)),
-              _modeButton(context, '123#', KEmailKeyboardMode.symbols),
-            ],
-          ),
-          SizedBox(height: rs(context, 12)),
           ..._buildKeyRows(context),
           SizedBox(height: rs(context, 4)),
           _buildBottomRow(context),
@@ -175,26 +167,8 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
     );
   }
 
-  Widget _modeButton(BuildContext context, String label, KEmailKeyboardMode mode) {
-    final isSelected = _mode == mode;
-    return Expanded(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? AppColors.accentPurple : AppColors.mainBackground,
-          foregroundColor: isSelected ? AppColors.mainBackground : Colors.black87,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8)), side: BorderSide(color: Colors.grey.shade300)),
-          padding: EdgeInsets.zero,
-          minimumSize: Size(0, rs(context, 44)),
-        ),
-        onPressed: () => setState(() => _mode = mode),
-        child: Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
-      ),
-    );
-  }
-
   List<Widget> _buildKeyRows(BuildContext context) {
-    final rows = _mode == KEmailKeyboardMode.letters ? _letterRows : _symbolRows;
+    final rows = [..._numberRows, ..._letterRows, ..._symbolRows];
     return rows.map((row) {
       return Padding(
         padding: EdgeInsets.only(bottom: rs(context, 8)),
@@ -214,11 +188,11 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
 
   Widget _buildKey(BuildContext context, String key) {
     String label = key;
-    if (_mode == KEmailKeyboardMode.letters && _isUpperCase) {
+    if (_isUpperCase) {
       label = label.toUpperCase();
     }
     return SizedBox(
-      height: rs(context, 44),
+      height: rs(context, 52),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.mainBackground,
@@ -228,7 +202,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
           padding: EdgeInsets.zero,
         ),
         onPressed: () => _handleKeyTap(key),
-        child: Text(label, style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+        child: Text(label, style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -236,8 +210,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
   Widget _buildBottomRow(BuildContext context) {
     return Row(
       children: [
-        if (_mode == KEmailKeyboardMode.letters)
-          SizedBox(
+        SizedBox(
             width: rs(context, 56),
             height: rs(context, 48),
             child: ElevatedButton(
@@ -252,7 +225,7 @@ class _KEmailKeyboardPadState extends State<KEmailKeyboardPad> {
               child: Icon(Icons.arrow_upward, size: rs(context, 22)),
             ),
           ),
-        if (_mode == KEmailKeyboardMode.letters) SizedBox(width: rs(context, 8)),
+        SizedBox(width: rs(context, 8)),
         Expanded(
           child: SizedBox(
             height: rs(context, 48),

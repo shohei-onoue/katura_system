@@ -32,13 +32,20 @@ import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
+/// 親画面（メイン画面）から受注入力の状態を確認・破棄するための窓口。
+class OrderFormHandle {
+  bool Function()? hasProgress; // 新規注文を入力途中か
+  Future<void> Function()? discard; // 予約枠を消して入力を破棄する
+}
+
 class OrderFormScreen extends StatefulWidget {
+  final OrderFormHandle? handle;
   final OrderModel? initialOrder;
   final String initialSection; // 編集開始位置：配達先 / 日程 / 注文内容
   final VoidCallback? onSaveSuccess;
   final VoidCallback? onCancel;
 
-  const OrderFormScreen({super.key, this.initialOrder, this.initialSection = '', this.onSaveSuccess, this.onCancel});
+  const OrderFormScreen({super.key, this.handle, this.initialOrder, this.initialSection = '', this.onSaveSuccess, this.onCancel});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -187,9 +194,25 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     });
   }
 
+  bool Function()? _handleHasProgress;
+  Future<void> Function()? _handleDiscard;
+
   @override
   void initState() {
     super.initState();
+    _handleHasProgress = () =>
+        !_isEditingOrder &&
+        (_reservationId != null ||
+            _currentStep > 0 ||
+            _phoneController.text.isNotEmpty ||
+            _nameController.text.isNotEmpty);
+    _handleDiscard = () async {
+      final id = _reservationId;
+      _reservationId = null;
+      await _reservationService.delete(id);
+    };
+    widget.handle?.hasProgress = _handleHasProgress;
+    widget.handle?.discard = _handleDiscard;
     _reservationService.deleteLeftoversOfThisDevice(); // 確定されずに残った予約枠を消す
     _keywordQueryController.addListener(_syncSearchQuery);
     _receiverController.addListener(_scheduleRebuild);
@@ -745,6 +768,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     bool trash = false,
     required String title,
     required String highlightLabel,
+    DateTime? highlightDate,
     required String timeTitle,
     required DateTime initial,
     required TimeOfDay min,
@@ -777,6 +801,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           selectedDayColor: AppColors.selectButton,
           title: title,
           highlightLabel: highlightLabel,
+          highlightDate: highlightDate,
           nextLabel: nextLabel,
         ),
       );
@@ -955,7 +980,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         dateTimePicker: (initial) => _pickDayThenTime(
           trash: true,
           title: 'ゴミ回収日時の設定',
-          highlightLabel: 'ゴミ回収日',
+          highlightLabel: 'お渡し日',
+          highlightDate: _deliveryDate,
           timeTitle: 'ゴミ回収時間',
           nextLabel: '時間設定',
           initial: initial,
@@ -2467,6 +2493,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   void dispose() {
+    final h = widget.handle;
+    if (h != null && identical(h.hasProgress, _handleHasProgress)) {
+      h.hasProgress = null;
+      h.discard = null;
+    }
     _reservationService.delete(_reservationId); // 保存されずに閉じられたら予約枠を消す
     _mapController = null;
     _phoneController.dispose();

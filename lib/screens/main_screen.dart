@@ -28,6 +28,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final OrderFormHandle _orderFormHandle = OrderFormHandle();
   bool _sidebarOpen = true;
 
   // 編集中の注文情報を保持（画面切り替えで消えないように）
@@ -45,6 +46,27 @@ class _MainScreenState extends State<MainScreen> {
   /// 受注カードの編集中に別の機能（受注入力の新規も含む）へ移動しようとしたとき、
   /// 編集を中止してよいか確認する。中止しない場合は画面を移動しない。
   Future<void> _goTo(int index) async {
+    if (_selectedIndex == 0 && index != 0 && _currentEditingOrder == null && (_orderFormHandle.hasProgress?.call() ?? false)) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.mainBackground,
+          title: const Text('注文をキャンセルしますか？'),
+          content: const Text('入力中の内容は破棄され、予約枠も消えます。'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('入力に戻る')),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
+              child: const Text('注文キャンセル'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return; // 入力に戻る：画面は移動しない
+      await _orderFormHandle.discard?.call(); // 予約枠を消し終わってから移動
+      if (!mounted) return;
+    }
     if (_currentEditingOrder != null) {
       final ok = await showDialog<bool>(
         context: context,
@@ -72,6 +94,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildOrderFormScreen() {
     return OrderFormScreen(
+      handle: _orderFormHandle,
       key: ValueKey('order_form_${_currentEditingOrder?.id ?? "new"}'),
       initialOrder: _currentEditingOrder,
       initialSection: _editSection,

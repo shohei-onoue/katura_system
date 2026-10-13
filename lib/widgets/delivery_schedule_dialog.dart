@@ -82,6 +82,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   List<ReservationSlot> _reservations = [];
   final Map<String, int> _lanes = {}; // 注文ID → 号車の列番号（0始まり）
   int _laneCount = 1;
+  int _sizeLaneCount = 0; // ダイアログ幅の基準にする号車数（岡崎本店選択時の数で固定）
   Map<String, DeliveryStop> _stops = {}; // 注文ID → 移動情報
   Map<String, String> _names = {}; // 注文ID → 顧客管理の最新の顧客名
   final OrderService _orderService = OrderService();
@@ -192,6 +193,12 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     );
     if (_isHomeBranch && widget.initialVehicle > _laneCount) {
       _laneCount = widget.initialVehicle;
+    }
+    // 幅は岡崎本店選択時の号車数で固定（他店舗を選んでも変えない）
+    if (!_hasTabs || _branch == '岡崎本店') {
+      _sizeLaneCount = _laneCount;
+    } else if (_sizeLaneCount == 0) {
+      _sizeLaneCount = math.max(widget.branchVehicleCounts['岡崎本店'] ?? 1, 1);
     }
 
     final t = widget.initialTime;
@@ -935,13 +942,19 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final double baseColW = rs(context, 176); // 号車1列の幅（カードは配達時間と市区町村だけなので細くする）
     final double baseGap = rs(context, 12);
     final double fixedW = sidePad * 2 + leftPad + laneStart;
-    final double need = fixedW + _laneCount * (baseColW + baseGap);
-    final double fit = need <= maxW
+    final int sizeLanes = math.max(_sizeLaneCount, 1);
+    final double need = fixedW + sizeLanes * (baseColW + baseGap);
+    final double dialogWidth = math.min(math.max(need, rs(context, 850)), maxW);
+    final double fitSize = need <= maxW
         ? 1.0
-        : ((maxW - fixedW) / (_laneCount * (baseColW + baseGap))).clamp(0.3, 1.0);
+        : ((maxW - fixedW) / (sizeLanes * (baseColW + baseGap))).clamp(0.3, 1.0);
+    // 選択中の店舗の号車数が基準より多いときだけ、幅は変えず列幅を縮める
+    final double fitLanes = _laneCount > sizeLanes
+        ? ((dialogWidth - fixedW) / (_laneCount * (baseColW + baseGap))).clamp(0.3, 1.0)
+        : 1.0;
+    final double fit = math.min(fitSize, fitLanes);
     final double colW = baseColW * fit;
     final double colGap = baseGap * fit;
-    final double dialogWidth = math.min(math.max(need, rs(context, 850)), maxW);
     final double stackH = totalH + rs(context, 16);
     double colX(int lane) => labelW + rs(context, 24) + lane * (colW + colGap);
 

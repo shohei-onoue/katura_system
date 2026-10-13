@@ -601,9 +601,9 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
+          border: Border.all(color: AppColors.acceptButton, width: rs(context, 2)),
         ),
-        child: Text('${day.day}', style: textStyle.copyWith(color: AppColors.primary, fontWeight: FontWeight.bold)),
+        child: Text('${day.day}', style: textStyle.copyWith(fontWeight: FontWeight.bold)),
       ));
     }
     if (widget.trashMode) {
@@ -829,30 +829,13 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             else
                               _legendItem(context, '予約あり', border: AppColors.accentOrange),
                             _legendItem(context, '選択中', fill: widget.selectedDayColor ?? widget.themeColor),
+                            if (widget.highlightDate != null)
+                              _legendItem(context, widget.highlightLabel, border: AppColors.acceptButton),
                             if (!widget.pickupMode && !widget.trashMode)
                               _legendItem(context, '警告あり', icon: Icons.warning_amber_rounded, iconColor: AppColors.warningText),
                           ],
                         ),
                       ),
-                      if (widget.highlightDate != null)
-                        Padding(
-                          padding: EdgeInsets.only(top: rs(context, 8)),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: rs(context, 14),
-                                height: rs(context, 14),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.primary, width: rs(context, 1.5)),
-                                ),
-                              ),
-                              SizedBox(width: rs(context, 6)),
-                              Text('${widget.highlightLabel}: ${DateFormat('M/d(E)', 'ja_JP').format(widget.highlightDate!)}',
-                                  style: TextStyle(fontSize: rf(context, 12), color: AppColors.primary, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
                                 ],
                               )),
                             )

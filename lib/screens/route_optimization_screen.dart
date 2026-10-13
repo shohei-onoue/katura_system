@@ -41,8 +41,6 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   DateTime? _selectedDay = DateTime.now();
   bool _loading = true;
   Map<String, String> _names = {}; // 受注ID → 顧客管理の最新の名前
-  final GlobalKey _calendarKey = GlobalKey(); // カレンダー枠の高さを測る（右側の高さを合わせる）
-  double? _calendarHeight;
 
   @override
   void initState() {
@@ -150,7 +148,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('配送ルート最適化', style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: AppColors.primary)),
+            Text('配達予定', style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: AppColors.primary)),
             SizedBox(height: rs(context, 6)),
             Text('日付を選ぶと、その日の受注が右に表示されます。「ルート確認」で配達予定を確認できます',
                 style: TextStyle(fontSize: rf(context, 13), color: AppColors.secondaryText)),
@@ -165,15 +163,22 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
                 itemBuilder: (context, i) {
                   final b = _branches[i];
                   final selected = b.name == _branchName;
-                  return ChoiceChip(
-                    label: Text(b.name),
-                    selected: selected,
-                    selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(color: selected ? AppColors.primary : AppColors.primaryText, fontWeight: FontWeight.bold),
-                    onSelected: (_) {
+                  return GestureDetector(
+                    onTap: () {
                       setState(() => _branchName = b.name);
                       _ensureNames(_dayOrders);
                     },
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: EdgeInsets.symmetric(horizontal: rs(context, 16)),
+                      decoration: BoxDecoration(
+                        color: selected ? AppColors.selectButton : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(rs(context, 20)),
+                      ),
+                      child: Text(b.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold, fontSize: rf(context, 14))),
+                    ),
                   );
                 },
               ),
@@ -181,18 +186,13 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
             SizedBox(height: rs(context, 16)),
             // 左：カレンダー／右：選択日の受注カード＋「ルート確認」ボタン（受注機能の配達日時ダイアログと同じ配置）
             Expanded(
-              child: SingleChildScrollView(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 7, child: _buildCalendar(context)),
-                    SizedBox(width: rs(context, 12)),
-                    Expanded(
-                      flex: 3,
-                      child: SizedBox(height: _calendarHeight ?? rs(context, 420), child: _buildDayOrdersArea(context)),
-                    ),
-                  ],
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(flex: 7, child: _buildCalendar(context)),
+                  SizedBox(width: rs(context, 12)),
+                  Expanded(flex: 3, child: _buildDayOrdersArea(context)),
+                ],
               ),
             ),
           ],
@@ -202,15 +202,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   }
 
   Widget _buildCalendar(BuildContext context) {
-    // カレンダー枠の高さを測り、右側（カード＋ボタン）の下端をカレンダーの下端に合わせる
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final h = _calendarKey.currentContext?.size?.height;
-      if (mounted && h != null && (_calendarHeight == null || (h - _calendarHeight!).abs() > 0.5)) {
-        setState(() => _calendarHeight = h);
-      }
-    });
     return Container(
-      key: _calendarKey,
       padding: EdgeInsets.all(rs(context, 12)),
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
@@ -243,7 +235,8 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
           _ensureNames(_dayOrders);
         },
         onPageChanged: (focusedDay) => _focusedDay = focusedDay,
-        rowHeight: rs(context, 50),
+        shouldFillViewport: true,
+        sixWeekMonthsEnforced: true,
         calendarBuilders: CalendarBuilders(
           defaultBuilder: (context, day, focusedDay) {
             if (!_branchOrders.any((o) => isSameDay(o.deliveryDate, day))) return null;

@@ -65,12 +65,15 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: AppColors.mainBackground,
-          insetPadding: EdgeInsets.all(rs(context, 12)),
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width * 0.05,
+            vertical: rs(context, 12),
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(rs(context, 20)),
           ),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: rs(context, 640)),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.9),
             child: SingleChildScrollView(
               padding: EdgeInsets.all(rs(context, 12)),
               child: KEmailKeyboardPad(
