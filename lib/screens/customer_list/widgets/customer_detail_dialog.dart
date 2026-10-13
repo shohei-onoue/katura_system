@@ -456,7 +456,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
               color: Colors.grey.shade100,
               child: img == null
                   ? placeholder('撮影した写真がありません')
-                  : Image.network(img, fit: BoxFit.cover, webHtmlElementStrategy: WebHtmlElementStrategy.prefer, errorBuilder: (c, e, st) => placeholder('写真を読み込めません')),
+                  : Image.network(img, key: ValueKey('$_selected|$img'), fit: BoxFit.cover, webHtmlElementStrategy: WebHtmlElementStrategy.prefer, errorBuilder: (c, e, st) => placeholder('写真を読み込めません')),
             ),
           ),
         ),
