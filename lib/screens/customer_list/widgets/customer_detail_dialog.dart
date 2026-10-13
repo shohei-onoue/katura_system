@@ -122,6 +122,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
         .replaceAll(RegExp(r'\[[^\]]*\]'), '')
         .trim();
     final remarks = RegExp(r'\[RMK:([^\]]*)\]').firstMatch(entry)?.group(1);
+    final oldImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(entry)?.group(1);
     final m = RegExp(r'[(（]([-+]?\d*\.?\d+),\s*([-+]?\d*\.?\d+)[)）]').allMatches(entry);
     LatLng? pos;
     if (m.isNotEmpty) {
@@ -172,8 +173,22 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       _addresses[index] = '$facility: $address (${newPos.latitude}, ${newPos.longitude})'
           '${img != null ? ' [IMG:$img]' : ''}'
           '${(remarks ?? '').isNotEmpty ? ' [RMK:$remarks]' : ''}';
-      _busy = false;
     });
+    // 確定したらすぐ保存して反映する（他の未保存の編集内容は「保存」まで確定しない）
+    try {
+      await widget.customerService.updateCustomer(widget.customer.copyWith(
+        deliveryAddresses: _addresses,
+        streetViewImageUrl: _svUrl,
+        streetViewImagePath: _svPath,
+      ));
+      widget.onSaved?.call();
+      // 同じ配達先の古い写真は上書きされたものとして、Storageから削除する
+      if (oldImg != null && oldImg != img) await StreetViewImageService().deleteByUrl(oldImg);
+    } catch (e) {
+      debugPrint('Street View history persist error: $e');
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
   }
 
   Future<void> _save() async {
@@ -443,7 +458,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
               color: Colors.grey.shade100,
               child: img == null
                   ? placeholder('撮影した写真がありません')
-                  : Image.network(img, fit: BoxFit.cover, errorBuilder: (c, e, st) => placeholder('写真を読み込めません')),
+                  : Image.network(img, fit: BoxFit.cover, webHtmlElementStrategy: WebHtmlElementStrategy.prefer, errorBuilder: (c, e, st) => placeholder('写真を読み込めません')),
             ),
           ),
         ),

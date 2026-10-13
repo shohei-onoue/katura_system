@@ -1578,7 +1578,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
     setState(() => _isLoadingNotifier.value = true);
     String? imageUrl;
-    if (_pendingStreetViewImageUrl != null) {
+    if (StreetViewImageService.isStoredUrl(_pendingStreetViewImageUrl)) {
+      // 配達先履歴に登録済みの写真は、再アップロードせず同じ写真を使う
+      imageUrl = _pendingStreetViewImageUrl;
+    } else if (_pendingStreetViewImageUrl != null) {
       try {
         final response = await http.get(Uri.parse(_pendingStreetViewImageUrl!));
         if (response.statusCode == 200) {
@@ -1638,6 +1641,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     
     if (_currentCustomer != null && _currentCustomer!.id.isNotEmpty &&
         _pendingStreetViewImageUrl != null &&
+        !StreetViewImageService.isStoredUrl(_pendingStreetViewImageUrl) &&
         _pendingStreetViewImageUrl != _currentCustomer!.streetViewImageUrl) {
       try {
         final saved = await StreetViewImageService().saveFromUrl(_currentCustomer!, _pendingStreetViewImageUrl!);
@@ -1659,7 +1663,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         if (idx != -1) {
           keepImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(updatedCustomer.deliveryAddresses[idx])?.group(1);
         }
-        keepImg ??= imageUrl;
+        // 今回新しい写真が登録されたら上書きし、同じ配達先の古い写真はStorageから削除する
+        if (imageUrl != null && keepImg != null && keepImg != imageUrl) {
+          await StreetViewImageService().deleteByUrl(keepImg);
+        }
+        keepImg = imageUrl ?? keepImg;
         final entryFacility = _facilityController.text.trim().isEmpty ? '個人宅' : _facilityController.text.trim();
         String displayEntry = "$entryFacility: ${_addressController.text} ($destLat, $destLng)";
         if (keepImg != null) displayEntry += " [IMG:$keepImg]";

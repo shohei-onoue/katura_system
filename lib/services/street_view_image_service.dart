@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import '../firebase_options.dart';
 import '../models/customer_model.dart';
@@ -33,6 +34,19 @@ class StreetViewImageService {
     await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
     return (url: await ref.getDownloadURL(), path: path);
   }
+
+  /// Firebase Storage上の画像をURLから削除する（Storageの画像でなければ何もしない。失敗しても例外は出さない）
+  Future<void> deleteByUrl(String? url) async {
+    if (url == null || !url.contains('firebasestorage.googleapis.com')) return;
+    try {
+      await FirebaseStorage.instance.refFromURL(url).delete();
+    } catch (e) {
+      debugPrint('Storage delete error: $e');
+    }
+  }
+
+  /// Firebase Storageに保存済みの画像URLかどうか
+  static bool isStoredUrl(String? url) => url != null && url.contains('firebasestorage.googleapis.com');
 
   /// 画像URLからバイト列を取得（失敗時null）
   Future<Uint8List?> downloadBytes(String imageUrl) async {
