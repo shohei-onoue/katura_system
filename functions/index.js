@@ -1,4 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onRequest } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
@@ -106,3 +107,29 @@ function buildSmsMessage(order) {
 
   return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${isPickup ? "お待ちしております" : "お届けいたします"}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber || order.phoneDisplay}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
 }
+
+
+/**
+ * Web版用：ブラウザから直接呼べないGoogle検索API（CORS制限）を代わりに呼ぶ中継。
+ * 許可するのは下記のGoogle Maps検索APIのURLだけ。
+ */
+const MAPS_PROXY_ALLOWED = [
+  "/maps/api/place/autocomplete/json",
+  "/maps/api/place/textsearch/json",
+  "/maps/api/geocode/json",
+];
+
+exports.mapsProxy = onRequest({ cors: true }, async (req, res) => {
+  try {
+    const target = new URL(String(req.query.u || ""));
+    if (target.protocol !== "https:" || target.hostname !== "maps.googleapis.com" ||
+        !MAPS_PROXY_ALLOWED.includes(target.pathname)) {
+      res.status(400).json({ error: "not allowed" });
+      return;
+    }
+    const r = await axios.get(target.toString(), { validateStatus: () => true });
+    res.status(r.status).json(r.data);
+  } catch (e) {
+    res.status(400).json({ error: "bad request" });
+  }
+});

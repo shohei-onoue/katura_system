@@ -27,9 +27,11 @@ class GoogleMapsService {
   // 開発環境用のAPIキー
   static String get _apiKey => DefaultFirebaseOptions.currentPlatform.apiKey;
 
-  // Web環境でのCORS回避用プロキシ（デバッグ用。必要に応じて設定）
-  // 現場のスピードを優先し、Web実行時は警告を出しつつも試行する構造にする。
-  static const String _corsProxy = ""; 
+  // Web環境ではブラウザの制限(CORS)で直接呼べないため、Firebase Functionsの中継(mapsProxy)経由にする。
+  static const String _corsProxy = "https://us-central1-katura-system-dfc8b.cloudfunctions.net/mapsProxy?u=";
+
+  static Uri _proxied(String urlStr) =>
+      Uri.parse(kIsWeb ? '$_corsProxy${Uri.encodeComponent(urlStr)}' : urlStr);
 
   Future<List<String>> getPlaceSuggestions(String input, {String? sessionToken, LatLng? locationBias}) async {
     if (input.isEmpty) return [];
@@ -49,7 +51,7 @@ class GoogleMapsService {
       urlStr += "&sessiontoken=$sessionToken";
     }
 
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final url = _proxied(urlStr);
 
     try {
       final response = await http.get(url);
@@ -67,7 +69,7 @@ class GoogleMapsService {
   Future<Map<String, dynamic>?> getLatLngFromAddress(String address) async {
     final cleanAddress = address.split(RegExp(r'[(\（]'))[0].trim();
     final urlStr = 'https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(cleanAddress)}&key=$_apiKey&language=ja';
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final url = _proxied(urlStr);
 
     debugPrint('Geocoding Request: $cleanAddress');
 
@@ -93,7 +95,7 @@ class GoogleMapsService {
 
   Future<String?> getAddressFromLatLng(LatLng position) async {
     final urlStr = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=${position.latitude},${position.longitude}&key=$_apiKey&language=ja';
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final url = _proxied(urlStr);
 
     try {
       final response = await http.get(url);
@@ -168,7 +170,7 @@ class GoogleMapsService {
   /// Routes API（Google公式の経路API）で1区間を取得する。一般道のみのときは高速道路を避ける。
   Future<RouteLeg?> _fetchLeg(LatLng origin, LatLng destination, {required bool highway}) async {
     const urlStr = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final url = Uri.parse(urlStr);
     final body = json.encode({
       'origin': {'location': {'latLng': {'latitude': origin.latitude, 'longitude': origin.longitude}}},
       'destination': {'location': {'latLng': {'latitude': destination.latitude, 'longitude': destination.longitude}}},
@@ -226,7 +228,7 @@ class GoogleMapsService {
       }
     }
 
-    final url = Uri.parse(kIsWeb && _corsProxy.isNotEmpty ? '$_corsProxy$urlStr' : urlStr);
+    final url = _proxied(urlStr);
 
     debugPrint('Google Maps Text Search: $query (page: ${pageToken != null}, Web: $kIsWeb)');
 
