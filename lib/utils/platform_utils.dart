@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform;
 
 /// 端末判定を1か所にまとめる。
 /// Android/iOSの実機アプリ（タブレット）なら true。
-/// Web(Chrome等)と macOS/Windows/Linux デスクトップは false。
+/// タブレットのブラウザ（Web）もAndroid/iOSなら true。PCのブラウザと macOS/Windows/Linux デスクトップは false。
 bool get useOnScreenKeyboard =>
-    !kIsWeb &&
-    (defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS);
+    defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS;

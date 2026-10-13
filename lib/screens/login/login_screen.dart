@@ -143,6 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
