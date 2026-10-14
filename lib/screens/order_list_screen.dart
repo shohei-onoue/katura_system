@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart' show isSameDay;
 import '../models/order_model.dart';
 import '../services/customer_service.dart';
+import '../services/date_warning_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
@@ -24,6 +25,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   Map<String, String> _displayNames = {}; // 受注ID → 顧客管理の最新の名前
   List<OrderModel> _allOrders = [];
   List<OrderModel> _filteredOrders = [];
+  Map<DateTime, List<String>> _warnDays = {}; // 警告のある日付（受注の重複）
   bool _isLoading = true;
   String? _expandedOrderId; // 展開中の受注（1枚だけ）
   
@@ -68,6 +70,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     setState(() {
       _displayNames = names;
       _allOrders = list.where(OrderService.isActive).toList();
+      _warnDays = DateWarningService.orderConflictsByDate(_allOrders);
       _filterOrdersByDay(_selectedDay!);
       _isLoading = false;
     });
@@ -234,6 +237,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
             final selected = isSameDay(_selectedDay, day);
             final isToday = isSameDay(day, DateTime.now());
             final hasOrder = _allOrders.any((o) => isSameDay(o.deliveryDate, day));
+            final hasWarn = _warnDays.containsKey(day);
             final wd = day.weekday;
             final baseColor = wd == DateTime.sunday ? Colors.red : (wd == DateTime.saturday ? Colors.blue : AppColors.primaryText);
             final fg = selected ? AppColors.primaryText : (isToday ? AppColors.mainBackground : baseColor);
@@ -248,7 +252,10 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   });
                   _filterOrdersByDay(day);
                 },
-                child: Container(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Container(
                   decoration: BoxDecoration(
                     color: selected ? AppColors.selectButton : (isToday ? AppColors.acceptButton : Colors.transparent),
                     borderRadius: BorderRadius.circular(rs(context, 8)),
@@ -265,6 +272,15 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       ),
                     ],
                   ),
+                ),
+                    ),
+                    if (hasWarn)
+                      Positioned(
+                        top: rs(context, 2),
+                        right: rs(context, 2),
+                        child: Icon(Icons.warning_rounded, size: rs(context, 14), color: AppColors.warningText),
+                      ),
+                  ],
                 ),
               ),
             );

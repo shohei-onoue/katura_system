@@ -53,6 +53,10 @@ class KDateTimeSelectionDialog extends StatefulWidget {
   /// 右下ボタンの文言（未指定なら既定の文言）
   final String? nextLabel;
 
+  /// 表示中の月について、配達の移動時間が足りない日（時刻なしの日付）を返す関数。
+  /// API呼び出しが重いので、表示した月ごとに非同期で1回だけ呼ぶ。
+  final Future<Set<DateTime>> Function(DateTime from, DateTime to)? travelWarnLoader;
+
   const KDateTimeSelectionDialog({
     super.key,
     required this.initialDateTime,
@@ -74,6 +78,7 @@ class KDateTimeSelectionDialog extends StatefulWidget {
     this.orderTypeFilter,
     this.trashMode = false,
     this.nextLabel,
+    this.travelWarnLoader,
   });
 
   @override
@@ -87,6 +92,23 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
   Map<String, String> _customerNames = {};
   final GlobalKey _calendarKey = GlobalKey(); // カレンダー枠の高さを測る（右側の高さを合わせる）
   double? _calendarHeight;
+  final Set<DateTime> _travelWarnDays = {}; // 移動時間が足りない日（読み込み済み）
+  final Set<String> _travelLoadedMonths = {}; // 読み込み済み（読み込み中）の月
+
+  /// 表示月の移動時間不足を非同期で取得する（同じ月は1回だけ）。
+  Future<void> _loadTravelWarn(DateTime month) async {
+    final loader = widget.travelWarnLoader;
+    if (loader == null) return;
+    final key = '${month.year}-${month.month}';
+    if (!_travelLoadedMonths.add(key)) return;
+    try {
+      final days = await loader(DateTime(month.year, month.month, 1), DateTime(month.year, month.month + 1, 0));
+      if (!mounted) return;
+      setState(() => _travelWarnDays.addAll(days.map((d) => DateTime(d.year, d.month, d.day))));
+    } catch (_) {
+      _travelLoadedMonths.remove(key);
+    }
+  }
 
   String _nameOf(OrderModel o) => withHonorific(_customerNames[o.id] ?? o.customerName);
 
@@ -144,6 +166,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
       widget.initialDateTime.day,
     );
     _loadCustomerNames();
+    _loadTravelWarn(_tempDate);
     if (widget.calendarOnly) _ensureNames(_ordersOnSelectedDay());
     // 初期時間を4桁の文字列に変換
     _timeBuffer = widget.initialDateTime.hour.toString().padLeft(2, '0') +
@@ -444,7 +467,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: rf(context, 20)),
+                                    Icon(Icons.warning_rounded, color: AppColors.warningText, size: rf(context, 20)),
                                     SizedBox(width: rs(context, 6)),
                                     Expanded(
                                       child: Text(
@@ -732,7 +755,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         borderRadius: BorderRadius.circular(rs(context, 12)),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: TableCalendar(
+                      child: TableCalendar<Object>(
                         firstDay: DateTime.now().subtract(const Duration(days: 30)),
                         lastDay: DateTime.now().add(const Duration(days: 365)),
                         focusedDay: _tempDate,
@@ -789,16 +812,25 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                         daysOfWeekHeight: rs(context, 36),
                         sixWeekMonthsEnforced: true,
                         // 「関連する注文」がある日は、日付の下に赤丸を表示する
-                        eventLoader: (day) => (widget.pickupMode || widget.trashMode) ? const [] : widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)).toList(),
+                        onPageChanged: _loadTravelWarn,
+                        eventLoader: (day) => (widget.pickupMode || widget.trashMode)
+                            ? const <Object>[]
+                            : <Object>[
+                                ...widget.relatedOrders.where((o) => isSameDay(o.deliveryDate, day)),
+                                if (_travelWarnDays.contains(DateTime(day.year, day.month, day.day))) 'travel',
+                              ],
                         calendarBuilders: CalendarBuilders(
                           markerBuilder: (context, day, events) => events.isEmpty
                               ? null
                               : Positioned(
-                                  bottom: rs(context, 1),
+                                  top: 0,
                                   left: 0,
                                   right: 0,
                                   child: Center(
-                                    child: Icon(Icons.warning_amber_rounded, color: AppColors.warningText, size: rs(context, 14)),
+                                    child: Transform.translate(
+                                      offset: Offset(rs(context, 24), 0),
+                                      child: Icon(Icons.warning_rounded, color: AppColors.warningText, size: rs(context, 14)),
+                                    ),
                                   ),
                                 ),
                           defaultBuilder: (context, day, focusedDay) => _dayMark(context, day),
@@ -844,7 +876,7 @@ class _KDateTimeSelectionDialogState extends State<KDateTimeSelectionDialog> {
                             if (widget.highlightDate != null)
                               _legendItem(context, widget.highlightLabel, border: AppColors.acceptButton),
                             if (!widget.pickupMode && !widget.trashMode)
-                              _legendItem(context, '警告あり', icon: Icons.warning_amber_rounded, iconColor: AppColors.warningText),
+                              _legendItem(context, '警告あり', icon: Icons.warning_rounded, iconColor: AppColors.warningText),
                           ],
                         ),
                       ),

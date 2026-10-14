@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import '../models/order_model.dart';
 import '../services/delivery_schedule_service.dart';
+import '../services/date_warning_service.dart';
 import '../services/customer_service.dart';
 import '../services/order_service.dart';
 import '../services/reservation_service.dart';
@@ -247,24 +248,12 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
 
   /// 号車ごとに、前の配達から次の配達までの移動時間が足りない箇所を文にする。
   List<String> _warningTexts() {
-    final list = <String>[];
-    for (int lane = 0; lane < _laneCount; lane++) {
-      final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
-      for (int i = 1; i < group.length; i++) {
-        final sec = _stops[group[i].id]?.travelSeconds;
-        if (sec == null) continue;
-        final spare =
-            DeliveryScheduleService.minutesOf(group[i].deliveryTime)! -
-            DeliveryScheduleService.minutesOf(group[i - 1].deliveryTime)! -
-            (sec / 60).ceil();
-        if (spare < 0) {
-          list.add(
-            '${_vehicleLabel(lane + 1)} ${group[i].deliveryTime}：移動時間が${-spare}分不足しています',
-          );
-        }
-      }
-    }
-    return list;
+    return DateWarningService.shortageTexts(
+      dayOrders: _dayOrders,
+      lanes: _lanes,
+      laneCount: _laneCount,
+      stops: _stops,
+    );
   }
 
   /// 警告（時間不足など）があれば、警告アイコンと内容をポップアップで出す。
@@ -1126,27 +1115,34 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                         IgnorePointer(
                           child: Stack(
                             children: [
-                              for (int h = _startHour; h <= _endHour; h++)
+                              // 10分ごとの線（時間単位は黒、10分単位はグレー）。線の下端がカードの下端と重なる
+                              for (int m = _startHour * 60; m <= _endHour * 60; m += 10)
                                 Positioned(
-                                  top: baseTop + (h - _startHour) * hourH,
+                                  top: yOf(m) - 1,
                                   left: 0,
                                   right: 0,
+                                  height: 1,
                                   child: Row(
                                     children: [
                                       SizedBox(
                                         width: labelW,
-                                        child: Text(
-                                          '$h:00',
-                                          style: TextStyle(
-                                            fontSize: rf(context, 13),
-                                            color: AppColors.secondaryText,
-                                          ),
-                                        ),
+                                        child: m % 60 == 0
+                                            ? Transform.translate(
+                                                offset: Offset(0, rs(context, 8)),
+                                                child: Text(
+                                                  '${m ~/ 60}:00',
+                                                  style: TextStyle(
+                                                    fontSize: rf(context, 13),
+                                                    color: AppColors.secondaryText,
+                                                  ),
+                                                ),
+                                              )
+                                            : null,
                                       ),
                                       Expanded(
-                                        child: Divider(
+                                        child: Container(
                                           height: 1,
-                                          color: Colors.grey.shade300,
+                                          color: m % 60 == 0 ? Colors.black : Colors.grey.shade300,
                                         ),
                                       ),
                                     ],

@@ -12,6 +12,7 @@ import '../services/street_view_image_service.dart';
 import '../services/menu_service.dart';
 import '../services/staff_service.dart';
 import '../services/order_service.dart';
+import '../services/date_warning_service.dart';
 import '../services/branch_service.dart';
 import '../services/sms_service.dart';
 import '../widgets/k_stepper.dart';
@@ -672,53 +673,123 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         return const [];
       }
     }
-    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
-    String norm(String v) => v.replaceAll(RegExp(r'\s+'), '');
-    final phone = digits(customer.phoneNumber);
-    final name = norm(customer.name);
-    final company = norm(customer.companyName);
-    final destName = norm(_selectedFacilityName);
-    final destAddr = norm(_selectedFacilityAddress);
-    // 関連する注文は過去1週間まで遡る（それ以前は除外）
-    final now = DateTime.now();
-    final oldest = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 7));
-    final today = DateTime(now.year, now.month, now.day);
-    return all.where((o) {
-      if (o.id == widget.initialOrder?.id) return false;
-      // 同じお客様がすでに注文済みの日（今日以降の有効な受注）は重複として警告する
-      final sameCustomer = (o.customerId.isNotEmpty && o.customerId == customer.id) ||
-          (digits(o.phoneNumber) == phone && norm(o.customerName) == name);
-      if (sameCustomer) return OrderService.isActive(o) && !o.deliveryDate.isBefore(today);
-      if (o.deliveryDate.isBefore(oldest)) return false;
-      final sameCompany = company.isNotEmpty && norm(o.facilityName) == company;
-      final sameDest = (destName.isNotEmpty && norm(o.facilityName) == destName) ||
-          (destAddr.isNotEmpty && norm(o.address) == destAddr);
-      return sameCompany || sameDest;
-    }).toList();
+    return DateWarningService.relatedOrders(
+      orders: all,
+      customer: customer,
+      destName: _selectedFacilityName,
+      destAddress: _selectedFacilityAddress,
+      excludeOrderId: widget.initialOrder?.id,
+    );
   }
 
   /// 関連注文ごとの「重複の内容」（どこが同じか）を返す。キーは注文ID。
   Map<String, String> _relatedReasons(List<OrderModel> related) {
     final customer = _currentCustomer;
     if (customer == null) return const {};
-    String norm(String v) => v.replaceAll(RegExp(r'\s+'), '');
-    final company = norm(customer.companyName);
-    final destName = norm(_selectedFacilityName);
-    final destAddr = norm(_selectedFacilityAddress);
-    final map = <String, String>{};
-    String digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
-    for (final o in related) {
-      final r = <String>[];
-      if ((o.customerId.isNotEmpty && o.customerId == customer.id) ||
-          (digits(o.phoneNumber) == digits(customer.phoneNumber) && norm(o.customerName) == norm(customer.name))) {
-        r.add('同じお客様がこの日に注文済み');
-      }
-      if (company.isNotEmpty && norm(o.facilityName) == company) r.add('同じ会社名（${o.facilityName}）');
-      if (destName.isNotEmpty && norm(o.facilityName) == destName) r.add('同じ届け先名（${o.facilityName}）');
-      if (destAddr.isNotEmpty && norm(o.address) == destAddr) r.add('同じ住所（${o.address}）');
-      map[o.id] = r.join(' / ');
+    return DateWarningService.relatedReasons(
+      related: related,
+      customer: customer,
+      destName: _selectedFacilityName,
+      destAddress: _selectedFacilityAddress,
+    );
+  }
+
+  /// 配達先が確定したとき、設定済みの配達日時について「重複」「配達の時間不足」を調べ、
+  /// 警告があれば中央のダイアログで知らせる。警告ごとのボタンで日時の調整ダイアログへ進む。
+  Future<void> _checkScheduleWarnings() async {
+    final customer = _currentCustomer;
+    if (customer == null || !_isDeliveryDateSelected || !_isDeliveryTimeSelected || _deliveryType == '引取') return;
+    final day = DateWarningService.dayOf(_deliveryDate);
+    final warnings = <String>[];
+    try {
+      final all = await _orderService.getAllOrders();
+      if (!mounted) return;
+      final conflicts = DateWarningService.orderConflictsForCustomer(
+        orders: all,
+        customer: customer,
+        destName: _selectedFacilityName,
+        destAddress: _selectedFacilityAddress,
+        excludeOrderId: widget.initialOrder?.id,
+        from: day,
+        to: day,
+      );
+      warnings.addAll((conflicts[day] ?? const <String>[]).map((t) => '重複：$t'));
+
+      // 配達予定の時間不足（今回の注文を足したときに新しく出る分だけ）
+      final marker = _markers.where((m) => m.markerId.value == 'dest');
+      final hh = _selectedTime.hour.toString().padLeft(2, '0');
+      final mm = _selectedTime.minute.toString().padLeft(2, '0');
+      final others = all
+          .where((o) => OrderService.isActive(o) && o.deliveryType == '配送' && o.id != widget.initialOrder?.id)
+          .toList();
+      final current = OrderModel(
+        id: '__current__',
+        customerName: customer.name,
+        address: _selectedFacilityAddress,
+        phoneNumber: customer.phoneNumber,
+        receptionDate: DateTime.now(),
+        deliveryDate: day,
+        deliveryTime: '$hh:$mm',
+        deliveryType: '配送',
+        items: const [],
+        totalCount: 0,
+        branchName: _branchName,
+        latitude: marker.isEmpty ? null : marker.first.position.latitude,
+        longitude: marker.isEmpty ? null : marker.first.position.longitude,
+        vehicleNumber: _deliveryVehicleNumber,
+      );
+      final before = await DateWarningService.travelShortagesByDate(
+        orders: others, service: _scheduleService, branchPositions: _branchCoordinates, from: day, to: day);
+      final after = await DateWarningService.travelShortagesByDate(
+        orders: [...others, current], service: _scheduleService, branchPositions: _branchCoordinates, from: day, to: day);
+      final known = (before[day] ?? const <String>[]).toSet();
+      warnings.addAll((after[day] ?? const <String>[]).where((t) => !known.contains(t)).map((t) => '時間不足：$t'));
+    } catch (e) {
+      debugPrint('schedule warning check error: $e');
+      return;
     }
-    return map;
+    if (!mounted || warnings.isEmpty) return;
+    final adjust = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.popupBackground,
+        title: Row(children: [
+          const Icon(Icons.warning_rounded, color: AppColors.warningText),
+          const SizedBox(width: 8),
+          const Expanded(child: Text('日程の確認が必要です')),
+        ]),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final w in warnings)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppColors.selectButton,
+                        foregroundColor: AppColors.primaryText,
+                        padding: const EdgeInsets.all(12),
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(w, textAlign: TextAlign.left),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('閉じる'))],
+      ),
+    );
+    if (adjust != true || !mounted) return;
+    // 配達日時の選択ダイアログ（配達予定ダイアログを含む）へ。決め直したら再チェックする
+    if (await _showDeliveryDateDialog(withPreview: true) && mounted) {
+      _checkScheduleWarnings();
+    }
   }
 
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
@@ -890,6 +961,17 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             relatedReasons: _relatedReasons(related),
             calendarOnly: true,
             orderTypeFilter: '配送',
+            travelWarnLoader: (from, to) async {
+              final today = DateWarningService.dayOf(DateTime.now());
+              final res = await DateWarningService.travelShortagesByDate(
+                orders: scheduleOrders.where((o) => o.deliveryType == '配送').toList(),
+                service: _scheduleService,
+                branchPositions: _branchCoordinates,
+                from: from.isBefore(today) ? today : from,
+                to: to,
+              );
+              return res.keys.toSet();
+            },
             selectedDayColor: AppColors.selectButton,
             title: '$handoverLabel日時',
             highlightLabel: '$handoverLabel日',
@@ -2274,7 +2356,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
-          onNext: () => _updateStep(3),
+          onNext: () {
+            _updateStep(3);
+            _checkScheduleWarnings();
+          },
           onCancelOrder: _confirmCancelOrder,
           isEditingOrder: _isEditingOrder,
           onModeToggle: (v) => setState(() { _isHistoryMode = v; _historyManuallySelected = false; }),
