@@ -66,12 +66,25 @@ class KChoiceGroup<T> extends StatelessWidget {
                           right: Radius.circular(isLast ? 8 : 0),
                         ),
                       ),
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
-                          color: isSelected ? (selectedTextColor ?? AppColors.onButtonText) : AppColors.offButtonText,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            item.label,
+                            style: TextStyle(
+                              color: isSelected ? (selectedTextColor ?? AppColors.onButtonText) : AppColors.offButtonText,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                          if (item.hint != null)
+                            Text(
+                              item.hint!,
+                              style: TextStyle(
+                                fontSize: rf(context, 11),
+                                color: isSelected ? (selectedTextColor ?? AppColors.onButtonText) : AppColors.offButtonText,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
@@ -88,6 +101,8 @@ class KChoiceGroup<T> extends StatelessWidget {
 class KChoiceItem<T> {
   final String label;
   final T value;
+  /// ボタン内のラベル下に小さく表示するヒント（任意）
+  final String? hint;
 
-  KChoiceItem({required this.label, required this.value});
+  KChoiceItem({required this.label, required this.value, this.hint});
 }

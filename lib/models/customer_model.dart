@@ -54,6 +54,7 @@ class Customer {
     Map<String, List<String>>? facilityReceivers,
     String? streetViewImageUrl,
     String? streetViewImagePath,
+    bool clearStreetViewImage = false,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -68,8 +69,8 @@ class Customer {
       orderHistory: orderHistory ?? this.orderHistory,
       deliveryAddresses: deliveryAddresses ?? this.deliveryAddresses,
       facilityReceivers: facilityReceivers ?? this.facilityReceivers,
-      streetViewImageUrl: streetViewImageUrl ?? this.streetViewImageUrl,
-      streetViewImagePath: streetViewImagePath ?? this.streetViewImagePath,
+      streetViewImageUrl: clearStreetViewImage ? null : (streetViewImageUrl ?? this.streetViewImageUrl),
+      streetViewImagePath: clearStreetViewImage ? null : (streetViewImagePath ?? this.streetViewImagePath),
     );
   }
 

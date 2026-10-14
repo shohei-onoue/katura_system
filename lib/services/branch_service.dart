@@ -25,6 +25,7 @@ class BranchService {
         .toList();
     branches = await _backfillLegacyDefaults(branches);
     branches.sort((a, b) {
+      if (a.sortOrder != b.sortOrder) return a.sortOrder.compareTo(b.sortOrder);
       final ai = _displayOrder.indexOf(a.name);
       final bi = _displayOrder.indexOf(b.name);
       return (ai == -1 ? _displayOrder.length : ai).compareTo(bi == -1 ? _displayOrder.length : bi);
@@ -60,6 +61,15 @@ class BranchService {
 
   Future<void> updateBranch(BranchModel branch) async {
     await _branchCollection.doc(branch.id).set(branch.toMap(), SetOptions(merge: true));
+  }
+
+  /// 並び替え後の順番（sortOrder）をまとめて保存する
+  Future<void> saveOrder(List<BranchModel> ordered) async {
+    final batch = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'katura-system-database').batch();
+    for (var i = 0; i < ordered.length; i++) {
+      batch.set(_branchCollection.doc(ordered[i].id), {'sortOrder': i}, SetOptions(merge: true));
+    }
+    await batch.commit();
   }
 
   Future<BranchModel> addBranch({

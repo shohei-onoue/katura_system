@@ -101,26 +101,43 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     return clean;
   }
 
-  Future<void> _openFacilitySearch(int tab) async {
-    final result = await showFacilitySearchHostDialog(context, initialTab: tab);
-    if (result == null) return;
-    setState(() {
-      _companyName = result.name;
-      _address = result.address;
-      _latitude = result.lat;
-      _longitude = result.lng;
-    });
-  }
+  /// 企業名の編集（受注入力と同じ検索ダイアログ）。確定したら企業名・住所・座標を即保存する。
+  Future<void> _editCompany() => _searchAndSave(initialTab: 0, withCompany: true);
 
-  /// 住所の編集（受注入力の配達先確定と同じ検索ダイアログ。住所タブで開く）。住所と座標のみ反映。
-  Future<void> _editAddress() async {
-    final result = await showFacilitySearchHostDialog(context, initialTab: 2);
-    if (result == null) return;
+  /// 住所の編集（住所タブで開く）。確定したら住所・座標を即保存する。
+  Future<void> _editAddress() => _searchAndSave(initialTab: 2, withCompany: false);
+
+  Future<void> _searchAndSave({required int initialTab, required bool withCompany}) async {
+    final result = await showFacilitySearchHostDialog(context, initialTab: initialTab);
+    if (result == null || !mounted) return;
+    final coordChanged = result.lat != _latitude || result.lng != _longitude;
+    final oldSv = _svUrl;
     setState(() {
+      if (withCompany) _companyName = result.name;
       _address = result.address;
       _latitude = result.lat;
       _longitude = result.lng;
+      if (coordChanged) {
+        _svUrl = null;
+        _svPath = null;
+      }
     });
+    try {
+      await widget.customerService.updateCustomer(widget.customer.copyWith(
+        companyName: withCompany ? _companyName : null,
+        address: _address,
+        latitude: _latitude,
+        longitude: _longitude,
+        deliveryAddresses: _addresses,
+        streetViewImageUrl: _svUrl,
+        streetViewImagePath: _svPath,
+        clearStreetViewImage: _svUrl == null,
+      ));
+      widget.onSaved?.call();
+      if (coordChanged && oldSv != null) await StreetViewImageService().deleteByUrl(oldSv);
+    } catch (e) {
+      debugPrint('Customer search persist error: $e');
+    }
   }
 
   /// 配達先履歴の1件を、Googleマップ（ストリートビュー）で位置調整・画像撮影して更新する。
@@ -189,6 +206,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
         deliveryAddresses: _addresses,
         streetViewImageUrl: _svUrl,
         streetViewImagePath: _svPath,
+        clearStreetViewImage: _svUrl == null,
       ));
       widget.onSaved?.call();
       // 同じ配達先の古い写真は上書きされたものとして、Storageから削除する
@@ -213,6 +231,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       deliveryAddresses: _addresses,
       streetViewImageUrl: _svUrl,
       streetViewImagePath: _svPath,
+      clearStreetViewImage: _svUrl == null,
     );
     try {
       await widget.customerService.updateCustomer(updated);
@@ -277,13 +296,13 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                             SizedBox(height: rs(context, 12)),
                             _editableField(context, '電話番号', _phone.isEmpty ? '未設定' : _phone, onEdit: _editPhone),
                             SizedBox(height: rs(context, 12)),
-                            _editableField(context, '企業名', _companyName.isEmpty ? '未設定' : _companyName, searchMenu: true),
+                            _editableField(context, '企業名', _companyName.isEmpty ? '未設定' : _companyName,
+                                onEdit: _editCompany),
                             SizedBox(height: rs(context, 12)),
                             _editableField(context, '住所', _address.isEmpty ? '未設定' : _address,
                                 onEdit: _editAddress),
                             SizedBox(height: rs(context, 12)),
-                            _editableField(context, '座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}',
-                                onEdit: _editAddress),
+                            _editableField(context, '座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}'),
                           ],
                         ),
                       ),
@@ -479,10 +498,8 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     );
   }
 
-  /// ラベル（右に鉛筆アイコン）＋値。鉛筆から、その項目だけを編集する。
-  /// [searchMenu] が true のときは、所属企業を検索して反映するメニューを開く。
-  Widget _editableField(BuildContext context, String label, String value,
-      {VoidCallback? onEdit, bool searchMenu = false}) {
+  /// ラベル（右に鉛筆アイコン）＋値。[onEdit] が null のときは読み取り専用（アイコン分の幅は確保）。
+  Widget _editableField(BuildContext context, String label, String value, {VoidCallback? onEdit}) {
     final pencil = Icon(Icons.edit, size: rs(context, 18), color: Colors.blueGrey);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,19 +510,8 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
           children: [
             Expanded(child: _readonlyValue(context, value)),
             SizedBox(width: rs(context, 4)),
-            if (searchMenu)
-              PopupMenuButton<int>(
-                icon: pencil,
-                padding: EdgeInsets.zero,
-                tooltip: '$labelを編集',
-                color: AppColors.aMenuBackground,
-                onSelected: _openFacilitySearch,
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 0, child: Text('地域・カテゴリで検索', style: TextStyle(color: AppColors.aMenuText))),
-                  PopupMenuItem(value: 1, child: Text('地域・キーワードで検索', style: TextStyle(color: AppColors.aMenuText))),
-                  PopupMenuItem(value: 2, child: Text('住所で検索', style: TextStyle(color: AppColors.aMenuText))),
-                ],
-              )
+            if (onEdit == null)
+              SizedBox(width: rs(context, 30))
             else
               InkWell(
                 onTap: onEdit,

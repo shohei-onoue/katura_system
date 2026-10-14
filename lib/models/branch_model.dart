@@ -8,6 +8,7 @@ class BranchModel {
   final double longitude;
   final String imageUrl;
   final int deliveryVehicleCount; // 配送車両数（未設定は0）
+  final int sortOrder; // 設定画面での並び順（未設定は末尾）
 
   const BranchModel({
     required this.id,
@@ -19,6 +20,7 @@ class BranchModel {
     required this.longitude,
     this.imageUrl = '',
     this.deliveryVehicleCount = 0,
+    this.sortOrder = 999999,
   });
 
   factory BranchModel.fromMap(String id, Map<String, dynamic> map) {
@@ -32,6 +34,7 @@ class BranchModel {
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0.0,
       imageUrl: map['imageUrl'] ?? '',
       deliveryVehicleCount: (map['deliveryVehicleCount'] as num?)?.toInt() ?? 0,
+      sortOrder: (map['sortOrder'] as num?)?.toInt() ?? 999999,
     );
   }
 
@@ -45,10 +48,11 @@ class BranchModel {
       'longitude': longitude,
       'imageUrl': imageUrl,
       'deliveryVehicleCount': deliveryVehicleCount,
+      'sortOrder': sortOrder,
     };
   }
 
-  BranchModel copyWith({String? name, String? companyName, String? address, String? phone, double? latitude, double? longitude, String? imageUrl, int? deliveryVehicleCount}) {
+  BranchModel copyWith({String? name, String? companyName, String? address, String? phone, double? latitude, double? longitude, String? imageUrl, int? deliveryVehicleCount, int? sortOrder}) {
     return BranchModel(
       id: id,
       name: name ?? this.name,
@@ -59,6 +63,7 @@ class BranchModel {
       longitude: longitude ?? this.longitude,
       imageUrl: imageUrl ?? this.imageUrl,
       deliveryVehicleCount: deliveryVehicleCount ?? this.deliveryVehicleCount,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 }

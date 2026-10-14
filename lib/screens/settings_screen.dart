@@ -65,12 +65,14 @@ class SettingsScreen extends StatelessWidget {
                     label: '',
                     showLabel: false,
                     selectedValue: mode,
+                    selectedColor: AppColors.selectButton,
+                    selectedTextColor: AppColors.primaryText,
                     onSelected: (newMode) {
                       SettingsService.setInputMode(newMode);
                     },
                     items: [
-                      KChoiceItem(label: 'ペンタブ', value: KInputMode.pen),
-                      KChoiceItem(label: 'キーボード', value: KInputMode.keyboard),
+                      KChoiceItem(label: 'ペンタブ入力', value: KInputMode.pen, hint: 'タブレット推奨'),
+                      KChoiceItem(label: 'キーボード入力', value: KInputMode.keyboard, hint: 'PC推奨'),
                     ],
                   );
                 },
@@ -480,7 +482,16 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ..._rows.map(_buildBranchRow),
+        ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          onReorderItem: _onReorder,
+          children: [
+            for (var i = 0; i < _rows.length; i++)
+              KeyedSubtree(key: ObjectKey(_rows[i]), child: _buildBranchRow(_rows[i], i)),
+          ],
+        ),
         SizedBox(height: rs(context, 8)),
         TextButton.icon(
           onPressed: _addNewRow,
@@ -491,7 +502,19 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     );
   }
 
-  Widget _buildBranchRow(_BranchRowData row) {
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    setState(() {
+      _rows.insert(newIndex, _rows.removeAt(oldIndex));
+      // 後続の自動保存で古い並び順が上書きされないよう、手元のデータにも反映する
+      for (var i = 0; i < _rows.length; i++) {
+        _rows[i].branch = _rows[i].branch.copyWith(sortOrder: i);
+      }
+    });
+    final saved = _rows.where((r) => r.branch.id.isNotEmpty).map((r) => r.branch).toList();
+    await _branchService.saveOrder(saved);
+  }
+
+  Widget _buildBranchRow(_BranchRowData row, int index) {
     return Container(
       margin: EdgeInsets.only(bottom: rs(context, 12)),
       padding: EdgeInsets.all(rs(context, 12)),
@@ -500,7 +523,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
         borderRadius: BorderRadius.circular(rs(context, 10)),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: row.editing ? _buildEditView(row) : _buildDisplayView(row),
+      child: row.editing ? _buildEditView(row) : _buildDisplayView(row, index),
     );
   }
 
@@ -702,7 +725,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     );
   }
 
-  Widget _buildDisplayView(_BranchRowData row) {
+  Widget _buildDisplayView(_BranchRowData row, int index) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -743,6 +766,13 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                     ],
                   ),
                 ],
+              ),
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: Padding(
+                padding: EdgeInsets.all(rs(context, 8)),
+                child: Icon(Icons.drag_handle, color: Colors.grey.shade600),
               ),
             ),
             PopupMenuButton<String>(

@@ -316,7 +316,7 @@ class _PenInputBodyState extends State<_PenInputBody> {
   @override
   Widget build(BuildContext context) {
     final newText = _pagesTexts.join("");
-    final combinedText = _baseText + newText;
+    final combinedText = _baseText.substring(0, _cursor) + newText + _baseText.substring(_cursor);
     final bool hasStrokes = _pagesInks[_currentPageIndex].strokes.isNotEmpty;
     final double sideBtnWidth = rav(context, 60);
 
