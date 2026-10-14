@@ -10,7 +10,6 @@ import '../../../widgets/k_responsive.dart';
 import '../../../widgets/k_pen_input_dialog.dart';
 import '../../../widgets/k_numeric_input_dialog.dart';
 import '../../../widgets/k_facility_search_dialog.dart';
-import '../../../widgets/k_direct_address_picker_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerDetailDialog extends StatefulWidget {
@@ -113,26 +112,15 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     });
   }
 
-  /// 住所の編集（受注入力の「住所検索」と同じダイアログ）。確定後に座標も取得する。
-  void _editAddress() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => KDirectAddressPickerDialog(
-        initialPref: '',
-        initialCity: '',
-        initialTown: '',
-        onAddressConfirmed: (fullAddr) async {
-          setState(() => _address = fullAddr);
-          final geo = await widget.customerService.getGoogleMapsService().getLatLngFromAddress(fullAddr);
-          if (!mounted || geo == null) return;
-          setState(() {
-            _latitude = (geo['lat'] as num?)?.toDouble();
-            _longitude = (geo['lng'] as num?)?.toDouble();
-          });
-        },
-      ),
-    );
+  /// 住所の編集（受注入力の配達先確定と同じ検索ダイアログ。住所タブで開く）。住所と座標のみ反映。
+  Future<void> _editAddress() async {
+    final result = await showKFacilitySearchDialog(context, initialTab: 2, initialArea: _address);
+    if (result == null) return;
+    setState(() {
+      _address = result.address;
+      _latitude = result.lat;
+      _longitude = result.lng;
+    });
   }
 
   /// 配達先履歴の1件を、Googleマップ（ストリートビュー）で位置調整・画像撮影して更新する。
