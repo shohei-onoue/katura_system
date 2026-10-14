@@ -286,6 +286,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         currentDay: DateTime.now(),
         locale: 'ja_JP',
         headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+        daysOfWeekHeight: rs(context, 32),
         calendarStyle: CalendarStyle(
           selectedDecoration: const BoxDecoration(color: AppColors.selectButton, shape: BoxShape.circle),
           selectedTextStyle: const TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold),

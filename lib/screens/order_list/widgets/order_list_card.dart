@@ -12,6 +12,7 @@ class OrderListCard extends StatefulWidget {
   final bool expanded;
   final VoidCallback onToggle;
   final bool isWarning; // 重複・同一配達先の警告対象
+  final String warningText; // 警告内容（カードの外上部に表示）
 
   const OrderListCard({
     super.key,
@@ -22,6 +23,7 @@ class OrderListCard extends StatefulWidget {
     required this.expanded,
     required this.onToggle,
     this.isWarning = false,
+    this.warningText = '',
   });
 
   @override
@@ -91,14 +93,14 @@ class _OrderListCardState extends State<OrderListCard> {
     final String preMethod = order.preConfirmationMethod.isEmpty ? '事前連絡なし' : order.preConfirmationMethod;
     final String deliveryDateTime = '${order.deliveryDate.month}/${order.deliveryDate.day} ${order.deliveryTime}';
 
-    return Card(
+    final card = Card(
       margin: EdgeInsets.only(bottom: rs(context, 12)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(rs(context, 12)),
-        side: BorderSide(color: widget.isWarning ? AppColors.warningText : _branchColor.withValues(alpha: 0.2), width: rs(context, 1)),
+        side: BorderSide(color: widget.isWarning ? AppColors.cancelButton : _branchColor.withValues(alpha: 0.2), width: rs(context, 1)),
       ),
       elevation: 2,
-      color: widget.isWarning ? AppColors.cautionCardBackground.withValues(alpha: 0.5) : null,
+      color: widget.isWarning ? AppColors.cancelButton : null,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -106,7 +108,7 @@ class _OrderListCardState extends State<OrderListCard> {
             onTap: widget.onToggle,
             child: Container(
               width: double.infinity,
-              color: _branchColor.withValues(alpha: 0.18),
+              color: widget.isWarning ? Colors.transparent : _branchColor.withValues(alpha: 0.18),
               padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), 0, rs(context, 8)),
               child: Row(
                 children: [
@@ -115,7 +117,7 @@ class _OrderListCardState extends State<OrderListCard> {
                     flex: 2,
                     child: Text(
                       withHonorific(widget.displayName ?? order.customerName),
-                      style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : null),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -124,7 +126,7 @@ class _OrderListCardState extends State<OrderListCard> {
                     flex: 5,
                     child: Text(
                       _addressWithoutZip(order.address),
-                      style: TextStyle(fontSize: rf(context, 13), color: Colors.grey[700]),
+                      style: TextStyle(fontSize: rf(context, 13), color: widget.isWarning ? AppColors.whiteText : Colors.grey[700]),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -133,7 +135,7 @@ class _OrderListCardState extends State<OrderListCard> {
                     flex: 2,
                     child: Text(
                       order.branchName,
-                      style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: _branchColor),
+                      style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : _branchColor),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
@@ -146,7 +148,7 @@ class _OrderListCardState extends State<OrderListCard> {
                         onTap: () => _showEditChoice(order),
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 8)),
-                          child: Icon(Icons.edit, size: rs(context, 20), color: Colors.blueGrey),
+                          child: Icon(Icons.edit, size: rs(context, 20), color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey),
                         ),
                       ),
                     ),
@@ -161,16 +163,16 @@ class _OrderListCardState extends State<OrderListCard> {
               padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), rs(context, 12), rs(context, 10)),
               child: Row(
                 children: [
-                  Icon(Icons.event, size: rs(context, 18), color: AppColors.accentOrange),
+                  Icon(Icons.event, size: rs(context, 18), color: widget.isWarning ? AppColors.whiteText : AppColors.accentOrange),
                   SizedBox(width: rs(context, 4)),
                   Text(
                     deliveryDateTime,
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.accentOrange),
+                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : AppColors.accentOrange),
                   ),
                   SizedBox(width: rs(context, 16)),
-                  Icon(Icons.notifications_active_outlined, size: rs(context, 18), color: Colors.blueGrey),
+                  Icon(Icons.notifications_active_outlined, size: rs(context, 18), color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey),
                   SizedBox(width: rs(context, 4)),
-                  Text(preMethod, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.w500, color: Colors.blueGrey)),
+                  Text(preMethod, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.w500, color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey)),
                 ],
               ),
             ),
@@ -192,7 +194,7 @@ class _OrderListCardState extends State<OrderListCard> {
                               ),
                               child: Text(
                                 _itemLabel(item),
-                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500),
+                                style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.w500, color: widget.isWarning ? AppColors.whiteText : null),
                               ),
                             ))
                         .toList(),
@@ -220,6 +222,20 @@ class _OrderListCardState extends State<OrderListCard> {
           ],
         ],
       ),
+    );
+    if (!widget.isWarning || widget.warningText.isEmpty) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: rs(context, 4), bottom: rs(context, 4)),
+          child: Text(
+            widget.warningText,
+            style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: AppColors.cancelButton),
+          ),
+        ),
+        card,
+      ],
     );
   }
 }

@@ -376,11 +376,14 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   itemCount: orders.length,
                   itemBuilder: (context, index) {
                     final order = orders[index];
+                    final warns = (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[])
+                        .where((t) => t.startsWith('${order.customerName}：'))
+                        .toList();
                     return OrderListCard(
                       order: order,
                       displayName: _displayNames[order.id],
-                      isWarning: (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[])
-                          .any((t) => t.startsWith('${order.customerName}：')),
+                      isWarning: warns.isNotEmpty,
+                      warningText: warns.join(' / '),
                       expanded: _expandedOrderId == order.id,
                       onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
                       onEdit: (order, section) {
