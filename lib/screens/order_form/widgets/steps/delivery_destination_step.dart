@@ -365,7 +365,7 @@ class FacilitySearchForm extends StatelessWidget {
   final Future<void> Function()? onLoadMore;
   final ValueListenable<bool>? loadingMoreListenable;
   final Function(bool) onDialogVisibilityChanged;
-  final Future<void> Function() onAdjustTap;
+  final Future<void> Function()? onAdjustTap;
 
   const FacilitySearchForm({
     super.key,
@@ -475,20 +475,22 @@ class FacilitySearchForm extends StatelessWidget {
                 warningLabel: '代表地点',
               ),
             ),
-            SizedBox(width: rs(context, 12)),
-            SizedBox(
-              height: rs(context, 50),
-              child: ElevatedButton.icon(
-                onPressed: onAdjustTap,
-                icon: Icon(Icons.map, size: rs(context, 20)),
-                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.mainBackground,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+            if (onAdjustTap != null) ...[
+              SizedBox(width: rs(context, 12)),
+              SizedBox(
+                height: rs(context, 50),
+                child: ElevatedButton.icon(
+                  onPressed: onAdjustTap,
+                  icon: Icon(Icons.map, size: rs(context, 20)),
+                  label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                    foregroundColor: AppColors.mainBackground,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ],
@@ -511,20 +513,22 @@ class FacilitySearchForm extends StatelessWidget {
                 warningLabel: '代表地点',
               ),
             ),
-            SizedBox(width: rs(context, 12)),
-            SizedBox(
-              height: rs(context, 50),
-              child: ElevatedButton.icon(
-                onPressed: onAdjustTap,
-                icon: Icon(Icons.map, size: rs(context, 20)),
-                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.mainBackground,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+            if (onAdjustTap != null) ...[
+              SizedBox(width: rs(context, 12)),
+              SizedBox(
+                height: rs(context, 50),
+                child: ElevatedButton.icon(
+                  onPressed: onAdjustTap,
+                  icon: Icon(Icons.map, size: rs(context, 20)),
+                  label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                    foregroundColor: AppColors.mainBackground,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
         SizedBox(height: rs(context, 12)),
@@ -571,20 +575,22 @@ class FacilitySearchForm extends StatelessWidget {
                 warningLabel: '代表地点',
               ),
             ),
-            SizedBox(width: rs(context, 12)),
-            SizedBox(
-              height: rs(context, 50),
-              child: ElevatedButton.icon(
-                onPressed: onAdjustTap,
-                icon: Icon(Icons.map, size: rs(context, 20)),
-                label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
-                  foregroundColor: AppColors.mainBackground,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+            if (onAdjustTap != null) ...[
+              SizedBox(width: rs(context, 12)),
+              SizedBox(
+                height: rs(context, 50),
+                child: ElevatedButton.icon(
+                  onPressed: onAdjustTap,
+                  icon: Icon(Icons.map, size: rs(context, 20)),
+                  label: const Text('調整', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isApproximateLocation ? AppColors.accentOrange : Colors.blueGrey.shade400,
+                    foregroundColor: AppColors.mainBackground,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ],

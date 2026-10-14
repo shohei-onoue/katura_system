@@ -9,7 +9,7 @@ import '../../../widgets/k_location_adjustment_dialog.dart';
 import '../../../widgets/k_responsive.dart';
 import '../../../widgets/k_pen_input_dialog.dart';
 import '../../../widgets/k_numeric_input_dialog.dart';
-import '../../../widgets/k_facility_search_dialog.dart';
+import '../../order_form/widgets/steps/facility_search_host_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerDetailDialog extends StatefulWidget {
@@ -102,7 +102,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   }
 
   Future<void> _openFacilitySearch(int tab) async {
-    final result = await showKFacilitySearchDialog(context, initialTab: tab, initialArea: _address);
+    final result = await showFacilitySearchHostDialog(context, initialTab: tab);
     if (result == null) return;
     setState(() {
       _companyName = result.name;
@@ -114,7 +114,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
 
   /// 住所の編集（受注入力の配達先確定と同じ検索ダイアログ。住所タブで開く）。住所と座標のみ反映。
   Future<void> _editAddress() async {
-    final result = await showKFacilitySearchDialog(context, initialTab: 2, initialArea: _address);
+    final result = await showFacilitySearchHostDialog(context, initialTab: 2);
     if (result == null) return;
     setState(() {
       _address = result.address;
