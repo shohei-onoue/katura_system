@@ -719,7 +719,7 @@ class FacilitySearchForm extends StatelessWidget {
                                     onTap: () {
                                       final cleanAddress = _cleanResultAddress(item['address'] ?? '');
                                       // キーワード検索で「施設・企業名」が未入力なら、施設名は「個人宅」にする
-                                      final facilityName = (searchTabIndex == 1 && KeywordParts.facility.isEmpty) ? '個人宅' : item['name'];
+                                      final facilityName = (searchTabIndex == 1 && KeywordParts.facility.isEmpty && KeywordParts.other.isEmpty) ? '個人宅' : item['name'];
                                       var payload = "$facilityName: $cleanAddress (${item['lat']}, ${item['lng']})";
                                       // キーワード検索の結果は、入力したキーワードを添えて親へ渡す（企業名かの確認に使う）
                                       final kw = keywordQueryController.text.trim();
@@ -890,8 +890,17 @@ class _IntegratedAddressPickerDialogState extends State<_IntegratedAddressPicker
           .split(RegExp(r'\s+'))
           .where((e) => e.isNotEmpty)
           .toList();
-      for (int i = 0; i < _keywords.length && i < parts.length; i++) {
-        _keywords[i] = parts[i];
+      // 空欄の位置がずれないよう、直前の入力（ラベルごとの値）が一致すればそのまま復元する
+      final saved = [KeywordParts.facility, KeywordParts.nearby, KeywordParts.other];
+      final savedJoined = saved.where((e) => e.isNotEmpty).join(' ').split(RegExp(r'\s+')).where((e) => e.isNotEmpty).toList();
+      if (savedJoined.length == parts.length && savedJoined.join(' ') == parts.join(' ')) {
+        for (int i = 0; i < _keywords.length; i++) {
+          _keywords[i] = saved[i];
+        }
+      } else {
+        for (int i = 0; i < _keywords.length && i < parts.length; i++) {
+          _keywords[i] = parts[i];
+        }
       }
       _recognizedKeyword = _keywords.where((k) => k.trim().isNotEmpty).join(' ');
       if (_recognizedKeyword.isEmpty) {

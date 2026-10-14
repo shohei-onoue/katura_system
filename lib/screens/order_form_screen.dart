@@ -62,6 +62,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _phonePrefixController = TextEditingController();
   bool _isCompletingPhone = false;
   final LayerLink _phoneCardLink = LayerLink();
+  final GlobalKey _phoneCardKey = GlobalKey();
   final _nameController = TextEditingController();
   final _furiganaController = TextEditingController();
   final _receiverController = TextEditingController();
@@ -2109,7 +2110,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         color: Colors.transparent,
                         // カードは従来どおり中央。候補はカードの下端に追従して展開する
                         child: SingleChildScrollView(
-                          child: CompositedTransformTarget(link: _phoneCardLink, child: _buildStepContent()),
+                          child: CompositedTransformTarget(link: _phoneCardLink, child: KeyedSubtree(key: _phoneCardKey, child: _buildStepContent())),
                         ),
                       ),
                     ],
@@ -2133,7 +2134,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     isFullPhone: _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length >= 10,
                     lastOrderDates: _lastOrderDates,
                     onSelectCustomer: _onCandidateTapped,
-                    maxHeight: c.maxHeight * 0.3,
+                    // カードの下端から画面の下端いっぱいまでを候補エリアにする
+                    maxHeight: () {
+                      final box = _phoneCardKey.currentContext?.findRenderObject() as RenderBox?;
+                      final cardH = (box != null && box.hasSize) ? box.size.height : c.maxHeight * 0.4;
+                      return (c.maxHeight - pad * 2 - cardH).clamp(c.maxHeight * 0.3, c.maxHeight);
+                    }(),
                   ),
                 ),
               ),
