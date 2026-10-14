@@ -11,6 +11,7 @@ class OrderListCard extends StatefulWidget {
   final Function(OrderModel) onCancel;
   final bool expanded;
   final VoidCallback onToggle;
+  final bool isWarning; // 重複・同一配達先の警告対象
 
   const OrderListCard({
     super.key,
@@ -20,6 +21,7 @@ class OrderListCard extends StatefulWidget {
     required this.onCancel,
     required this.expanded,
     required this.onToggle,
+    this.isWarning = false,
   });
 
   @override
@@ -93,9 +95,10 @@ class _OrderListCardState extends State<OrderListCard> {
       margin: EdgeInsets.only(bottom: rs(context, 12)),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(rs(context, 12)),
-        side: BorderSide(color: _branchColor.withValues(alpha: 0.2), width: rs(context, 1)),
+        side: BorderSide(color: widget.isWarning ? AppColors.warningText : _branchColor.withValues(alpha: 0.2), width: rs(context, 1)),
       ),
       elevation: 2,
+      color: widget.isWarning ? AppColors.cautionCardBackground.withValues(alpha: 0.5) : null,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

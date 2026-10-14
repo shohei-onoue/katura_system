@@ -9,6 +9,7 @@ import '../models/branch_model.dart';
 import '../models/order_model.dart';
 import '../services/branch_service.dart';
 import '../services/customer_service.dart';
+import '../services/date_warning_service.dart';
 import '../services/delivery_schedule_service.dart';
 import '../services/google_maps_service.dart';
 import '../services/order_service.dart';
@@ -48,11 +49,47 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
     _load();
     // 受注が変わったら自動で反映する
     _ordersSub = _orderService.watchOrders().listen((orders) {
-      if (mounted) setState(() => _orders = orders);
+      if (!mounted) return;
+      setState(() {
+        _orders = orders;
+        _travelWarn.clear();
+        _travelLoading.clear();
+      });
+      _loadTravelWarn(_focusedDay);
     });
   }
 
   StreamSubscription<List<OrderModel>>? _ordersSub;
+
+  final Map<String, Set<DateTime>> _travelWarn = {}; // 店舗+月 → 移動時間不足の日
+  final Set<String> _travelLoading = {};
+
+  String _travelKey(DateTime m) => '$_branchName|${m.year}-${m.month}';
+
+  /// 表示月の移動時間不足を非同期で取得する（同じ店舗・月はキャッシュ）。
+  Future<void> _loadTravelWarn(DateTime month) async {
+    if (_branchName.isEmpty) return;
+    final key = _travelKey(month);
+    if (_travelWarn.containsKey(key) || !_travelLoading.add(key)) return;
+    try {
+      final today = DateWarningService.dayOf(DateTime.now());
+      final from = DateTime(month.year, month.month, 1);
+      final to = DateTime(month.year, month.month + 1, 0);
+      final res = await DateWarningService.travelShortagesByDate(
+        orders: _orders.where((o) => OrderService.isActive(o) && o.deliveryType == '配送' && o.branchName == _branchName).toList(),
+        service: _scheduleService,
+        branchPositions: {for (final b in _branches) b.name: LatLng(b.latitude, b.longitude)},
+        from: from.isBefore(today) ? today : from,
+        to: to,
+      );
+      if (!mounted) return;
+      setState(() => _travelWarn[key] = res.keys.toSet());
+    } catch (e) {
+      debugPrint('travel warn error: $e');
+    } finally {
+      _travelLoading.remove(key);
+    }
+  }
 
   @override
   void dispose() {
@@ -72,6 +109,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         _loading = false;
       });
       _ensureNames(_dayOrders);
+      _loadTravelWarn(_focusedDay);
     } catch (e) {
       debugPrint('RouteOptimizationScreen load error: $e');
       if (mounted) setState(() => _loading = false);
@@ -195,6 +233,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
                   return GestureDetector(
                     onTap: () {
                       setState(() => _branchName = b.name);
+                      _loadTravelWarn(_focusedDay);
                       _ensureNames(_dayOrders);
                     },
                     child: Container(
@@ -265,10 +304,21 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
           });
           _ensureNames(_dayOrders);
         },
-        onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+        onPageChanged: (focusedDay) {
+          _focusedDay = focusedDay;
+          _loadTravelWarn(focusedDay);
+        },
+        eventLoader: (day) => (_travelWarn[_travelKey(day)]?.contains(DateWarningService.dayOf(day)) ?? false) ? const <Object>[1] : const <Object>[],
         shouldFillViewport: true,
         sixWeekMonthsEnforced: true,
         calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, day, events) => events.isEmpty
+              ? null
+              : Positioned(
+                  top: rs(context, 2),
+                  right: rs(context, 2),
+                  child: Icon(Icons.warning_rounded, color: AppColors.warningText, size: rs(context, 14)),
+                ),
           defaultBuilder: (context, day, focusedDay) {
             if (!_branchOrders.any((o) => isSameDay(o.deliveryDate, day))) return null;
             return Center(

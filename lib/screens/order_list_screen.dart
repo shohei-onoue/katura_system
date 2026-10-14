@@ -379,6 +379,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     return OrderListCard(
                       order: order,
                       displayName: _displayNames[order.id],
+                      isWarning: (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[])
+                          .any((t) => t.startsWith('${order.customerName}：')),
                       expanded: _expandedOrderId == order.id,
                       onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
                       onEdit: (order, section) {

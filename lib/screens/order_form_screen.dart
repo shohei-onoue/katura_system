@@ -696,14 +696,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   /// 配達先が確定したとき、設定済みの配達日時について「重複」「配達の時間不足」を調べ、
   /// 警告があれば中央のダイアログで知らせる。警告ごとのボタンで日時の調整ダイアログへ進む。
-  Future<void> _checkScheduleWarnings() async {
+  Future<bool> _checkScheduleWarnings() async {
     final customer = _currentCustomer;
-    if (customer == null || !_isDeliveryDateSelected || !_isDeliveryTimeSelected || _deliveryType == '引取') return;
+    if (customer == null || !_isDeliveryDateSelected || !_isDeliveryTimeSelected || _deliveryType == '引取') return true;
     final day = DateWarningService.dayOf(_deliveryDate);
     final warnings = <String>[];
     try {
       final all = await _orderService.getAllOrders();
-      if (!mounted) return;
+      if (!mounted) return false;
       final conflicts = DateWarningService.orderConflictsForCustomer(
         orders: all,
         customer: customer,
@@ -746,9 +746,10 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       warnings.addAll((after[day] ?? const <String>[]).where((t) => !known.contains(t)).map((t) => '時間不足：$t'));
     } catch (e) {
       debugPrint('schedule warning check error: $e');
-      return;
+      return true;
     }
-    if (!mounted || warnings.isEmpty) return;
+    if (!mounted) return false;
+    if (warnings.isEmpty) return true;
     final adjust = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -782,14 +783,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             ),
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('閉じる'))],
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('このまま受注を続ける'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('戻って調整する'),
+          ),
+        ],
       ),
     );
-    if (adjust != true || !mounted) return;
+    if (!mounted || adjust == null) return false; // 戻って調整する：今のステップに留まる
+    if (adjust == false) return true; // このまま受注を続ける
     // 配達日時の選択ダイアログ（配達予定ダイアログを含む）へ。決め直したら再チェックする
     if (await _showDeliveryDateDialog(withPreview: true) && mounted) {
-      _checkScheduleWarnings();
+      return _checkScheduleWarnings();
     }
+    return false;
   }
 
   /// 配達日時ダイヤログを表示し、確定できたら true を返す。
@@ -2356,9 +2370,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           remarksController: _remarksController,
           facilityResultsListenable: _facilityResultsNotifier,
           isLoadingListenable: _isLoadingNotifier,
-          onNext: () {
-            _updateStep(3);
-            _checkScheduleWarnings();
+          onNext: () async {
+            if (await _checkScheduleWarnings() && mounted) _updateStep(3);
           },
           onCancelOrder: _confirmCancelOrder,
           isEditingOrder: _isEditingOrder,
