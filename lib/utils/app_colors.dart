@@ -64,4 +64,8 @@ class AppColors {
   // カード表示
   static const Color selectCardBackground = Colors.lightGreenAccent;
   static const Color cautionCardBackground = Colors.yellowAccent;
+
+  // A MENU
+  static const Color aMenuBackground = Colors.black;
+  static const Color aMenuText = Colors.white;
 }

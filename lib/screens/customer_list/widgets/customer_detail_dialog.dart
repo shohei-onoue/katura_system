@@ -10,6 +10,7 @@ import '../../../widgets/k_responsive.dart';
 import '../../../widgets/k_pen_input_dialog.dart';
 import '../../../widgets/k_numeric_input_dialog.dart';
 import '../../../widgets/k_facility_search_dialog.dart';
+import '../../../widgets/k_direct_address_picker_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class CustomerDetailDialog extends StatefulWidget {
@@ -110,6 +111,28 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
       _latitude = result.lat;
       _longitude = result.lng;
     });
+  }
+
+  /// 住所の編集（受注入力の「住所検索」と同じダイアログ）。確定後に座標も取得する。
+  void _editAddress() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => KDirectAddressPickerDialog(
+        initialPref: '',
+        initialCity: '',
+        initialTown: '',
+        onAddressConfirmed: (fullAddr) async {
+          setState(() => _address = fullAddr);
+          final geo = await widget.customerService.getGoogleMapsService().getLatLngFromAddress(fullAddr);
+          if (!mounted || geo == null) return;
+          setState(() {
+            _latitude = (geo['lat'] as num?)?.toDouble();
+            _longitude = (geo['lng'] as num?)?.toDouble();
+          });
+        },
+      ),
+    );
   }
 
   /// 配達先履歴の1件を、Googleマップ（ストリートビュー）で位置調整・画像撮影して更新する。
@@ -218,8 +241,11 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.popupBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(rs(context, 16)),
+        child: Stack(
         children: [
           SizedBox(
         width: math.min(rs(context, 1180), MediaQuery.of(context).size.width * 0.95),
@@ -266,10 +292,10 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                             _editableField(context, '企業名', _companyName.isEmpty ? '未設定' : _companyName, searchMenu: true),
                             SizedBox(height: rs(context, 12)),
                             _editableField(context, '住所', _address.isEmpty ? '未設定' : _address,
-                                onEdit: () => _openFacilitySearch(2)),
+                                onEdit: _editAddress),
                             SizedBox(height: rs(context, 12)),
                             _editableField(context, '座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}',
-                                onEdit: () => _openFacilitySearch(2)),
+                                onEdit: _editAddress),
                           ],
                         ),
                       ),
@@ -322,6 +348,7 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
               ),
             ),
         ],
+      ),
       ),
     );
   }
@@ -483,11 +510,12 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
                 icon: pencil,
                 padding: EdgeInsets.zero,
                 tooltip: '$labelを編集',
+                color: AppColors.aMenuBackground,
                 onSelected: _openFacilitySearch,
                 itemBuilder: (_) => const [
-                  PopupMenuItem(value: 0, child: Text('地域・カテゴリで検索')),
-                  PopupMenuItem(value: 1, child: Text('地域・キーワードで検索')),
-                  PopupMenuItem(value: 2, child: Text('住所で検索')),
+                  PopupMenuItem(value: 0, child: Text('地域・カテゴリで検索', style: TextStyle(color: AppColors.aMenuText))),
+                  PopupMenuItem(value: 1, child: Text('地域・キーワードで検索', style: TextStyle(color: AppColors.aMenuText))),
+                  PopupMenuItem(value: 2, child: Text('住所で検索', style: TextStyle(color: AppColors.aMenuText))),
                 ],
               )
             else

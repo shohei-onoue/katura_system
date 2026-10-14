@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/customer_service.dart';
 import 'k_responsive.dart';
 import 'k_multimodal_text_field.dart';
+import 'k_numeric_input_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 施設・住所検索の結果（施設名・住所・座標）。
@@ -105,6 +106,22 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
       _results = results;
       _loading = false;
     });
+  }
+
+  void _inputZip() {
+    showDialog(
+      context: context,
+      builder: (_) => KNumericInputDialog(
+        title: '郵便番号の入力',
+        initialValue: _addressController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        emptyHint: '郵便番号を入力してください',
+        maxLength: 7,
+        onConfirmed: (v) {
+          setState(() => _addressController.text = v.length == 7 ? '${v.substring(0, 3)}-${v.substring(3)}' : v);
+          _runSearch();
+        },
+      ),
+    );
   }
 
   Future<void> _pick(Map<String, dynamic> item) async {
@@ -258,7 +275,10 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
               initialValue: _category,
               isExpanded: true,
               decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-              items: cats.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              dropdownColor: AppColors.aMenuBackground,
+              style: const TextStyle(color: AppColors.aMenuText),
+              selectedItemBuilder: (_) => cats.map((c) => Text(c, style: const TextStyle(color: Colors.black87))).toList(),
+              items: cats.map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(color: AppColors.aMenuText)))).toList(),
               onChanged: (v) => setState(() {
                 _category = v;
                 _genre = null;
@@ -272,7 +292,10 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
               initialValue: _genre,
               isExpanded: true,
               decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true),
-              items: genres.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+              dropdownColor: AppColors.aMenuBackground,
+              style: const TextStyle(color: AppColors.aMenuText),
+              selectedItemBuilder: (_) => genres.map((g) => Text(g, style: const TextStyle(color: Colors.black87))).toList(),
+              items: genres.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(color: AppColors.aMenuText)))).toList(),
               onChanged: (v) => setState(() => _genre = v),
             ),
           ),
@@ -310,13 +333,26 @@ class _KFacilitySearchDialogState extends State<_KFacilitySearchDialog> with Sin
         children: [
           _labeledField(
             context,
-            '住所・郵便番号',
-            KMultimodalTextField(
-              label: '',
-              showLabel: false,
-              controller: _addressController,
-              maxLines: 1,
-              height: rs(context, 52),
+            '郵便番号',
+            InkWell(
+              onTap: _inputZip,
+              child: Container(
+                width: double.infinity,
+                height: rs(context, 52),
+                alignment: Alignment.centerLeft,
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 12)),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(rs(context, 4)),
+                ),
+                child: Text(
+                  _addressController.text.isEmpty ? '郵便番号を入力' : _addressController.text,
+                  style: TextStyle(
+                    fontSize: rf(context, 15),
+                    color: _addressController.text.isEmpty ? Colors.grey : Colors.black87,
+                  ),
+                ),
+              ),
             ),
           ),
         ],

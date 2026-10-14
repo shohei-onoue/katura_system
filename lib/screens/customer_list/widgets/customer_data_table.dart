@@ -153,6 +153,7 @@ class CustomerDataTable extends StatelessWidget {
                             child: Center(
                               child: PopupMenuButton<String>(
                                 icon: Icon(Icons.more_vert, color: Colors.grey, size: rs(context, 20)),
+                                color: AppColors.aMenuBackground,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onSelected: (value) {
@@ -160,7 +161,7 @@ class CustomerDataTable extends StatelessWidget {
                                   if (value == 'delete') onDelete(customer);
                                 },
                                 itemBuilder: (context) => [
-                                  _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', AppColors.accentOrange),
+                                  _buildPopupItem(context, 'detail', Icons.info_outline, '詳細', AppColors.dialogLine),
                                   _buildPopupItem(context, 'delete', Icons.delete_outline, '削除', Colors.red),
                                 ],
                               ),
@@ -217,7 +218,7 @@ class CustomerDataTable extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w500,
                 fontSize: rf(context, 13),
-                color: value == 'delete' ? Colors.red : null,
+                color: value == 'delete' ? Colors.red : AppColors.aMenuText,
               )),
         ],
       ),
