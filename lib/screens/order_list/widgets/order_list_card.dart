@@ -2,7 +2,6 @@ import 'package:katura_system/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../models/order_model.dart';
 import '../../../widgets/k_responsive.dart';
-import 'package:katura_system/utils/name_format.dart';
 
 class OrderListCard extends StatefulWidget {
   final OrderModel order;
@@ -117,7 +116,7 @@ class _OrderListCardState extends State<OrderListCard> {
                   ],
                   Expanded(
                     child: Text(
-                      withHonorific(widget.displayName ?? order.customerName),
+                      order.facilityName.trim().isEmpty ? '個人宅' : order.facilityName.trim(),
                       style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : Colors.black),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
