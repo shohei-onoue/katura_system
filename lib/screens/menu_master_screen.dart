@@ -10,7 +10,6 @@ import '../../widgets/k_responsive.dart';
 import '../../widgets/k_multimodal_text_field.dart';
 import '../../widgets/k_numeric_input_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
-import 'mobile/mobile_menu_master_89_4645.dart';
 
 class MenuMasterScreen extends StatefulWidget {
   const MenuMasterScreen({super.key, this.onOpenMenu, this.onNavigate});
@@ -300,131 +299,8 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     );
   }
 
-  Future<String?> _mobileNumber(String title, String initial, String unit) {
-    final c = Completer<String?>();
-    showDialog(
-      context: context,
-      builder: (_) => KNumericInputDialog(
-        title: title,
-        initialValue: initial,
-        unit: unit,
-        emptyHint: '数値を入力してください',
-        onConfirmed: (v) => c.complete(v),
-      ),
-    ).then((_) {
-      if (!c.isCompleted) c.complete(null);
-    });
-    return c.future;
-  }
-
-  void _showMobileEdit([MenuModel? menu]) {
-    final rows = <MobileMenuIngredientRow>[];
-    menu?.ingredients.forEach((name, value) {
-      final master = _findIngredient(name);
-      final amount = RegExp(r'^\d+(?:\.\d+)?').firstMatch(value.trim())?.group(0) ?? '';
-      final unit = master?.unit ?? value.trim().replaceFirst(RegExp(r'^\d+(?:\.\d+)?\s*'), '');
-      rows.add(MobileMenuIngredientRow(name: name, unit: unit, amount: amount));
-    });
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MobileMenuEditSheet(
-        title: menu == null ? '新規メニュー登録' : 'メニュー編集',
-        categories: _categoryPresets.where((c) => c != 'すべて').toList(),
-        initialName: menu?.name ?? '',
-        initialCategory: menu?.category ?? '',
-        initialPrice: menu == null ? '' : menu.price.toString(),
-        initialDescription: menu?.description ?? '',
-        initialImageUrl: menu?.imageUrl ?? '',
-        initialRows: rows,
-        imageBuilder: (url, size) => _menuImage(url, width: double.infinity, height: size),
-        pickImage: () async {
-          final image = await _imagePicker.pickImage(source: ImageSource.gallery);
-          return image?.readAsBytes();
-        },
-        pickIngredient: (exclude) async {
-          final i = await _pickIngredient(exclude);
-          return i == null ? null : MobileMenuIngredientRow(name: i.name, unit: i.unit);
-        },
-        inputNumber: _mobileNumber,
-        onSave: (r) async {
-          try {
-            final map = <String, String>{};
-            for (final row in r.rows) {
-              final amount = row.amount.trim();
-              final value = amount.isEmpty ? row.unit : '$amount${row.unit}';
-              if (value.isNotEmpty) map[row.name] = value;
-            }
-            final newMenu = MenuModel(
-              id: menu?.id ?? '',
-              name: r.name.trim(),
-              category: r.category,
-              price: int.tryParse(r.price) ?? 0,
-              description: r.description,
-              imageUrl: r.imageUrl,
-              ingredients: map,
-            );
-            if (menu == null) {
-              await _menuService.createMenu(newMenu, imageBytes: r.imageBytes);
-            } else {
-              await _menuService.updateMenu(newMenu, imageBytes: r.imageBytes);
-            }
-            if (!mounted) return null;
-            _loadMenus();
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
-            return null;
-          } catch (e) {
-            return '保存に失敗しました: $e';
-          }
-        },
-      ),
-    );
-  }
-
-  Future<void> _mobileDelete(MenuModel menu) async {
-    final ok = await showMobileMenuDeleteDialog(context, menu.name);
-    if (!ok || !mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    await _menuService.deleteMenu(menu.id);
-    if (!mounted) return;
-    _loadMenus();
-    messenger.showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
-  }
-
-  Widget _buildMobile() {
-    final filtered = _selectedCategory == 'すべて'
-        ? _menus
-        : _menus.where((m) => m.category == _selectedCategory).toList();
-    return MobileMenuMaster894645(MobileMenuMasterData(
-      isLoading: _isLoading,
-      menus: filtered,
-      categories: _categoryPresets,
-      selectedCategory: _selectedCategory,
-      selectedMenuId: _selectedMenu?.id,
-      imageBuilder: (url, size) => _menuImage(url, width: double.infinity, height: size),
-      onSelectCategory: (c) => setState(() => _selectedCategory = c),
-      onSelectMenu: (m) => setState(() => _selectedMenu = m),
-      onNew: _showMobileEdit,
-      onEdit: _showMobileEdit,
-      onDelete: _mobileDelete,
-      onSeed: () async {
-        setState(() => _isLoading = true);
-        try {
-          await _menuService.seedMenuData();
-          await _loadMenus();
-        } catch (e) {
-          if (mounted) setState(() => _isLoading = false);
-        }
-      },
-      onOpenMenu: widget.onOpenMenu,
-      onNavigate: widget.onNavigate,
-    ));
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     final filteredMenus = _selectedCategory == 'すべて'
         ? _menus
         : _menus.where((m) => m.category == _selectedCategory).toList();

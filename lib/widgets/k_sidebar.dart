@@ -97,6 +97,7 @@ class _KSidebarState extends State<KSidebar> {
             icon: Icons.edit_document,
             label: '受注入力',
           ),
+          _buildItem(context, index: 11, icon: Icons.notifications_active, label: '事前連絡進捗'),
           _buildItem(context, index: 1, icon: Icons.list_alt, label: '受注一覧'),
           _buildItem(
             context,

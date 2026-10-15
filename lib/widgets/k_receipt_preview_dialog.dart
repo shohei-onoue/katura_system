@@ -95,6 +95,7 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
       await Printing.layoutPdf(
         name: '領収書_${widget.branchName}_${_no4(committedNo)}',
         format: _b5Landscape,
+        // ignore: deprecated_member_use
         onLayout: (format) => Printing.convertHtml(format: format, html: html),
       );
     } catch (e) {

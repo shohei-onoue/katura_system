@@ -17,7 +17,8 @@ import '../widgets/k_direct_address_picker_dialog.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_location_adjustment_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
-import 'mobile/mobile_settings_89_1635.dart';
+import '../services/pre_contact_settings_service.dart';
+import 'phone/phone_common.dart';
 
 /// アプリ全体の設定を一括管理する画面
 class SettingsScreen extends StatelessWidget {
@@ -28,9 +29,6 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.of(context).size.width < 600) {
-      return _MobileSettings(onOpenMenu: onOpenMenu, onNavigate: onNavigate);
-    }
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -117,6 +115,12 @@ class SettingsScreen extends StatelessWidget {
               ),
               SizedBox(height: rs(context, 16)),
               const _BranchSettingsSection(),
+              if (isPhoneWidth(context)) ...[
+                SizedBox(height: rs(context, 32)),
+                const Divider(),
+                SizedBox(height: rs(context, 16)),
+                const _PhonePreContactSection(),
+              ],
             ],
           ),
         ),
@@ -838,261 +842,124 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
   }
 }
 
-/// スマホ版（幅600未満）の設定画面。既存の保存先・サービスをそのまま利用する。
-class _MobileSettings extends StatefulWidget {
-  const _MobileSettings({this.onOpenMenu, this.onNavigate});
 
-  final VoidCallback? onOpenMenu;
-  final void Function(int)? onNavigate;
+/// スマホ用：事前連絡方法の設定・メール/SMSテンプレート作成
+class _PhonePreContactSection extends StatefulWidget {
+  const _PhonePreContactSection();
 
   @override
-  State<_MobileSettings> createState() => _MobileSettingsState();
+  State<_PhonePreContactSection> createState() => _PhonePreContactSectionState();
 }
 
-class _MobileSettingsState extends State<_MobileSettings> {
-  final _branchService = BranchService();
-  final _mapsService = GoogleMapsService();
-  String _sendingTime = '09:00';
-  String _callbackPhone = '';
-  bool _prefLoading = true;
-  List<BranchModel> _branches = [];
-  bool _branchLoading = true;
-
-  DocumentReference<Map<String, dynamic>> get _doc => FirebaseFirestore.instanceFor(
-        app: Firebase.app(),
-        databaseId: 'katura-system-database',
-      ).collection('settings').doc('sms_config');
+class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
+  final _smsCtrl = TextEditingController();
+  final _mailCtrl = TextEditingController();
+  String _method = '';
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPref();
-    _loadBranches();
-  }
-
-  Future<void> _loadPref() async {
-    try {
-      final snap = await _doc.get();
-      if (snap.exists && mounted) {
-        setState(() {
-          _sendingTime = snap.data()?['sendingTime'] ?? '09:00';
-          _callbackPhone = snap.data()?['preConfirmationCallbackPhone'] ?? '';
-        });
-      }
-    } catch (_) {}
-    if (mounted) setState(() => _prefLoading = false);
-  }
-
-  Future<void> _updatePref({String? sendingTime, String? callbackPhone}) async {
-    setState(() {
-      if (sendingTime != null) _sendingTime = sendingTime;
-      if (callbackPhone != null) _callbackPhone = callbackPhone;
-    });
-    try {
-      await _doc.set({
-        'sendingTime': _sendingTime,
-        'preConfirmationCallbackPhone': _callbackPhone,
-      }, SetOptions(merge: true));
-    } catch (_) {}
-  }
-
-  Future<void> _loadBranches() async {
-    try {
-      final b = await _branchService.getAllBranches();
+    PreContactSettingsService.load().then((s) {
       if (!mounted) return;
-      setState(() => _branches = b);
-    } catch (_) {}
-    if (mounted) setState(() => _branchLoading = false);
-  }
-
-  void _editTime() {
-    final digits = _sendingTime.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
-    showDialog(
-      context: context,
-      builder: (_) => KNumericInputDialog(
-        title: '事前確認メールの送信時刻（前日 HHMM）',
-        timeFormat: true,
-        initialValue: digits,
-        maxLength: 4,
-        overwrite: true,
-        emptyHint: 'HHMM',
-        themeColor: AppColors.accentPurple,
-        onConfirmed: (text) {
-          final d = text.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
-          int h = int.tryParse(d.substring(0, 2)) ?? 0;
-          int m = int.tryParse(d.substring(2, 4)) ?? 0;
-          if (h > 23) h = 23;
-          if (m > 59) m = 59;
-          _updatePref(sendingTime: '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}');
-        },
-      ),
-    );
-  }
-
-  void _editPhone() {
-    showDialog(
-      context: context,
-      builder: (_) => KNumericInputDialog(
-        title: '事前電話連絡の担当者番号（リマインドSMS送信先）',
-        initialValue: _callbackPhone,
-        emptyHint: '番号を入力してください',
-        themeColor: AppColors.accentPurple,
-        onConfirmed: (v) => _updatePref(callbackPhone: v),
-      ),
-    );
-  }
-
-  Future<String?> _inputNumber(String title, String initial, String unit) {
-    final c = Completer<String?>();
-    showDialog(
-      context: context,
-      builder: (_) => KNumericInputDialog(
-        title: title,
-        initialValue: initial,
-        unit: unit,
-        emptyHint: '入力してください',
-        maxLength: unit == '台' ? 3 : 20,
-        onConfirmed: (v) => c.complete(v),
-      ),
-    ).then((_) {
-      if (!c.isCompleted) c.complete(null);
+      setState(() {
+        _method = s.defaultMethod;
+        _smsCtrl.text = s.smsTemplate;
+        _mailCtrl.text = s.mailTemplate;
+      });
     });
-    return c.future;
-  }
-
-  Future<String?> _pickAddress() {
-    final c = Completer<String?>();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => KDirectAddressPickerDialog(
-        initialPref: '',
-        initialCity: '',
-        initialTown: '',
-        onAddressConfirmed: (a) => c.complete(a),
-      ),
-    ).then((_) {
-      if (!c.isCompleted) c.complete(null);
-    });
-    return c.future;
-  }
-
-  void _showBranchSheet(BranchModel? branch) {
-    final base = branch ??
-        const BranchModel(id: '', name: '', address: '', phone: '', latitude: 0, longitude: 0);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => MobileBranchEditSheet(
-        title: branch == null ? '店舗を追加' : '店舗を編集',
-        branch: base,
-        pickAddress: _pickAddress,
-        inputNumber: _inputNumber,
-        onSave: (r) async {
-          try {
-            final vehicles = int.tryParse(r.vehicles) ?? 0;
-            if (base.id.isEmpty) {
-              await _branchService.addBranch(
-                name: r.name,
-                companyName: r.company,
-                address: r.address,
-                phone: r.phone,
-                latitude: base.latitude,
-                longitude: base.longitude,
-                imageUrl: base.imageUrl,
-                deliveryVehicleCount: vehicles,
-              );
-            } else {
-              await _branchService.updateBranch(base.copyWith(
-                name: r.name,
-                companyName: r.company,
-                address: r.address,
-                phone: r.phone,
-                deliveryVehicleCount: vehicles,
-              ));
-            }
-            if (!mounted) return null;
-            _loadBranches();
-            return null;
-          } catch (e) {
-            return '保存に失敗しました: $e';
-          }
-        },
-      ),
-    );
-  }
-
-  Future<void> _deleteBranch(BranchModel b) async {
-    if (!await showMobileStoreDeleteDialog(context, b.name)) return;
-    await _branchService.deleteBranch(b.id);
-    if (!mounted) return;
-    _loadBranches();
-  }
-
-  Future<void> _adjustBranch(BranchModel b) async {
-    final hasCoords = b.latitude != 0 || b.longitude != 0;
-    final initialPos = hasCoords ? LatLng(b.latitude, b.longitude) : const LatLng(34.9563, 137.1685);
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => KLocationAdjustmentDialog(
-        initialPosition: initialPos,
-        initialAddress: b.address,
-        getAddressFromLatLng: (pos) => _mapsService.getAddressFromLatLng(pos),
-      ),
-    );
-    if (result == null || !mounted) return;
-    final pos = result['position'] as LatLng;
-    final staticImageUrl = result['staticImageUrl'] as String?;
-    final newAddress = await _mapsService.getAddressFromLatLng(pos);
-    String uploadedUrl = b.imageUrl;
-    if (staticImageUrl != null) {
-      try {
-        final resp = await http.get(Uri.parse(staticImageUrl));
-        if (resp.statusCode == 200) {
-          final ref = FirebaseStorage.instance.ref().child('branches/${b.id}.jpg');
-          await ref.putData(resp.bodyBytes, SettableMetadata(contentType: 'image/jpeg'));
-          uploadedUrl = await ref.getDownloadURL();
-        }
-      } catch (e) {
-        debugPrint('Branch Street View upload error: $e');
-      }
-    }
-    await _branchService.updateBranch(b.copyWith(
-      latitude: pos.latitude,
-      longitude: pos.longitude,
-      address: newAddress ?? b.address,
-      imageUrl: uploadedUrl,
-    ));
-    if (!mounted) return;
-    _loadBranches();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('座標・写真を保存しました'), duration: Duration(seconds: 2)),
-    );
   }
 
   @override
+  void dispose() {
+    _smsCtrl.dispose();
+    _mailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await PreContactSettingsService.save(
+        defaultMethod: _method,
+        smsTemplate: _smsCtrl.text,
+        mailTemplate: _mailCtrl.text,
+      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('保存しました')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('保存に失敗しました: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _title(IconData icon, String text) => Row(
+        children: [
+          Icon(icon, color: AppColors.accentPurple.withValues(alpha: 0.7)),
+          const SizedBox(width: 8),
+          Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ],
+      );
+
+  Widget _field(TextEditingController c, String hint) => TextField(
+        controller: c,
+        minLines: 4,
+        maxLines: 8,
+        decoration: InputDecoration(hintText: hint, border: const OutlineInputBorder()),
+      );
+
+  @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<KInputMode>(
-      valueListenable: SettingsService.inputMode,
-      builder: (context, mode, _) => MobileSettings891635(MobileSettingsData(
-        inputMode: mode,
-        onInputMode: SettingsService.setInputMode,
-        prefLoading: _prefLoading,
-        sendingTime: _sendingTime,
-        callbackPhone: _callbackPhone,
-        onEditTime: _editTime,
-        onEditPhone: _editPhone,
-        branchLoading: _branchLoading,
-        branches: _branches,
-        onAddBranch: () => _showBranchSheet(null),
-        onEditBranch: _showBranchSheet,
-        onDeleteBranch: _deleteBranch,
-        onAdjustBranch: _adjustBranch,
-        onOpenMenu: widget.onOpenMenu,
-        onNavigate: widget.onNavigate,
-      )),
+    final noteStyle = TextStyle(fontSize: 12, color: Colors.grey.shade600);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _title(Icons.phone_in_talk_outlined, '事前連絡方法の設定'),
+        const SizedBox(height: 4),
+        Text('事前連絡で最初に使う連絡方法を選びます。', style: noteStyle),
+        const SizedBox(height: 12),
+        KChoiceGroup<String>(
+          label: '',
+          showLabel: false,
+          selectedValue: _method,
+          selectedColor: AppColors.selectButton,
+          selectedTextColor: AppColors.primaryText,
+          onSelected: (v) => setState(() => _method = v),
+          items: [
+            KChoiceItem(label: '電話', value: '電話'),
+            KChoiceItem(label: 'SMS', value: 'SMS'),
+            KChoiceItem(label: 'メール', value: 'メール'),
+          ],
+        ),
+        const SizedBox(height: 32),
+        const Divider(),
+        const SizedBox(height: 16),
+        _title(Icons.sms_outlined, 'メール/SMSのテンプレート文章の作成'),
+        const SizedBox(height: 4),
+        Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}', style: noteStyle),
+        const SizedBox(height: 12),
+        const Text('SMS用', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        _field(_smsCtrl, '例：{お客様名} 様 {配達日} {配達時間} のお届けで間違いございませんか。'),
+        const SizedBox(height: 16),
+        const Text('メール用', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 6),
+        _field(_mailCtrl, '例：{お客様名} 様 ご注文の事前確認です。'),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.selectButton,
+              foregroundColor: AppColors.primaryText,
+              elevation: 0,
+              side: BorderSide.none,
+            ),
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? '保存中...' : '保存'),
+          ),
+        ),
+      ],
     );
   }
 }

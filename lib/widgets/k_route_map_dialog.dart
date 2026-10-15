@@ -25,8 +25,9 @@ class KRouteMapDialog extends StatefulWidget {
   final String title;
   final LatLng origin;
   final List<KRouteStop> stops; // 最後が目的地、それ以外は経由地
+  final bool vertical; // true＝スマホ用（上に地図、下にルートカード）
 
-  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops});
+  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops, this.vertical = false});
 
   @override
   State<KRouteMapDialog> createState() => _KRouteMapDialogState();
@@ -181,14 +182,14 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   Widget _travel(BuildContext context, int i) {
     final sec = i < _legs.length ? _legs[i]?.seconds : null;
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
+      padding: EdgeInsets.symmetric(vertical: _s(4)),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.directions_car, size: rs(context, 18), color: AppColors.primary),
-          SizedBox(width: rs(context, 4)),
+          Icon(Icons.directions_car, size: _s(18), color: AppColors.primary),
+          SizedBox(width: _s(4)),
           Text(sec == null ? '移動--分' : '移動${(sec / 60).ceil()}分',
-              style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold, color: AppColors.primary)),
+              style: TextStyle(fontSize: _f(13), fontWeight: FontWeight.bold, color: AppColors.primary)),
         ],
       ),
     );
@@ -196,18 +197,18 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
 
   /// 開いたカード内の「一般優先／高速優先」ラジオボタン（背景は whiteText、右端に移動時間）
   Widget _routeTypeRadios(BuildContext context, int i) {
-    final dark = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.primaryText);
+    final dark = TextStyle(fontSize: _f(14), fontWeight: FontWeight.bold, color: AppColors.primaryText);
     Widget option(String label, bool value) {
       final sec = _optLegs['$i-$value']?.seconds;
       return InkWell(
         onTap: _mapReady ? () => _setHighway(i, value) : null,
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: rs(context, 4)),
+          padding: EdgeInsets.symmetric(vertical: _s(4)),
           child: Row(
             children: [
               Icon(_highway[i] == value ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: AppColors.primaryText, size: rs(context, 22)),
-              SizedBox(width: rs(context, 8)),
+                  color: AppColors.primaryText, size: _s(22)),
+              SizedBox(width: _s(8)),
               Expanded(child: Text(label, style: dark)),
               Text(sec == null ? '--分' : '${(sec / 60).ceil()}分', style: dark),
             ],
@@ -217,9 +218,9 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     }
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(top: rs(context, 8)),
-      padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 4)),
-      decoration: BoxDecoration(color: AppColors.whiteText, borderRadius: BorderRadius.circular(rs(context, 6))),
+      margin: EdgeInsets.only(top: _s(8)),
+      padding: EdgeInsets.symmetric(horizontal: _s(10), vertical: _s(4)),
+      decoration: BoxDecoration(color: AppColors.whiteText, borderRadius: BorderRadius.circular(_s(6))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [option('一般優先', false), option('高速優先', true)],
@@ -229,14 +230,14 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
 
   Widget _card(BuildContext context, int i) {
     final s = widget.stops[i];
-    final white = TextStyle(fontSize: rf(context, 14), fontWeight: FontWeight.bold, color: AppColors.whiteText);
+    final white = TextStyle(fontSize: _f(14), fontWeight: FontWeight.bold, color: AppColors.whiteText);
     return GestureDetector(
       onTap: () => _select(i),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: rs(context, 10), vertical: rs(context, 12)),
+        padding: EdgeInsets.symmetric(horizontal: _s(10), vertical: _s(12)),
         decoration: BoxDecoration(
           color: _selected == i ? s.color : s.color.withValues(alpha: 0.5), // 未選択は透過50%
-          borderRadius: BorderRadius.circular(rs(context, 8)),
+          borderRadius: BorderRadius.circular(_s(8)),
           border: _selected == i ? Border.all(color: _selectedLine, width: 3) : null,
         ),
         child: Column(
@@ -245,9 +246,9 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
             Row(
               children: [
                 Text('${i + 1}', style: white),
-                SizedBox(width: rs(context, 8)),
+                SizedBox(width: _s(8)),
                 Text(s.time, style: white),
-                SizedBox(width: rs(context, 8)),
+                SizedBox(width: _s(8)),
                 Expanded(child: Text(s.place, maxLines: 1, overflow: TextOverflow.ellipsis, style: white)),
                 Icon(_selected == i ? Icons.expand_less : Icons.expand_more, color: AppColors.whiteText),
               ],
@@ -258,6 +259,21 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
       ),
     );
   }
+
+  double _s(double v) => widget.vertical ? v * 0.8 : rs(context, v); // スマホ(縦)は実寸基準
+  double _f(double v) => widget.vertical ? v : rf(context, v);
+
+  Widget _mapView() => _controller == null ? const Center(child: CircularProgressIndicator()) : KHtmlView(controller: _controller!);
+
+  Widget _cardList() => ListView(
+        padding: EdgeInsets.all(_s(12)),
+        children: [
+          for (int i = 0; i < widget.stops.length; i++) ...[
+            _travel(context, i),
+            _card(context, i),
+          ],
+        ],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -274,39 +290,20 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
           children: [
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(rs(context, 16)),
+              padding: EdgeInsets.all(_s(16)),
               color: Colors.deepPurple.shade50,
               child: Row(
                 children: [
                   const Icon(Icons.route, color: AppColors.accentOrange),
-                  SizedBox(width: rs(context, 12)),
-                  Expanded(child: Text(_summary, style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16)))),
+                  SizedBox(width: _s(12)),
+                  Expanded(child: Text(_summary, style: TextStyle(fontWeight: FontWeight.bold, fontSize: _f(16)))),
                 ],
               ),
             ),
             Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 7,
-                    child: _controller == null
-                        ? const Center(child: CircularProgressIndicator())
-                        : KHtmlView(controller: _controller!),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: ListView(
-                      padding: EdgeInsets.all(rs(context, 12)),
-                      children: [
-                        for (int i = 0; i < widget.stops.length; i++) ...[
-                          _travel(context, i),
-                          _card(context, i),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+              child: widget.vertical
+                  ? Column(children: [Expanded(flex: 4, child: _mapView()), Expanded(flex: 5, child: _cardList())])
+                  : Row(children: [Expanded(flex: 7, child: _mapView()), Expanded(flex: 3, child: _cardList())]),
             ),
           ],
         ),

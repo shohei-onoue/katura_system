@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/k_sidebar.dart';
+import 'contact_progress_screen.dart';
 import '../models/order_model.dart';
 import 'order_form_screen.dart';
 import 'customer_list_screen.dart';
@@ -13,6 +14,11 @@ import 'route_optimization_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/k_responsive.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import '../services/auth_service.dart';
+import '../services/email_auth_service.dart';
+import 'login/login_screen.dart';
+import 'phone/phone_common.dart';
+import '../services/pre_contact_settings_service.dart';
 
 /// 経営効率化を極めたメイン司令塔画面
 /// ループエンジニアリング評価：
@@ -37,11 +43,14 @@ class _MainScreenState extends State<MainScreen> {
   String _editSection = ''; // 編集で選んだ項目（配達先/日程/注文内容）
 
   // 常駐キャッシュ対象の画面インデックス（受注入力=0とデータ分析=5は対象外）
-  static const List<int> _cachedIndices = [1, 2, 3, 6, 7, 10, 8, 9];
+  static const List<int> _cachedIndices = [1, 2, 3, 6, 7, 10, 8, 9, 11];
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && isPhoneWidth(context)) PreContactSettingsService.load();
+    });
   }
 
   /// 受注カードの編集中に別の機能（受注入力の新規も含む）へ移動しようとしたとき、
@@ -93,6 +102,64 @@ class _MainScreenState extends State<MainScreen> {
     setState(() => _selectedIndex = index);
   }
 
+  static const Map<int, String> _titles = {
+    0: '受注入力', 1: '受注一覧', 2: '調理・仕入れ計画', 3: '配達予定', 4: '配送ルート', 5: 'データ分析', 6: '顧客管理',
+    7: 'メニューマスタ', 8: 'スタッフ管理', 9: '設定', 10: '材料マスタ', 11: '事前連絡進捗',
+  };
+  // スマホ下部バー：画面インデックス（最後の「その他」はメニューを開く）
+  static const List<int> _bottomIndices = [0, 1, 3, 6, 9];
+
+  Future<void> _logout() async {
+    await AuthService().logout();
+    await EmailAuthService().signOut();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (route) => false);
+  }
+
+  PreferredSizeWidget _buildPhoneAppBar() {
+    return AppBar(
+      backgroundColor: AppColors.mainBackground,
+      foregroundColor: AppColors.primaryText,
+      automaticallyImplyLeading: false,
+      leading: IconButton(icon: const Icon(Icons.logout), tooltip: 'ログアウト', onPressed: _logout),
+      centerTitle: true,
+      title: Text(_titles[_selectedIndex] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.notifications_active),
+          tooltip: '事前連絡',
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ContactProgressScreen(asPage: true))),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneBottomBar() {
+    final pos = _bottomIndices.indexOf(_selectedIndex);
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      backgroundColor: AppColors.mainBackground,
+      selectedItemColor: AppColors.accentPurple,
+      unselectedItemColor: AppColors.secondaryText,
+      currentIndex: pos >= 0 ? pos : _bottomIndices.length,
+      onTap: (i) {
+        if (i == _bottomIndices.length) {
+          _scaffoldKey.currentState?.openDrawer();
+        } else {
+          _goTo(_bottomIndices[i]);
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '受注入力'),
+        BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: '受注一覧'),
+        BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: '配達予定'),
+        BottomNavigationBarItem(icon: Icon(Icons.people), label: '顧客管理'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: '設定'),
+        BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'その他'),
+      ],
+    );
+  }
+
   Widget _buildOrderFormScreen() {
     return OrderFormScreen(
       handle: _orderFormHandle,
@@ -136,6 +203,8 @@ class _MainScreenState extends State<MainScreen> {
         return CustomerListScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       case 7: // メニューマスタ
         return MenuMasterScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
+      case 11: // 事前連絡進捗
+        return const ContactProgressScreen();
       case 10: // 材料マスタ
         return const IngredientMasterScreen();
       case 8: // スタッフ管理
@@ -173,10 +242,13 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 900;
+    final bool isPhone = isPhoneWidth(context);
 
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.mainBackground,
+      appBar: isPhone ? _buildPhoneAppBar() : null,
+      bottomNavigationBar: isPhone ? _buildPhoneBottomBar() : null,
       drawer: isMobile ? Drawer(
         child: KSidebar(
           selectedIndex: _selectedIndex,

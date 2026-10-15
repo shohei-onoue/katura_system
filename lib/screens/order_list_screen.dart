@@ -6,8 +6,9 @@ import '../services/customer_service.dart';
 import '../services/date_warning_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
-import 'mobile/mobile_order_list_89_4540.dart';
 import 'order_list/widgets/order_list_card.dart';
+import 'phone/phone_common.dart';
+import 'phone/phone_order_card.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
 
@@ -40,6 +41,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
   bool _dateTabsScrolled = false;
   ScrollController? _dateTabsController;
   String _selectedBranch = '全店舗';
+  bool _phonePickup = false; // スマホ：false=配達 / true=引取り
 
   static const List<String> _branchTabs = ['全店舗', '岡崎店', '名古屋店', '岐阜店'];
 
@@ -144,12 +146,68 @@ class _OrderListScreenState extends State<OrderListScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
+  void _setPhoneDay(DateTime d) {
+    setState(() {
+      _selectedDay = d;
+      _focusedDay = d;
+    });
+    _filterOrdersByDay(d);
+  }
+
+  // スマホ(幅600未満)：日付バー＋配達/引取り切替＋カード縦並び
+  Widget _buildPhone() {
+    final list = _visibleOrders.where((o) => (o.deliveryType == '引取') == _phonePickup).toList();
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      endDrawer: _buildContactDrawer(),
+      body: Column(
+        children: [
+          PhoneDateBar(
+            date: _selectedDay ?? _focusedDay,
+            onChanged: _setPhoneDay,
+            trailing: Row(children: [
+              Text(_phonePickup ? '引取り' : '配達', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+              Switch(
+                value: _phonePickup,
+                activeThumbColor: AppColors.primaryText,
+                activeTrackColor: AppColors.selectButton,
+                onChanged: (v) => setState(() => _phonePickup = v),
+              ),
+            ]),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : list.isEmpty
+                    ? const Center(child: Text('この日の受注はありません'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(10),
+                        itemCount: list.length,
+                        itemBuilder: (context, i) {
+                          final order = list[i];
+                          final warns = (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[]).where((t) => t.startsWith('${order.customerName}：')).toList();
+                          return PhoneOrderCard(
+                            order: order,
+                            displayName: _displayNames[order.id],
+                            isWarning: warns.isNotEmpty,
+                            expanded: _expandedOrderId == order.id,
+                            onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
+                            onEdit: (o, section) => widget.onEditOrder?.call(o, section),
+                            onCancel: _cancelOrder,
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone();
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -164,105 +222,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
         ],
       ),
     );
-  }
-
-  // 事前連絡が必要な受注（連絡未完了、またはSMS返信が承認以外）
-  List<OrderModel> get _contactOrders => _allOrders.where((o) {
-        if (o.preConfirmationMethod.isEmpty) return false;
-        if (o.preConfirmationMethod == '電話') return true;
-        return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
-      }).toList()
-        ..sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
-
-  // 右側パネル：事前連絡の進捗カード一覧
-  Widget _buildContactDrawer() {
-    final list = _contactOrders;
-    return Drawer(
-      backgroundColor: AppColors.mainBackground,
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.all(rs(context, 12)),
-              child: Text('事前連絡の進捗（${list.length}件）', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: list.isEmpty
-                  ? const Center(child: Text('連絡待ちはありません'))
-                  : ListView(
-                      padding: EdgeInsets.all(rs(context, 8)),
-                      children: list.map(_buildContactCard).toList(),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactCard(OrderModel o) {
-    final isPhone = o.preConfirmationMethod == '電話';
-    final phone = isPhone && o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
-    final reaction = !isPhone && o.smsReply.isNotEmpty && o.smsReply != '承認';
-    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? '返信待ち' : 'SMS未送信');
-    return Card(
-      color: reaction ? AppColors.cancelButton : null,
-      child: Padding(
-        padding: EdgeInsets.all(rs(context, 10)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Icon(isPhone ? Icons.phone : Icons.mail, size: rs(context, 18), color: reaction ? AppColors.whiteText : null),
-              SizedBox(width: rs(context, 6)),
-              Expanded(child: Text(withHonorific(_displayNames[o.id] ?? o.customerName), style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : null))),
-            ]),
-            if (o.facilityName.trim().isNotEmpty) Text(o.facilityName.trim(), style: TextStyle(fontSize: rf(context, 13), color: reaction ? AppColors.whiteText : null)),
-            Text(phone, style: TextStyle(fontSize: rf(context, 13), color: reaction ? AppColors.whiteText : null)),
-            Text(status, style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : Colors.red)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobile() {
-    final warnTexts = <String, String>{};
-    for (final o in _visibleOrders) {
-      final w = (_warnDays[DateWarningService.dayOf(o.deliveryDate)] ?? const <String>[])
-          .where((t) => t.startsWith('${o.customerName}：'));
-      if (w.isNotEmpty) warnTexts[o.id] = w.join(' / ');
-    }
-    return MobileOrderList894540(MobileOrderListData(
-      isLoading: _isLoading,
-      orders: _visibleOrders,
-      displayNames: _displayNames,
-      warnTexts: warnTexts,
-      warnDays: _warnDays.keys.toSet(),
-      hasOrderDays: _allOrders.map((o) => _dateOnly(o.deliveryDate)).toSet(),
-      selectedDay: _selectedDay!,
-      focusedDay: _focusedDay,
-      selectedBranch: _selectedBranch,
-      expandedOrderId: _expandedOrderId,
-      onSelectDay: (day) {
-        setState(() {
-          _selectedDay = day;
-          _focusedDay = day;
-        });
-        _filterOrdersByDay(day);
-      },
-      onChangeMonth: (delta) => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + delta, 1)),
-      onToday: _goToday,
-      onRefresh: _loadOrders,
-      onSelectBranch: (b) => setState(() => _selectedBranch = b),
-      onToggle: (id) => setState(() => _expandedOrderId = _expandedOrderId == id ? null : id),
-      onEdit: (order, section) => widget.onEditOrder?.call(order, section),
-      onCancel: _cancelOrder,
-      onOpenMenu: widget.onOpenMenu,
-      onNavigate: widget.onNavigate,
-    ));
   }
 
   double _dateTabsViewW = 0;
@@ -311,14 +270,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
             child: Text('今日', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () => _loadOrders()),
-          Builder(builder: (ctx) {
-            final n = _contactOrders.length;
-            return IconButton(
-              tooltip: '事前連絡の進捗',
-              icon: Badge(isLabelVisible: n > 0, label: Text('$n'), child: const Icon(Icons.notifications_active)),
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
-            );
-          }),
         ],
       ),
     );

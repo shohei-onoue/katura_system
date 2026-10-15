@@ -29,12 +29,13 @@ import '../widgets/k_trash_pickup_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/steps/facility_search_host_dialog.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
-import 'mobile/mobile_order_input_flow.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
+import '../services/pre_contact_settings_service.dart';
+import 'phone/phone_common.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 親画面（メイン画面）から受注入力の状態を確認・破棄するための窓口。
@@ -117,6 +118,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _teaOption = 'なし';
   int _teaQuantity = 0;
   String _preConfirmationMethod = '電話'; // デフォルトは電話
+  bool _preMethodManual = false;
+
+  // スマホ幅の新規入力のみ、設定の既定事前連絡方法(電話/SMS)を初期値に反映
+  Future<void> _applyDefaultPreMethod() async {
+    if (!mounted || !isPhoneWidth(context) || _isEditingOrder || _preMethodManual) return;
+    if (PreContactSettingsService.cachedDefaultMethod.isEmpty) {
+      await PreContactSettingsService.load();
+    }
+    if (!mounted || _isEditingOrder || _preMethodManual) return;
+    final m = PreContactSettingsService.cachedDefaultMethod;
+    if ((m == '電話' || m == 'SMS') && m != _preConfirmationMethod) {
+      setState(() => _preConfirmationMethod = m);
+    }
+  }
   String _preConfirmationPhoneType = 'この電話番号'; // デフォルトは受電番号
   final Set<String> _documents = {}; // 書類（複数選択）
   String _paymentMethod = ''; // 支払い方法（未選択は空）
@@ -233,6 +248,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       if (widget.initialOrder != null) {
         _populateForm(widget.initialOrder!);
       } else {
+        _applyDefaultPreMethod();
         _setInitialBranchMarker();
       }
       _loadGlobalSmsSettings(); // グローバル設定の読み込み
@@ -518,6 +534,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _orderSource = '';
       _packagingType = '個包装';
       _preConfirmationMethod = '電話';
+      _preMethodManual = false;
       _preConfirmationPhoneType = 'この電話番号';
       _documents.clear();
       _paymentMethod = '';
@@ -529,6 +546,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       _markers = {};
       _setInitialBranchMarker();
     });
+    _applyDefaultPreMethod();
     widget.onCancel?.call();
   }
 
@@ -1949,7 +1967,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     // 読み込み中は画面をグレーアウトし、中央にクルクルを出して操作を受け付けない
     return Stack(
       children: [
-        MediaQuery.of(context).size.width < 600 ? _buildMobile(context) : _buildScaffold(context),
+        _buildScaffold(context),
         ValueListenableBuilder<bool>(
           valueListenable: _isLoadingNotifier,
           builder: (context, loading, _) => loading
@@ -1965,263 +1983,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         ),
       ],
     );
-  }
-
-  // ---------------------------------------------------------------- スマホ版（幅600未満）
-
-  Future<void> _pickFacilityAndApply(int tab, String title) async {
-    final result = await showFacilitySearchHostDialog(context, initialTab: tab, title: title);
-    if (result == null || !mounted) return;
-    final facility = result.name.trim().isEmpty ? '個人宅' : result.name.trim();
-    await _onAddressSelectedFromList('$facility: ${result.address} (${result.lat}, ${result.lng})');
-  }
-
-  void _removeOneConfirmed(String id) {
-    final idx = _confirmedItems.lastIndexWhere((i) => i['id'] == id);
-    if (idx == -1) return;
-    setState(() {
-      final list = _confirmedItems.map((e) => Map<String, dynamic>.from(e)).toList();
-      final q = list[idx]['quantity'] as int;
-      if (q > 1) {
-        list[idx]['quantity'] = q - 1;
-      } else {
-        list.removeAt(idx);
-      }
-      _confirmedItems = list;
-      _selectedQuantities.clear();
-      for (var item in _confirmedItems) {
-        final String mid = item['id'];
-        _selectedQuantities[mid] = (_selectedQuantities[mid] ?? 0) + (item['quantity'] as int);
-      }
-    });
-  }
-
-  Future<void> _pickPreConfirmationDateTime() async {
-    final now = DateTime.now();
-    final base = _preConfirmationDateTime ?? DateTime(_deliveryDate.year, _deliveryDate.month, _deliveryDate.day - 1, 15);
-    final day = await showDatePicker(
-      context: context,
-      initialDate: base.isBefore(now) ? now : base,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: DateTime(now.year + 2),
-    );
-    if (day == null || !mounted) return;
-    final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: base.hour, minute: base.minute));
-    if (t == null || !mounted) return;
-    setState(() {
-      _preConfirmationDateTime = DateTime(day.year, day.month, day.day, t.hour, t.minute);
-      _preConfirmationDateTimeManual = true;
-    });
-  }
-
-  String _md(DateTime d) => '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-
-  Widget _buildMobile(BuildContext context) {
-    final today = DateTime.now();
-    final todayOnly = DateTime(today.year, today.month, today.day);
-    final candidates = _phoneSearchCandidates.map((c) {
-      final hasCompany = c.companyName.isNotEmpty && c.companyName != '個人宅';
-      final last = _lastOrderDates[c.id];
-      return MobileCandidate(
-        id: c.id,
-        title: hasCompany ? '${c.companyName} / ${c.name} 様' : '${c.name} 様',
-        phone: _formatPhone(c.phoneNumber),
-        daysSince: last == null ? null : todayOnly.difference(DateTime(last.year, last.month, last.day)).inDays,
-        selected: _currentCustomer?.id == c.id,
-      );
-    }).toList();
-
-    final history = <MobileHistoryItem>[];
-    for (final raw in _currentCustomer?.deliveryAddresses ?? const <String>[]) {
-      final full = normalizeHistoryEntry(raw);
-      final parts = full.split(': ');
-      final fName = parts.length > 1 ? parts[0] : (full.startsWith('[') ? full.split(']')[0].replaceAll('[', '') : '個人宅');
-      final aOnly = parts.length > 1 ? parts[1].split(' (')[0] : full.split(' (')[0].split(']').last.trim();
-      history.add(MobileHistoryItem(
-        raw: raw,
-        name: fName,
-        address: aOnly,
-        selected: _historyManuallySelected && _addressController.text == aOnly && _facilityController.text == fName,
-      ));
-    }
-
-    final lastIds = _lastOrderMenuIds;
-    final menus = _menus
-        .map((m) => MobileMenuItem(
-              id: m.id,
-              name: m.name,
-              category: m.category,
-              price: m.price,
-              imageUrl: m.imageUrl,
-              qty: _selectedQuantities[m.id] ?? 0,
-              isLast: lastIds.contains(m.id),
-            ))
-        .toList();
-    final cart = _confirmedItems
-        .map((i) => MobileCartLine(
-              name: '${i['name']}',
-              qty: i['quantity'] as int,
-              price: i['price'] as int,
-              note: '${i['specialOrder'] ?? ''}',
-            ))
-        .toList();
-
-    final isSms = _preConfirmationMethod == 'SMS';
-    final smsAt = _scheduledSmsDateTime ?? _calculateScheduledSmsDateTime();
-    final preDateLabel = isSms
-        ? (smsAt != null ? '${_md(smsAt)} 送信予約' : '前日 $_preConfirmationSmsTime 自動送信')
-        : (_preConfirmationDateTime != null ? _md(_preConfirmationDateTime!) : '連絡日時を設定');
-
-    final data = MobileOrderInputData(
-      step: _currentStep,
-      maxStepReached: _maxStepReached,
-      isEditing: _isEditingOrder,
-      pickup: _deliveryType == '引取',
-      canJumpToFinal: _confirmedItems.isNotEmpty,
-      loading: false,
-      phoneText: _phoneController.text,
-      onOpenMenu: widget.onOpenMenu,
-      onNavigate: widget.onNavigate,
-      onStepTapped: (s) {
-        if (s == 2 && _deliveryType == '引取') return;
-        _onStepTapped(s);
-      },
-      onCancelOrder: _confirmCancelOrder,
-      onTextChanged: _scheduleRebuild,
-      isCompletingPhone: _isCompletingPhone,
-      phonePrefix: _phonePrefixController.text,
-      phoneDigitsLen: _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length,
-      hasSelectedCustomer: _currentCustomer != null,
-      candidates: candidates,
-      onDial: _handlePhoneInput,
-      onClear: _handlePhoneClear,
-      onBackspace: _handlePhoneBackspace,
-      onSelectCandidate: (id) {
-        final c = _phoneSearchCandidates.where((e) => e.id == id);
-        if (c.isNotEmpty) _onCandidateTapped(c.first);
-      },
-      onPhoneNext: _phoneNext,
-      onPhoneClose: () {
-        setState(() => _isCompletingPhone = false);
-        _phonePrefixController.clear();
-        _phoneController.clear();
-        _lookupCustomer('');
-      },
-      nameController: _nameController,
-      companyController: _furiganaController,
-      facilityText: _facilityController.text,
-      addressText: _addressController.text,
-      onPickFacilityForCustomer: (tab) => _pickFacilityAndApply(tab, '所属企業・住所の確定'),
-      onCustomerNext: () {
-        if (!_isEditingOrder && _currentCustomer == null && _nameController.text.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('顧客名を入力してください'), backgroundColor: Colors.redAccent),
-          );
-          return;
-        }
-        _completeCustomerConfirmation();
-      },
-      onCustomerBack: () {
-        setState(() {
-          _currentStep = 0;
-          _isCompletingPhone = false;
-          _phoneController.text = _lastPhoneQuery;
-          _lookupCustomer(_lastPhoneQuery);
-        });
-      },
-      isHistoryMode: _isHistoryMode,
-      historyItems: history,
-      remarksController: _remarksController,
-      branchName: _branchName,
-      estimatedDuration: _estimatedDeliveryDuration,
-      isApproximateLocation: _isApproximateLocation,
-      mapWidget: GoogleMap(
-        initialCameraPosition: const CameraPosition(target: _initialCenter, zoom: 12),
-        onMapCreated: (c) {
-          _mapController = c;
-          _fitMapToMarkers();
-        },
-        markers: _markers,
-        myLocationEnabled: false,
-        myLocationButtonEnabled: false,
-        zoomControlsEnabled: false,
-      ),
-      onModeToggle: (v) => setState(() {
-        _isHistoryMode = v;
-        _historyManuallySelected = false;
-      }),
-      onSelectHistory: (raw) async {
-        setState(() {
-          _pendingBranchAnchor = null;
-          _historyManuallySelected = true;
-        });
-        await _onAddressSelectedFromList(normalizeHistoryEntry(raw));
-      },
-      onAdjust: _showLocationAdjustmentDialog,
-      onEditHistory: _editHistoryEntry,
-      onDeleteHistory: _deleteHistoryEntry,
-      onSearchFacility: (tab) => _pickFacilityAndApply(tab, '配達先の検索'),
-      onDeliveryNext: () async {
-        if (await _checkScheduleWarnings() && mounted) _updateStep(3);
-      },
-      menus: menus,
-      cart: cart,
-      totalPrice: _totalPrice,
-      totalCount: _totalCount,
-      onAddMenu: (id) {
-        final m = _menus.where((e) => e.id == id);
-        if (m.isEmpty) return;
-        _addConfirmedItems([
-          {
-            'id': m.first.id,
-            'name': m.first.name,
-            'price': m.first.price,
-            'quantity': 1,
-            'specialOrder': '',
-            'specialOrderQuantity': 0,
-            'topping': '',
-            'teaOption': 'なし',
-            'teaQuantity': 0,
-          }
-        ]);
-      },
-      onRemoveMenu: _removeOneConfirmed,
-      onClearCart: () => setState(() {
-        _confirmedItems = [];
-        _selectedQuantities.clear();
-      }),
-      onItemsNext: _showTrashPickupDialogThenAdvance,
-      onReloadMenus: _loadData,
-      packagingType: _packagingType,
-      packagingSmallQty: _packagingSmallQty,
-      packagingOtherController: _packagingOtherController,
-      preMethod: _preConfirmationMethod,
-      preIsSpecifiedNumber: _preConfirmationPhoneType == '指定番号へ連絡',
-      prePhoneController: _preConfirmationPhoneController,
-      preDateLabel: preDateLabel,
-      preDateEditable: !isSms,
-      recipientController: _preConfirmationRecipientController,
-      customerName: _nameController.text.isNotEmpty ? _nameController.text : _receiverController.text,
-      documents: _documents,
-      paymentMethod: _paymentMethod,
-      summaryDate:
-          '${_deliveryDate.month}/${_deliveryDate.day} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}（${_deliveryType == '引取' ? '引取り' : '配達'}）',
-      summaryAddress: _deliveryType == '引取'
-          ? ''
-          : [_facilityController.text, _addressController.text].where((e) => e.isNotEmpty).join(' '),
-      onPackagingChanged: (v) => setState(() => _packagingType = v),
-      onPackagingQtyChanged: (v) => setState(() => _packagingSmallQty = v),
-      onPreMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
-      onPreNumberTypeChanged: (specified) =>
-          setState(() => _preConfirmationPhoneType = specified ? '指定番号へ連絡' : 'この電話番号'),
-      onPrePhoneChanged: (v) => setState(() => _preConfirmationPhoneNumber = v),
-      onPickPreDate: _pickPreConfirmationDateTime,
-      onDocumentToggled: (v) => setState(() => _documents.contains(v) ? _documents.remove(v) : _documents.add(v)),
-      onPaymentChanged: (v) => setState(() => _paymentMethod = v),
-      onShowReceipt: _showReceiptPreviewDialog,
-      onSave: _handleSave,
-    );
-    return MobileOrderInput(data);
   }
 
   Widget _buildScaffold(BuildContext context) {
@@ -2847,7 +2608,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           trashPickupLocationDetail: _trashPickupLocationController.text,
           onPackagingTypeChanged: (v) => setState(() => _packagingType = v),
           onPackagingSmallQtyChanged: (v) => setState(() => _packagingSmallQty = v),
-          onPreConfirmationMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
+          onPreConfirmationMethodChanged: (v) => setState(() { _preMethodManual = true; _preConfirmationMethod = v; }),
           onPreConfirmationPhoneTypeChanged: (v) => setState(() => _preConfirmationPhoneType = v),
           onPreConfirmationPhoneNumberChanged: (v) => setState(() {
             _preConfirmationPhoneNumber = v;

@@ -8,7 +8,6 @@ import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_point_heatmap.dart';
 import 'package:katura_system/utils/app_colors.dart';
-import 'mobile/mobile_data_analysis_graph_89_4943.dart';
 
 class AnalysisScreen extends StatefulWidget {
   final VoidCallback? onOpenMenu;
@@ -190,7 +189,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: Padding(
@@ -204,34 +202,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildMobile() {
-    final data = _menuByBranch();
-    final totals = <String, int>{};
-    data.forEach((menu, row) => totals[menu] = row.values.fold(0, (a, b) => a + b));
-    final menus = totals.keys.toList()..sort((a, b) => totals[b]!.compareTo(totals[a]!));
-    final branches = _branchesInData(data);
-    final rows = [for (final m in menus) MobileMenuBarRow(m, totals[m]!, data[m]!)];
-    final months = [for (final e in _monthlyTopMenus()) MobileMonthTop(e.key, e.value)];
-    return MobileDataAnalysisGraph894943(MobileAnalysisData(
-      isLoading: _isLoading,
-      view: _view,
-      onView: (v) => setState(() => _view = v),
-      heatmapView: _buildHeatmapView(),
-      branchTabs: _graphBranchTabs,
-      graphBranch: _graphBranch,
-      onBranch: (b) => setState(() => _graphBranch = b),
-      branchesInData: branches,
-      branchColor: _branchColor,
-      rows: rows,
-      months: months,
-      menuImage: _menuImage,
-      onRowTap: (r) => _showMenuBranchBreakdown(r.menu, r.byBranch, branches),
-      onMonthTap: (m) => _showMonthlyTrendDialog(m.monthKey, m.top),
-      onOpenMenu: widget.onOpenMenu,
-      onNavigate: widget.onNavigate,
-    ));
   }
 
   Widget _buildViewTabs() {

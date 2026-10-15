@@ -8,7 +8,6 @@ import '../services/menu_service.dart';
 import '../services/dummy_data_service.dart';
 import 'customer_list/widgets/customer_detail_dialog.dart';
 import 'customer_list/widgets/customer_data_table.dart';
-import 'mobile/mobile_customer_list_89_4737.dart';
 import 'order_form/widgets/sidebar/sidebar_ranking.dart';
 import '../widgets/k_responsive.dart';
 import '../widgets/k_multimodal_text_field.dart';
@@ -337,7 +336,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     final bool hasQuery = _searchController.text.isNotEmpty;
     return Scaffold(
       appBar: AppBar(
@@ -434,31 +432,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               ],
             ),
     );
-  }
-
-  Widget _buildMobile() {
-    return MobileCustomerList894737(MobileCustomerListData(
-      isLoading: _isLoading,
-      customers: _filteredCustomers,
-      elapsedDays: _elapsedDays,
-      sortKey: _sortKey,
-      sortAscending: _sortAscending,
-      query: _searchController.text,
-      onSort: _onSort,
-      onSearch: (q) => _searchController.text = q,
-      onShowDetail: _showCustomerDetail,
-      onDelete: (c) async {
-        final messenger = ScaffoldMessenger.of(context);
-        await _customerService.deleteCustomer(c.id);
-        if (!mounted) return;
-        _loadCustomers();
-        messenger.showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
-      },
-      onGenerateDummy: _generateDummy,
-      colleaguesOf: (c) => _customers.where((o) => o.companyName == c.companyName && o.id != c.id).toList(),
-      onOpenMenu: widget.onOpenMenu,
-      onNavigate: widget.onNavigate,
-    ));
   }
 
   Widget _buildDetailSidebar(Customer customer) {
