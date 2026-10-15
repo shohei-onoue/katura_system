@@ -1,186 +1,282 @@
+// Figma node 89:4943 (データ分析 グラフ) を実データに接続したスマホ版。
 import 'package:flutter/material.dart';
+import 'mobile_delivery_common.dart';
 
-Widget _b(
-  double l,
-  double t,
-  double w,
-  double h,
-  Color? c, {
-  double r = 0,
-  Color? bc,
-  double bw = 1,
-}) {
-  return Positioned(
-    left: l,
-    top: t,
-    width: w,
-    height: h,
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: c,
-        borderRadius: BorderRadius.circular(r),
-        border: bc == null ? null : Border.all(color: bc, width: bw),
-      ),
-    ),
-  );
+class MobileMenuBarRow {
+  final String menu;
+  final int total;
+  final Map<String, int> byBranch;
+  const MobileMenuBarRow(this.menu, this.total, this.byBranch);
 }
 
-Widget _t(
-  double l,
-  double t,
-  String s,
-  double size,
-  Color c, {
-  FontWeight w = FontWeight.w700,
-  double? ls,
-  double? width,
-}) {
-  return Positioned(
-    left: l,
-    top: t,
-    width: width,
-    child: Text(
-      s,
-      softWrap: width != null,
-      style: TextStyle(
-        fontSize: size,
-        color: c,
-        fontWeight: w,
-        letterSpacing: ls,
-        decoration: TextDecoration.none,
-      ),
-    ),
-  );
+class MobileMonthTop {
+  final String monthKey; // yyyy-MM
+  final List<MapEntry<String, int>> top;
+  const MobileMonthTop(this.monthKey, this.top);
 }
 
-Widget _i(double l, double t, IconData icon, double size, Color c) {
-  return Positioned(
-    left: l,
-    top: t,
-    child: Icon(icon, size: size, color: c),
-  );
-}
+class MobileAnalysisData {
+  final bool isLoading;
+  final int view; // 0: ヒートマップ, 1: グラフ
+  final void Function(int) onView;
+  final Widget heatmapView; // 既存のヒートマップ表示（地図）
+  final List<String> branchTabs;
+  final String graphBranch;
+  final void Function(String) onBranch;
+  final List<String> branchesInData;
+  final Color Function(String) branchColor;
+  final List<MobileMenuBarRow> rows;
+  final List<MobileMonthTop> months;
+  final String? Function(String) menuImage;
+  final void Function(MobileMenuBarRow row) onRowTap;
+  final void Function(MobileMonthTop m) onMonthTap;
+  final VoidCallback? onOpenMenu;
+  final void Function(int)? onNavigate;
 
-Widget _frame(List<Widget> children) {
-  return Scaffold(
-    backgroundColor: const Color(0xFFF3F7F6),
-    body: Center(
-      child: FittedBox(
-        child: SizedBox(
-          width: 390,
-          height: 844,
-          child: Stack(children: children),
-        ),
-      ),
-    ),
-  );
+  const MobileAnalysisData({
+    required this.isLoading,
+    required this.view,
+    required this.onView,
+    required this.heatmapView,
+    required this.branchTabs,
+    required this.graphBranch,
+    required this.onBranch,
+    required this.branchesInData,
+    required this.branchColor,
+    required this.rows,
+    required this.months,
+    required this.menuImage,
+    required this.onRowTap,
+    required this.onMonthTap,
+    this.onOpenMenu,
+    this.onNavigate,
+  });
 }
 
 class MobileDataAnalysisGraph894943 extends StatelessWidget {
-  const MobileDataAnalysisGraph894943({super.key});
+  const MobileDataAnalysisGraph894943(this.d, {super.key});
+
+  final MobileAnalysisData d;
 
   @override
   Widget build(BuildContext context) {
-    return _frame([
-      _b(0, 0, 390, 44, Color(0xFFFFFFFF)),
-      _t(30, 13.5, '9:41', 15, Color(0xFF1D1B20)),
-      _i(303, 14, Icons.signal_cellular_alt, 17, Color(0xFF1D1B20)),
-      _i(325, 14, Icons.wifi, 17, Color(0xFF1D1B20)),
-      _i(347, 14, Icons.battery_full, 17, Color(0xFF1D1B20)),
-      _b(0, 44, 390, 52, Color(0xFFFFFFFF)),
-      _i(16, 60, Icons.menu, 20, Color(0xFF1D1B20)),
-      _t(52, 59, 'データ分析', 18, Color(0xFF1D1B20)),
-      _b(14, 106, 362, 42, Color(0xFFECEFF1), r: 12),
-      _t(67, 119.5, 'ヒートマップ', 13, Color(0xFF6B6F76)),
-      _b(195, 109, 178, 36, Color(0xFF673AB7), r: 10),
-      _t(264, 119.5, 'グラフ', 13, Color(0xFFFFFFFF)),
-      _b(14, 158, 67, 34, Color(0xFFDAFFAF), r: 10, bc: Color(0xFFB9EA80)),
-      _t(28, 167.5, '全店舗', 13, Color(0xFF1D3B00)),
-      _b(87, 158, 80, 34, Color(0xFFFFFFFF), r: 10, bc: Color(0xFFE4E7EB)),
-      _t(101, 167.5, '岡崎本店', 13, Color(0xFF1D1B20)),
-      _b(173, 158, 80, 34, Color(0xFFFFFFFF), r: 10, bc: Color(0xFFE4E7EB)),
-      _t(187, 167.5, '名古屋店', 13, Color(0xFF1D1B20)),
-      _b(259, 158, 67, 34, Color(0xFFFFFFFF), r: 10, bc: Color(0xFFE4E7EB)),
-      _t(273, 167.5, '岐阜店', 13, Color(0xFF1D1B20)),
-      _b(14, 204, 362, 266, Color(0xFFFFFFFF), r: 14, bc: Color(0xFFEDF0F2)),
-      _t(29, 218.5, '店舗別 メニュー注文数', 14, Color(0xFF1D1B20)),
-      _t(327, 220, '多い順', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _b(29, 247, 10, 10, Color(0xFF1E88E5), r: 5),
-      _t(43, 244.5, '岡崎本店', 11, Color(0xFF6B6F76), w: FontWeight.w400),
-      _b(99, 247, 10, 10, Color(0xFF4CAF50), r: 5),
-      _t(113, 244.5, '名古屋店', 11, Color(0xFF6B6F76), w: FontWeight.w400),
-      _b(169, 247, 10, 10, Color(0xFF9C27B0), r: 5),
-      _t(183, 244.5, '岐阜店', 11, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(29, 268, '特製ステーキ弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 268, 104, 14, Color(0xFF1E88E5)),
-      _b(245, 268, 65, 14, Color(0xFF4CAF50)),
-      _b(309, 268, 39, 14, Color(0xFF9C27B0)),
-      _t(29, 289, '松花堂弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 289, 78, 14, Color(0xFF1E88E5)),
-      _b(219, 289, 58, 14, Color(0xFF4CAF50)),
-      _b(277, 289, 26, 14, Color(0xFF9C27B0)),
-      _t(29, 310, '幕の内弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 310, 71, 14, Color(0xFF1E88E5)),
-      _b(212, 310, 39, 14, Color(0xFF4CAF50)),
-      _b(251, 310, 26, 14, Color(0xFF9C27B0)),
-      _t(29, 331, '鶏から揚げオードブル', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 331, 52, 14, Color(0xFF1E88E5)),
-      _b(193, 331, 32, 14, Color(0xFF4CAF50)),
-      _b(225, 331, 19, 14, Color(0xFF9C27B0)),
-      _t(29, 352, '親子丼', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 352, 45, 14, Color(0xFF1E88E5)),
-      _b(186, 352, 19, 14, Color(0xFF4CAF50)),
-      _b(206, 352, 16, 14, Color(0xFF9C27B0)),
-      _t(29, 373, 'ギフト詰め合わせ', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 373, 32, 14, Color(0xFF1E88E5)),
-      _b(173, 373, 19, 14, Color(0xFF4CAF50)),
-      _b(193, 373, 13, 14, Color(0xFF9C27B0)),
-      _t(29, 394, 'ローストビーフ丼', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 394, 32, 14, Color(0xFF1E88E5)),
-      _b(173, 394, 16, 14, Color(0xFF4CAF50)),
-      _b(190, 394, 10, 14, Color(0xFF9C27B0)),
-      _t(29, 415, '海鮮ちらし弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 415, 29, 14, Color(0xFF1E88E5)),
-      _b(170, 415, 13, 14, Color(0xFF4CAF50)),
-      _b(183, 415, 10, 14, Color(0xFF9C27B0)),
-      _t(29, 436, '唐揚げ弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(141, 437, 26, 14, Color(0xFF1E88E5)),
-      _b(167, 437, 13, 14, Color(0xFF4CAF50)),
-      _b(180, 437, 8, 14, Color(0xFF9C27B0)),
-      _b(14, 480, 362, 190, Color(0xFFFFFFFF), r: 14, bc: Color(0xFFEDF0F2)),
-      _t(29, 494.5, '月別 人気メニュー', 14, Color(0xFF1D1B20)),
-      _t(309, 496, '売上推移 ›', 11.5, Color(0xFF673AB7)),
-      _t(29, 522, '10月', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _b(29, 541, 44, 44, Color(0xFFEEF0F2), r: 10),
-      _i(41, 553, Icons.restaurant, 20, Color(0xFFB5BAC0)),
-      _t(81, 544, '1位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(81, 561.5, '特製ステーキ弁当', 16, Color(0xFF1D1B20)),
-      _t(283, 547, '2位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(301, 547, '松花堂弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _t(283, 565, '3位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(301, 565, '幕の内弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _t(29, 594, '9月', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _b(29, 613, 44, 44, Color(0xFFEEF0F2), r: 10),
-      _i(41, 625, Icons.restaurant, 20, Color(0xFFB5BAC0)),
-      _t(81, 616, '1位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(81, 633.5, '松花堂弁当', 16, Color(0xFF1D1B20)),
-      _t(249, 619, '2位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(266, 619, '特製ステーキ弁当', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _t(306, 637, '3位', 11.5, Color(0xFF6B6F76), w: FontWeight.w400),
-      _t(324, 637, '親子丼', 11.5, Color(0xFF1D1B20), w: FontWeight.w400),
-      _b(0, 762, 390, 82, Color(0xFFFFFFFF), bc: Color(0xFFE4E7EB)),
-      _b(320, 769, 56, 30, Color(0xFFEDE7F6), r: 15),
-      _i(32, 774, Icons.post_add, 20, Color(0xFF6B6F76)),
-      _t(21, 802, '受注入力', 10.5, Color(0xFF6B6F76), w: FontWeight.w500),
-      _i(109, 774, Icons.list_alt, 20, Color(0xFF6B6F76)),
-      _t(98, 802, '受注一覧', 10.5, Color(0xFF6B6F76), w: FontWeight.w500),
-      _i(185, 774, Icons.local_shipping, 20, Color(0xFF6B6F76)),
-      _t(174, 802, '配送予定', 10.5, Color(0xFF6B6F76), w: FontWeight.w500),
-      _i(261, 774, Icons.people, 20, Color(0xFF6B6F76)),
-      _t(261, 802, '顧客', 10.5, Color(0xFF6B6F76), w: FontWeight.w500),
-      _i(338, 774, Icons.apps, 20, Color(0xFF673AB7)),
-      _t(327, 802, 'メニュー', 10.5, Color(0xFF673AB7)),
-      _b(128, 831, 134, 5, Color(0xFF111111), r: 2.5),
-    ]);
+    return Scaffold(
+      backgroundColor: mdBg,
+      bottomNavigationBar: MdBottomNav(-1, onNavigate: d.onNavigate),
+      body: Column(
+        children: [
+          const MdStatusBar(),
+          MdTopBar(title: 'データ分析', onIconTap: d.onOpenMenu),
+          Padding(padding: const EdgeInsets.fromLTRB(14, 10, 14, 8), child: _viewTabs()),
+          Expanded(
+            child: d.view == 0
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: d.heatmapView,
+                  )
+                : (d.isLoading ? const Center(child: CircularProgressIndicator()) : _graph()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _viewTabs() {
+    Widget tab(String label, int i) {
+      final sel = d.view == i;
+      return Expanded(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => d.onView(i),
+          child: Container(
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: sel ? mdPurple : null, borderRadius: BorderRadius.circular(10)),
+            child: Text(label, style: mdTs(13, c: sel ? Colors.white : mdSub)),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: const Color(0xFFECEFF1), borderRadius: BorderRadius.circular(12)),
+      child: Row(children: [tab('ヒートマップ', 0), tab('グラフ', 1)]),
+    );
+  }
+
+  Widget _card(String title, Widget child, {Widget? trailing}) => Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: mdCardLine),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [Text(title, style: mdTs(14)), const Spacer(), if (trailing != null) trailing]),
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      );
+
+  Widget _graph() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final b in d.branchTabs) ...[
+                MdChip(b, selected: b == d.graphBranch, onTap: () => d.onBranch(b)),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        _card('店舗別 メニュー注文数', _bars(), trailing: Text('多い順', style: mdTs(11.5, w: FontWeight.w400, c: mdSub))),
+        const SizedBox(height: 12),
+        _card('月別 人気メニュー', _monthly()),
+      ],
+    );
+  }
+
+  Widget _empty() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: Text('データがありません', style: mdTs(12, w: FontWeight.w400, c: mdSub))),
+      );
+
+  Widget _bars() {
+    if (d.rows.isEmpty) return _empty();
+    final maxTotal = d.rows.map((r) => r.total).fold<int>(1, (a, b) => a > b ? a : b);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 4,
+          children: [
+            for (final b in d.branchesInData)
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(color: d.branchColor(b), shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 4),
+                Text(b, style: mdTs(11, w: FontWeight.w400, c: mdSub)),
+              ]),
+          ],
+        ),
+        const SizedBox(height: 10),
+        for (final r in d.rows)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => d.onRowTap(r),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 104,
+                    child: Text(r.menu, maxLines: 1, overflow: TextOverflow.ellipsis, style: mdTs(12)),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, c) => Row(
+                        children: [
+                          for (final b in d.branchesInData)
+                            if ((r.byBranch[b] ?? 0) > 0)
+                              Container(
+                                width: c.maxWidth * (r.byBranch[b]! / maxTotal) * 0.85,
+                                height: 14,
+                                color: d.branchColor(b),
+                              ),
+                          const SizedBox(width: 6),
+                          Text('${r.total}', style: mdTs(11, c: mdSub)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _monthly() {
+    if (d.months.isEmpty) return _empty();
+    return Column(
+      children: [
+        for (final m in d.months)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => d.onMonthTap(m),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 36,
+                    child: Text('${int.parse(m.monthKey.split('-')[1])}月', style: mdTs(11.5, w: FontWeight.w400, c: mdSub)),
+                  ),
+                  if (m.top.isNotEmpty) ...[
+                    _thumb(m.top[0].key),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('1位', style: mdTs(11.5, w: FontWeight.w400, c: mdSub)),
+                          Text(m.top[0].key, maxLines: 2, overflow: TextOverflow.ellipsis, style: mdTs(14)),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 104,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 1; i < m.top.length; i++)
+                          Text('${i + 1}位 ${m.top[i].key}',
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: mdTs(11.5, w: FontWeight.w400)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _thumb(String menu) {
+    final img = d.menuImage(menu);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: img == null
+            ? Container(
+                color: const Color(0xFFEEF0F2),
+                child: const Icon(Icons.restaurant, size: 20, color: Color(0xFFB5BAC0)),
+              )
+            : Image.network(img,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: const Color(0xFFEEF0F2))),
+      ),
+    );
   }
 }

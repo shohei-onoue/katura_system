@@ -57,11 +57,13 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.icon,
     required this.title,
+    this.onIconTap,
     this.actions = const [],
   });
 
   final IconData icon;
   final String title;
+  final VoidCallback? onIconTap;
   final List<Widget> actions;
 
   @override
@@ -71,7 +73,11 @@ class _TopBar extends StatelessWidget {
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Row(
       children: [
-        _ic(icon, 20, _ink),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onIconTap,
+          child: _ic(icon, 20, _ink),
+        ),
         const SizedBox(width: 16),
         Text(title, style: _ts(18)),
         const Spacer(),
@@ -133,9 +139,12 @@ class _HomeBar extends StatelessWidget {
 }
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav(this.selected);
+  const _BottomNav(this.selected, {this.onNavigate});
 
   final int selected;
+  final void Function(int)? onNavigate;
+  // 下部ナビ位置 -> MainScreenの画面index（受注入力=0,受注一覧=1,配送予定=3,顧客=6,メニュー=7）
+  static const _targets = [0, 1, 3, 6, 7];
 
   static const _icons = [
     Icons.post_add,
@@ -162,6 +171,9 @@ class _BottomNav extends StatelessWidget {
               children: [
                 for (int i = 0; i < 5; i++)
                   Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onNavigate?.call(_targets[i]),
                     child: Column(
                       children: [
                         Container(
@@ -193,6 +205,7 @@ class _BottomNav extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   ),
               ],
@@ -232,12 +245,13 @@ class _OrderListScaffold extends StatelessWidget {
     );
     return Scaffold(
       backgroundColor: _bg,
-      bottomNavigationBar: const _BottomNav(1),
+      bottomNavigationBar: _BottomNav(1, onNavigate: d.onNavigate),
       body: Column(
         children: [
           const _StatusBar(),
           _TopBar(
             icon: Icons.menu,
+            onIconTap: d.onOpenMenu,
             title: '受注一覧',
             actions: [_ic(Icons.search, 20, _ink)],
           ),
@@ -318,6 +332,8 @@ class MobileOrderListData {
     required this.onToggle,
     required this.onEdit,
     required this.onCancel,
+    this.onOpenMenu,
+    this.onNavigate,
   });
 
   final bool isLoading;
@@ -338,6 +354,8 @@ class MobileOrderListData {
   final void Function(String) onToggle;
   final void Function(OrderModel, String) onEdit;
   final void Function(OrderModel) onCancel;
+  final VoidCallback? onOpenMenu;
+  final void Function(int)? onNavigate;
 }
 
 class _DateStrip extends StatelessWidget {

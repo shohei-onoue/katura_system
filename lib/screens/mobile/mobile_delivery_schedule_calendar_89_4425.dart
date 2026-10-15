@@ -1,1016 +1,322 @@
-// Generated from Figma node 89:4425 (10_配送予定（カレンダー）). Layout only; no routing.
+// Figma node 89:4425 (10_配送予定（カレンダー）) を実データに接続したスマホ版。
 import 'package:flutter/material.dart';
+import '../../models/order_model.dart';
+import 'mobile_delivery_common.dart';
+
+class MobileDeliveryScheduleData {
+  final bool isLoading;
+  final bool isOpening;
+  final List<String> branches;
+  final String selectedBranch;
+  final DateTime focusedMonth;
+  final DateTime selectedDay;
+  final Set<DateTime> orderDays; // 日付のみ(時刻なし)
+  final Set<DateTime> warnDays;
+  final List<OrderModel> dayOrders;
+  final Map<String, String> displayNames;
+  final void Function(String) onSelectBranch;
+  final void Function(DateTime) onSelectDay;
+  final void Function(int) onChangeMonth;
+  final VoidCallback onRouteConfirm;
+  final VoidCallback? onOpenMenu;
+  final void Function(int)? onNavigate;
+
+  const MobileDeliveryScheduleData({
+    required this.isLoading,
+    required this.isOpening,
+    required this.branches,
+    required this.selectedBranch,
+    required this.focusedMonth,
+    required this.selectedDay,
+    required this.orderDays,
+    required this.warnDays,
+    required this.dayOrders,
+    required this.displayNames,
+    required this.onSelectBranch,
+    required this.onSelectDay,
+    required this.onChangeMonth,
+    required this.onRouteConfirm,
+    this.onOpenMenu,
+    this.onNavigate,
+  });
+}
 
 class MobileDeliveryScheduleCalendar894425 extends StatelessWidget {
-  const MobileDeliveryScheduleCalendar894425({super.key});
+  const MobileDeliveryScheduleCalendar894425(this.d, {super.key});
+
+  final MobileDeliveryScheduleData d;
+
+  static const _orange = Color(0xFFFF8A65);
+  static const _red = Color(0xFFE53935);
+  static const _blue = Color(0xFF1E88E5);
+  static const _week = ['日', '月', '火', '水', '木', '金', '土'];
+
+  static DateTime _dayOnly(DateTime t) => DateTime(t.year, t.month, t.day);
+
+  String _area(OrderModel o) {
+    final m = RegExp(r'([^\d\s]+?[市区町村])').firstMatch(o.address);
+    return m?.group(1) ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7F6),
-      body: Center(
-        child: FittedBox(
-          fit: BoxFit.contain,
-          child: SizedBox(
-            width: 390,
-            height: 844,
-            child: ClipRect(
-              child: Stack(
-                children: [
-                  _b(
-                    0.0,
-                    0.0,
-                    390.0,
-                    844.0,
-                    Color(0xFFF3F7F6),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _b(
-                    0.0,
-                    0.0,
-                    390.0,
-                    44.0,
-                    Color(0xFFFFFFFF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _t(
-                    30.0,
-                    13.5,
-                    '9:41',
-                    15.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _i(
-                    303.0,
-                    14.0,
-                    Icons.signal_cellular_alt_rounded,
-                    17.0,
-                    Color(0xFF1D1B20),
-                  ),
-                  _i(325.0, 14.0, Icons.wifi_rounded, 17.0, Color(0xFF1D1B20)),
-                  _i(
-                    347.0,
-                    14.0,
-                    Icons.battery_full_rounded,
-                    17.0,
-                    Color(0xFF1D1B20),
-                  ),
-                  _b(
-                    0.0,
-                    44.0,
-                    390.0,
-                    52.0,
-                    Color(0xFFFFFFFF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _i(16.0, 60.0, Icons.menu_rounded, 20.0, Color(0xFF1D1B20)),
-                  _t(
-                    52.0,
-                    59.0,
-                    '配送予定',
-                    18.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    14.0,
-                    108.0,
-                    67.0,
-                    34.0,
-                    Color(0xFFDAFFAF),
-                    bc: Color(0xFFB9EA80),
-                    bw: 1.0,
-                    r: 10.0,
-                  ),
-                  _t(
-                    28.0,
-                    117.5,
-                    '岡崎店',
-                    13.0,
-                    Color(0xFF1D3B00),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    87.0,
-                    108.0,
-                    80.0,
-                    34.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFE4E7EB),
-                    bw: 1.0,
-                    r: 10.0,
-                  ),
-                  _t(
-                    101.0,
-                    117.5,
-                    '名古屋店',
-                    13.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    173.0,
-                    108.0,
-                    67.0,
-                    34.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFE4E7EB),
-                    bw: 1.0,
-                    r: 10.0,
-                  ),
-                  _t(
-                    187.0,
-                    117.5,
-                    '岐阜店',
-                    13.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    14.0,
-                    152.0,
-                    362.0,
-                    356.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFEDF0F2),
-                    bw: 1.0,
-                    r: 14.0,
-                  ),
-                  _i(
-                    29.0,
-                    167.0,
-                    Icons.chevron_left_rounded,
-                    20.0,
-                    Color(0xFF1D1B20),
-                  ),
-                  _t(
-                    151.0,
-                    167.5,
-                    '2026年10月',
-                    16.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _i(
-                    341.0,
-                    167.0,
-                    Icons.chevron_right_rounded,
-                    20.0,
-                    Color(0xFF1D1B20),
-                  ),
-                  _c(
-                    29.25,
-                    191.0,
-                    '日',
-                    11,
-                    Color(0xFFE53935),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    76.75,
-                    191.0,
-                    '月',
-                    11,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    124.25,
-                    191.0,
-                    '火',
-                    11,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    171.75,
-                    191.0,
-                    '水',
-                    11,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    219.25,
-                    191.0,
-                    '木',
-                    11,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    266.75,
-                    191.0,
-                    '金',
-                    11,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    314.25,
-                    191.0,
-                    '土',
-                    11,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                    cw: 47.5,
-                  ),
-                  _c(
-                    29.25,
-                    225.0,
-                    '27',
-                    13,
-                    Color(0xFFE53935),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    76.75,
-                    225.0,
-                    '28',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    124.25,
-                    225.0,
-                    '29',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    171.75,
-                    225.0,
-                    '30',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    219.25,
-                    225.0,
-                    '1',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    266.75,
-                    225.0,
-                    '2',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    225.0,
-                    '3',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _c(29.25, 267.0, '4', 13, Color(0xFFE53935), FontWeight.w400),
-                  _c(76.75, 267.0, '5', 13, Color(0xFF1D1B20), FontWeight.w400),
-                  _c(
-                    124.25,
-                    267.0,
-                    '6',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    171.75,
-                    267.0,
-                    '7',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    219.25,
-                    267.0,
-                    '8',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    266.75,
-                    267.0,
-                    '9',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    267.0,
-                    '10',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    29.25,
-                    309.0,
-                    '11',
-                    13,
-                    Color(0xFFE53935),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    76.75,
-                    309.0,
-                    '12',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    124.25,
-                    309.0,
-                    '13',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    178.5,
-                    309.0,
-                    34.0,
-                    34.0,
-                    Color(0xFFDAFFAF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    171.75,
-                    309.0,
-                    '14',
-                    13,
-                    Color(0xFFF44336),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    226.0,
-                    309.0,
-                    34.0,
-                    34.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    219.25,
-                    309.0,
-                    '15',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    273.5,
-                    309.0,
-                    34.0,
-                    34.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    266.75,
-                    309.0,
-                    '16',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    309.0,
-                    '17',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    29.25,
-                    351.0,
-                    '18',
-                    13,
-                    Color(0xFFE53935),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    76.75,
-                    351.0,
-                    '19',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    131.0,
-                    351.0,
-                    34.0,
-                    34.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    124.25,
-                    351.0,
-                    '20',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    171.75,
-                    351.0,
-                    '21',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    226.0,
-                    351.0,
-                    34.0,
-                    34.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    219.25,
-                    351.0,
-                    '22',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    266.75,
-                    351.0,
-                    '23',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    351.0,
-                    '24',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    29.25,
-                    393.0,
-                    '25',
-                    13,
-                    Color(0xFFE53935),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    76.75,
-                    393.0,
-                    '26',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    131.0,
-                    393.0,
-                    34.0,
-                    34.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 17.0,
-                  ),
-                  _c(
-                    124.25,
-                    393.0,
-                    '27',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    171.75,
-                    393.0,
-                    '28',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    219.25,
-                    393.0,
-                    '29',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    266.75,
-                    393.0,
-                    '30',
-                    13,
-                    Color(0xFF1D1B20),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    393.0,
-                    '31',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _c(29.25, 435.0, '1', 13, Color(0xFFE53935), FontWeight.w400),
-                  _c(76.75, 435.0, '2', 13, Color(0xFFC4C8CD), FontWeight.w400),
-                  _c(
-                    124.25,
-                    435.0,
-                    '3',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    171.75,
-                    435.0,
-                    '4',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    219.25,
-                    435.0,
-                    '5',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    266.75,
-                    435.0,
-                    '6',
-                    13,
-                    Color(0xFFC4C8CD),
-                    FontWeight.w400,
-                  ),
-                  _c(
-                    314.25,
-                    435.0,
-                    '7',
-                    13,
-                    Color(0xFF1E88E5),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    102.0,
-                    483.0,
-                    10.0,
-                    10.0,
-                    null,
-                    bc: Color(0xFFFF8A65),
-                    bw: 1.0,
-                    r: 5.0,
-                  ),
-                  _t(
-                    116.0,
-                    480.5,
-                    '配送予定あり',
-                    11.0,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    194.0,
-                    483.0,
-                    10.0,
-                    10.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFE53935),
-                    bw: 1.0,
-                    r: 5.0,
-                  ),
-                  _t(
-                    208.0,
-                    480.5,
-                    '今日',
-                    11.0,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _b(
-                    242.0,
-                    483.0,
-                    10.0,
-                    10.0,
-                    Color(0xFFDAFFAF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 5.0,
-                  ),
-                  _t(
-                    256.0,
-                    480.5,
-                    '選択中',
-                    11.0,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _i(
-                    16.0,
-                    523.0,
-                    Icons.event_note_rounded,
-                    16.0,
-                    Color(0xFF673AB7),
-                  ),
-                  _t(
-                    37.0,
-                    523.5,
-                    '10/14(水) の受注 3件',
-                    12.0,
-                    Color(0xFF6B6F76),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    14.0,
-                    545.0,
-                    362.0,
-                    187.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFEDF0F2),
-                    bw: 1.0,
-                    r: 14.0,
-                  ),
-                  _b(
-                    15.0,
-                    546.0,
-                    360.0,
-                    62.0,
-                    Color(0xFFFFFFFF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _t(
-                    29.0,
-                    568.5,
-                    '12:00',
-                    13.0,
-                    Color(0xFF673AB7),
-                    FontWeight.w900,
-                  ),
-                  _t(
-                    85.0,
-                    559.5,
-                    '山田 太郎 様',
-                    14.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _t(
-                    85.0,
-                    580.0,
-                    '岡崎市 · 岡崎市民病院',
-                    11.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _i(
-                    341.0,
-                    567.0,
-                    Icons.chevron_right_rounded,
-                    20.0,
-                    Color(0xFFB0B5BB),
-                  ),
-                  _b(
-                    15.0,
-                    608.0,
-                    360.0,
-                    62.0,
-                    Color(0xFFFFFFFF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _t(
-                    29.0,
-                    630.5,
-                    '13:30',
-                    13.0,
-                    Color(0xFF673AB7),
-                    FontWeight.w900,
-                  ),
-                  _t(
-                    85.0,
-                    621.5,
-                    '鈴木 花子 様',
-                    14.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _t(
-                    85.0,
-                    642.0,
-                    '幸田町 · 幸田町役場',
-                    11.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _i(
-                    341.0,
-                    629.0,
-                    Icons.chevron_right_rounded,
-                    20.0,
-                    Color(0xFFB0B5BB),
-                  ),
-                  _b(
-                    15.0,
-                    670.0,
-                    360.0,
-                    62.0,
-                    Color(0xFFFFFFFF),
-                    bc: null,
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _t(
-                    29.0,
-                    692.5,
-                    '15:00',
-                    13.0,
-                    Color(0xFF673AB7),
-                    FontWeight.w900,
-                  ),
-                  _t(
-                    85.0,
-                    683.5,
-                    '佐藤 次郎 様',
-                    14.0,
-                    Color(0xFF1D1B20),
-                    FontWeight.w700,
-                  ),
-                  _t(
-                    85.0,
-                    704.0,
-                    '岡崎市 · 康生通西4丁目',
-                    11.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w400,
-                  ),
-                  _i(
-                    341.0,
-                    691.0,
-                    Icons.chevron_right_rounded,
-                    20.0,
-                    Color(0xFFB0B5BB),
-                  ),
-                  _b(
-                    242.0,
-                    694.0,
-                    132.0,
-                    52.0,
-                    Color(0xFF673AB7),
-                    bc: null,
-                    bw: 1.0,
-                    r: 16.0,
-                  ),
-                  _i(
-                    260.0,
-                    710.0,
-                    Icons.route_rounded,
-                    20.0,
-                    Color(0xFFFFFFFF),
-                  ),
-                  _t(
-                    286.0,
-                    711.5,
-                    'ルート確認',
-                    14.0,
-                    Color(0xFFFFFFFF),
-                    FontWeight.w700,
-                  ),
-                  _b(
-                    0.0,
-                    762.0,
-                    390.0,
-                    82.0,
-                    Color(0xFFFFFFFF),
-                    bc: Color(0xFFE4E7EB),
-                    bw: 1.0,
-                    r: 0.0,
-                  ),
-                  _i(
-                    32.0,
-                    774.0,
-                    Icons.post_add_rounded,
-                    20.0,
-                    Color(0xFF6B6F76),
-                  ),
-                  _t(
-                    21.0,
-                    802.0,
-                    '受注入力',
-                    10.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w500,
-                  ),
-                  _i(
-                    109.0,
-                    774.0,
-                    Icons.list_alt_rounded,
-                    20.0,
-                    Color(0xFF6B6F76),
-                  ),
-                  _t(
-                    98.0,
-                    802.0,
-                    '受注一覧',
-                    10.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w500,
-                  ),
-                  _b(
-                    167.0,
-                    769.0,
-                    56.0,
-                    30.0,
-                    Color(0xFFEDE7F6),
-                    bc: null,
-                    bw: 1.0,
-                    r: 15.0,
-                  ),
-                  _i(
-                    185.0,
-                    774.0,
-                    Icons.local_shipping_rounded,
-                    20.0,
-                    Color(0xFF673AB7),
-                  ),
-                  _t(
-                    174.0,
-                    802.0,
-                    '配送予定',
-                    10.5,
-                    Color(0xFF673AB7),
-                    FontWeight.w700,
-                  ),
-                  _i(
-                    261.0,
-                    774.0,
-                    Icons.people_rounded,
-                    20.0,
-                    Color(0xFF6B6F76),
-                  ),
-                  _t(
-                    261.0,
-                    802.0,
-                    '顧客',
-                    10.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w500,
-                  ),
-                  _i(338.0, 774.0, Icons.apps_rounded, 20.0, Color(0xFF6B6F76)),
-                  _t(
-                    327.0,
-                    802.0,
-                    'メニュー',
-                    10.5,
-                    Color(0xFF6B6F76),
-                    FontWeight.w500,
-                  ),
-                  _b(
-                    128.0,
-                    831.0,
-                    134.0,
-                    5.0,
-                    Color(0xFF111111),
-                    bc: null,
-                    bw: 1.0,
-                    r: 2.5,
-                  ),
-                ],
+      backgroundColor: mdBg,
+      bottomNavigationBar: MdBottomNav(2, onNavigate: d.onNavigate),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              const MdStatusBar(),
+              MdTopBar(title: '配送予定', onIconTap: d.onOpenMenu),
+              Expanded(
+                child: d.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 16),
+                        children: [
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final b in d.branches) ...[
+                                  MdChip(b, selected: b == d.selectedBranch, onTap: () => d.onSelectBranch(b)),
+                                  const SizedBox(width: 6),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _calendar(),
+                          const SizedBox(height: 14),
+                          _ordersHeader(),
+                          const SizedBox(height: 8),
+                          _orderList(),
+                          const SizedBox(height: 14),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: GestureDetector(
+                              onTap: d.onRouteConfirm,
+                              child: Container(
+                                width: 132,
+                                height: 52,
+                                decoration: BoxDecoration(color: mdPurple, borderRadius: BorderRadius.circular(16)),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.route, size: 20, color: Colors.white),
+                                    const SizedBox(width: 6),
+                                    Text('ルート確認', style: mdTs(14, c: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+          if (d.isOpening)
+            const Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(color: Color(0x80000000), child: Center(child: CircularProgressIndicator())),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _calendar() {
+    final first = DateTime(d.focusedMonth.year, d.focusedMonth.month, 1);
+    final start = first.subtract(Duration(days: first.weekday % 7));
+    final today = _dayOnly(DateTime.now());
+    final sel = _dayOnly(d.selectedDay);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: mdCardLine),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => d.onChangeMonth(-1),
+                child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.chevron_left, size: 20, color: mdInk)),
+              ),
+              Expanded(
+                child: Center(child: Text('${first.year}年${first.month}月', style: mdTs(16))),
+              ),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => d.onChangeMonth(1),
+                child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.chevron_right, size: 20, color: mdInk)),
+              ),
+            ],
           ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (int i = 0; i < 7; i++)
+                Expanded(
+                  child: Center(
+                    child: Text(_week[i],
+                        style: mdTs(11, w: FontWeight.w400, c: i == 0 ? _red : (i == 6 ? _blue : mdSub))),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          for (int r = 0; r < 6; r++)
+            Row(
+              children: [
+                for (int c = 0; c < 7; c++)
+                  Expanded(child: _cell(DateTime(start.year, start.month, start.day + r * 7 + c), c, today, sel)),
+              ],
+            ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 14,
+            runSpacing: 4,
+            alignment: WrapAlignment.center,
+            children: [
+              _legend('配送予定あり', border: _orange),
+              _legend('今日', border: _red, fill: Colors.white),
+              _legend('選択中', fill: mdLime),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(DateTime day, int col, DateTime today, DateTime sel) {
+    final inMonth = day.month == d.focusedMonth.month;
+    final isSel = day == sel;
+    final isToday = day == today;
+    final has = inMonth && d.orderDays.contains(day);
+    final warn = inMonth && d.warnDays.contains(day);
+    Color fg = col == 0 ? _red : (col == 6 ? _blue : mdInk);
+    if (!inMonth) fg = const Color(0xFFC4C8CD);
+    if (isToday) fg = const Color(0xFFF44336);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => d.onSelectDay(day),
+      child: SizedBox(
+        height: 42,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSel ? mdLime : null,
+                border: has && !isSel ? Border.all(color: _orange) : (isToday && !isSel ? Border.all(color: _red) : null),
+              ),
+              child: Text('${day.day}',
+                  style: mdTs(13, w: isToday ? FontWeight.w700 : FontWeight.w400, c: fg)),
+            ),
+            if (warn)
+              const Positioned(top: 0, right: 2, child: Icon(Icons.warning_rounded, size: 12, color: Color(0xFFE65100))),
+          ],
         ),
       ),
     );
   }
-}
 
-Widget _b(
-  double l,
-  double t,
-  double w,
-  double h,
-  Color? fill, {
-  Color? bc,
-  double bw = 1,
-  double r = 0,
-}) {
-  return Positioned(
-    left: l,
-    top: t,
-    width: w,
-    height: h,
-    child: DecoratedBox(
+  Widget _legend(String label, {Color? border, Color? fill}) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: fill,
+              border: border != null ? Border.all(color: border) : null,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(label, style: mdTs(11, w: FontWeight.w400, c: mdSub)),
+        ],
+      );
+
+  static const _wd = ['月', '火', '水', '木', '金', '土', '日'];
+
+  Widget _ordersHeader() {
+    final s = d.selectedDay;
+    return Row(
+      children: [
+        const SizedBox(width: 2),
+        const Icon(Icons.event_note, size: 16, color: mdPurple),
+        const SizedBox(width: 5),
+        Text('${s.month}/${s.day}(${_wd[s.weekday - 1]}) の受注 ${d.dayOrders.length}件',
+            style: mdTs(12, c: mdSub)),
+      ],
+    );
+  }
+
+  Widget _orderList() {
+    if (d.dayOrders.isEmpty) {
+      return Container(
+        height: 62,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: mdCardLine),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text('受注なし', style: mdTs(12, w: FontWeight.w400, c: mdSub)),
+      );
+    }
+    return Container(
       decoration: BoxDecoration(
-        color: fill,
-        borderRadius: BorderRadius.circular(r),
-        border: bc == null ? null : Border.all(color: bc, width: bw),
+        color: Colors.white,
+        border: Border.all(color: mdCardLine),
+        borderRadius: BorderRadius.circular(14),
       ),
-    ),
-  );
-}
-
-Widget _t(
-  double l,
-  double t,
-  String s,
-  double sz,
-  Color c,
-  FontWeight w, {
-  double? ls,
-}) {
-  return Positioned(
-    left: l,
-    top: t,
-    child: Text(
-      s,
-      softWrap: false,
-      style: TextStyle(
-        fontSize: sz,
-        color: c,
-        fontWeight: w,
-        letterSpacing: ls,
-        height: 1.2,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (int i = 0; i < d.dayOrders.length; i++) ...[
+            if (i > 0) const Divider(height: 1, color: mdCardLine),
+            _orderRow(d.dayOrders[i]),
+          ],
+        ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _i(double l, double t, IconData d, double sz, Color c) {
-  return Positioned(
-    left: l,
-    top: t,
-    child: Icon(d, size: sz, color: c),
-  );
-}
-
-Widget _c(
-  double l,
-  double t,
-  String s,
-  double sz,
-  Color c,
-  FontWeight w, {
-  double cw = 50.5714,
-}) {
-  return Positioned(
-    left: l,
-    top: t,
-    width: cw,
-    height: 34,
-    child: Center(
-      child: Text(
-        s,
-        softWrap: false,
-        style: TextStyle(fontSize: sz, color: c, fontWeight: w, height: 1.2),
+  Widget _orderRow(OrderModel o) {
+    final area = _area(o);
+    final place = o.facilityName.isNotEmpty ? o.facilityName : o.address;
+    final name = d.displayNames[o.id] ?? o.customerName;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 62),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      child: Row(
+        children: [
+          SizedBox(width: 56, child: Text(o.deliveryTime, style: mdTs(13, w: FontWeight.w900, c: mdPurple))),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: mdTs(14)),
+                Text(area.isEmpty ? place : '$area · $place',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: mdTs(11.5, w: FontWeight.w400, c: mdSub)),
+              ],
+            ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }

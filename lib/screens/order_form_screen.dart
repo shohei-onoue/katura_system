@@ -27,6 +27,7 @@ import '../widgets/k_trash_pickup_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
 import 'order_form/widgets/steps/facility_search_host_dialog.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
+import 'mobile/mobile_order_input_flow.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -46,8 +47,10 @@ class OrderFormScreen extends StatefulWidget {
   final String initialSection; // 編集開始位置：配達先 / 日程 / 注文内容
   final VoidCallback? onSaveSuccess;
   final VoidCallback? onCancel;
+  final VoidCallback? onOpenMenu; // スマホ版：左上メニューアイコン
+  final void Function(int)? onNavigate; // スマホ版：下部ナビ
 
-  const OrderFormScreen({super.key, this.handle, this.initialOrder, this.initialSection = '', this.onSaveSuccess, this.onCancel});
+  const OrderFormScreen({super.key, this.handle, this.initialOrder, this.initialSection = '', this.onSaveSuccess, this.onCancel, this.onOpenMenu, this.onNavigate});
 
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
@@ -1927,7 +1930,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     // 読み込み中は画面をグレーアウトし、中央にクルクルを出して操作を受け付けない
     return Stack(
       children: [
-        _buildScaffold(context),
+        MediaQuery.of(context).size.width < 600 ? _buildMobile(context) : _buildScaffold(context),
         ValueListenableBuilder<bool>(
           valueListenable: _isLoadingNotifier,
           builder: (context, loading, _) => loading
@@ -1943,6 +1946,263 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         ),
       ],
     );
+  }
+
+  // ---------------------------------------------------------------- スマホ版（幅600未満）
+
+  Future<void> _pickFacilityAndApply(int tab, String title) async {
+    final result = await showFacilitySearchHostDialog(context, initialTab: tab, title: title);
+    if (result == null || !mounted) return;
+    final facility = result.name.trim().isEmpty ? '個人宅' : result.name.trim();
+    await _onAddressSelectedFromList('$facility: ${result.address} (${result.lat}, ${result.lng})');
+  }
+
+  void _removeOneConfirmed(String id) {
+    final idx = _confirmedItems.lastIndexWhere((i) => i['id'] == id);
+    if (idx == -1) return;
+    setState(() {
+      final list = _confirmedItems.map((e) => Map<String, dynamic>.from(e)).toList();
+      final q = list[idx]['quantity'] as int;
+      if (q > 1) {
+        list[idx]['quantity'] = q - 1;
+      } else {
+        list.removeAt(idx);
+      }
+      _confirmedItems = list;
+      _selectedQuantities.clear();
+      for (var item in _confirmedItems) {
+        final String mid = item['id'];
+        _selectedQuantities[mid] = (_selectedQuantities[mid] ?? 0) + (item['quantity'] as int);
+      }
+    });
+  }
+
+  Future<void> _pickPreConfirmationDateTime() async {
+    final now = DateTime.now();
+    final base = _preConfirmationDateTime ?? DateTime(_deliveryDate.year, _deliveryDate.month, _deliveryDate.day - 1, 15);
+    final day = await showDatePicker(
+      context: context,
+      initialDate: base.isBefore(now) ? now : base,
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (day == null || !mounted) return;
+    final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: base.hour, minute: base.minute));
+    if (t == null || !mounted) return;
+    setState(() {
+      _preConfirmationDateTime = DateTime(day.year, day.month, day.day, t.hour, t.minute);
+      _preConfirmationDateTimeManual = true;
+    });
+  }
+
+  String _md(DateTime d) => '${d.month}/${d.day} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  Widget _buildMobile(BuildContext context) {
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final candidates = _phoneSearchCandidates.map((c) {
+      final hasCompany = c.companyName.isNotEmpty && c.companyName != '個人宅';
+      final last = _lastOrderDates[c.id];
+      return MobileCandidate(
+        id: c.id,
+        title: hasCompany ? '${c.companyName} / ${c.name} 様' : '${c.name} 様',
+        phone: _formatPhone(c.phoneNumber),
+        daysSince: last == null ? null : todayOnly.difference(DateTime(last.year, last.month, last.day)).inDays,
+        selected: _currentCustomer?.id == c.id,
+      );
+    }).toList();
+
+    final history = <MobileHistoryItem>[];
+    for (final raw in _currentCustomer?.deliveryAddresses ?? const <String>[]) {
+      final full = normalizeHistoryEntry(raw);
+      final parts = full.split(': ');
+      final fName = parts.length > 1 ? parts[0] : (full.startsWith('[') ? full.split(']')[0].replaceAll('[', '') : '個人宅');
+      final aOnly = parts.length > 1 ? parts[1].split(' (')[0] : full.split(' (')[0].split(']').last.trim();
+      history.add(MobileHistoryItem(
+        raw: raw,
+        name: fName,
+        address: aOnly,
+        selected: _historyManuallySelected && _addressController.text == aOnly && _facilityController.text == fName,
+      ));
+    }
+
+    final lastIds = _lastOrderMenuIds;
+    final menus = _menus
+        .map((m) => MobileMenuItem(
+              id: m.id,
+              name: m.name,
+              category: m.category,
+              price: m.price,
+              imageUrl: m.imageUrl,
+              qty: _selectedQuantities[m.id] ?? 0,
+              isLast: lastIds.contains(m.id),
+            ))
+        .toList();
+    final cart = _confirmedItems
+        .map((i) => MobileCartLine(
+              name: '${i['name']}',
+              qty: i['quantity'] as int,
+              price: i['price'] as int,
+              note: '${i['specialOrder'] ?? ''}',
+            ))
+        .toList();
+
+    final isSms = _preConfirmationMethod == 'SMS';
+    final smsAt = _scheduledSmsDateTime ?? _calculateScheduledSmsDateTime();
+    final preDateLabel = isSms
+        ? (smsAt != null ? '${_md(smsAt)} 送信予約' : '前日 $_preConfirmationSmsTime 自動送信')
+        : (_preConfirmationDateTime != null ? _md(_preConfirmationDateTime!) : '連絡日時を設定');
+
+    final data = MobileOrderInputData(
+      step: _currentStep,
+      maxStepReached: _maxStepReached,
+      isEditing: _isEditingOrder,
+      pickup: _deliveryType == '引取',
+      canJumpToFinal: _confirmedItems.isNotEmpty,
+      loading: false,
+      phoneText: _phoneController.text,
+      onOpenMenu: widget.onOpenMenu,
+      onNavigate: widget.onNavigate,
+      onStepTapped: (s) {
+        if (s == 2 && _deliveryType == '引取') return;
+        _onStepTapped(s);
+      },
+      onCancelOrder: _confirmCancelOrder,
+      onTextChanged: _scheduleRebuild,
+      isCompletingPhone: _isCompletingPhone,
+      phonePrefix: _phonePrefixController.text,
+      phoneDigitsLen: _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '').length,
+      hasSelectedCustomer: _currentCustomer != null,
+      candidates: candidates,
+      onDial: _handlePhoneInput,
+      onClear: _handlePhoneClear,
+      onBackspace: _handlePhoneBackspace,
+      onSelectCandidate: (id) {
+        final c = _phoneSearchCandidates.where((e) => e.id == id);
+        if (c.isNotEmpty) _onCandidateTapped(c.first);
+      },
+      onPhoneNext: _phoneNext,
+      onPhoneClose: () {
+        setState(() => _isCompletingPhone = false);
+        _phonePrefixController.clear();
+        _phoneController.clear();
+        _lookupCustomer('');
+      },
+      nameController: _nameController,
+      companyController: _furiganaController,
+      facilityText: _facilityController.text,
+      addressText: _addressController.text,
+      onPickFacilityForCustomer: (tab) => _pickFacilityAndApply(tab, '所属企業・住所の確定'),
+      onCustomerNext: () {
+        if (!_isEditingOrder && _currentCustomer == null && _nameController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('顧客名を入力してください'), backgroundColor: Colors.redAccent),
+          );
+          return;
+        }
+        _completeCustomerConfirmation();
+      },
+      onCustomerBack: () {
+        setState(() {
+          _currentStep = 0;
+          _isCompletingPhone = false;
+          _phoneController.text = _lastPhoneQuery;
+          _lookupCustomer(_lastPhoneQuery);
+        });
+      },
+      isHistoryMode: _isHistoryMode,
+      historyItems: history,
+      remarksController: _remarksController,
+      branchName: _branchName,
+      estimatedDuration: _estimatedDeliveryDuration,
+      isApproximateLocation: _isApproximateLocation,
+      mapWidget: GoogleMap(
+        initialCameraPosition: const CameraPosition(target: _initialCenter, zoom: 12),
+        onMapCreated: (c) {
+          _mapController = c;
+          _fitMapToMarkers();
+        },
+        markers: _markers,
+        myLocationEnabled: false,
+        myLocationButtonEnabled: false,
+        zoomControlsEnabled: false,
+      ),
+      onModeToggle: (v) => setState(() {
+        _isHistoryMode = v;
+        _historyManuallySelected = false;
+      }),
+      onSelectHistory: (raw) async {
+        setState(() {
+          _pendingBranchAnchor = null;
+          _historyManuallySelected = true;
+        });
+        await _onAddressSelectedFromList(normalizeHistoryEntry(raw));
+      },
+      onAdjust: _showLocationAdjustmentDialog,
+      onEditHistory: _editHistoryEntry,
+      onDeleteHistory: _deleteHistoryEntry,
+      onSearchFacility: (tab) => _pickFacilityAndApply(tab, '配達先の検索'),
+      onDeliveryNext: () async {
+        if (await _checkScheduleWarnings() && mounted) _updateStep(3);
+      },
+      menus: menus,
+      cart: cart,
+      totalPrice: _totalPrice,
+      totalCount: _totalCount,
+      onAddMenu: (id) {
+        final m = _menus.where((e) => e.id == id);
+        if (m.isEmpty) return;
+        _addConfirmedItems([
+          {
+            'id': m.first.id,
+            'name': m.first.name,
+            'price': m.first.price,
+            'quantity': 1,
+            'specialOrder': '',
+            'specialOrderQuantity': 0,
+            'topping': '',
+            'teaOption': 'なし',
+            'teaQuantity': 0,
+          }
+        ]);
+      },
+      onRemoveMenu: _removeOneConfirmed,
+      onClearCart: () => setState(() {
+        _confirmedItems = [];
+        _selectedQuantities.clear();
+      }),
+      onItemsNext: _showTrashPickupDialogThenAdvance,
+      onReloadMenus: _loadData,
+      packagingType: _packagingType,
+      packagingSmallQty: _packagingSmallQty,
+      packagingOtherController: _packagingOtherController,
+      preMethod: _preConfirmationMethod,
+      preIsSpecifiedNumber: _preConfirmationPhoneType == '指定番号へ連絡',
+      prePhoneController: _preConfirmationPhoneController,
+      preDateLabel: preDateLabel,
+      preDateEditable: !isSms,
+      recipientController: _preConfirmationRecipientController,
+      customerName: _nameController.text.isNotEmpty ? _nameController.text : _receiverController.text,
+      documents: _documents,
+      paymentMethod: _paymentMethod,
+      summaryDate:
+          '${_deliveryDate.month}/${_deliveryDate.day} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}（${_deliveryType == '引取' ? '引取り' : '配達'}）',
+      summaryAddress: _deliveryType == '引取'
+          ? ''
+          : [_facilityController.text, _addressController.text].where((e) => e.isNotEmpty).join(' '),
+      onPackagingChanged: (v) => setState(() => _packagingType = v),
+      onPackagingQtyChanged: (v) => setState(() => _packagingSmallQty = v),
+      onPreMethodChanged: (v) => setState(() => _preConfirmationMethod = v),
+      onPreNumberTypeChanged: (specified) =>
+          setState(() => _preConfirmationPhoneType = specified ? '指定番号へ連絡' : 'この電話番号'),
+      onPrePhoneChanged: (v) => setState(() => _preConfirmationPhoneNumber = v),
+      onPickPreDate: _pickPreConfirmationDateTime,
+      onDocumentToggled: (v) => setState(() => _documents.contains(v) ? _documents.remove(v) : _documents.add(v)),
+      onPaymentChanged: (v) => setState(() => _paymentMethod = v),
+      onShowReceipt: _showReceiptPreviewDialog,
+      onSave: _handleSave,
+    );
+    return MobileOrderInput(data);
   }
 
   Widget _buildScaffold(BuildContext context) {
@@ -1982,29 +2242,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   isFinalStepAvailable: _confirmedItems.isNotEmpty,
                   steps: _stepLabels,
                   hiddenSteps: {if (!_newCustomerFlow) 1, if (_deliveryType == '引取') 2},
-                  onStepTapped: (s) {
-                    // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
-                    bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 4;
-                    if (s <= _maxStepReached || isJumpableToFinal) {
-                      _updateStep(s);
-                      if (s == 0) {
-                        final selected = _currentCustomer;
-                        if (selected != null) {
-                          // 顧客を選択済み：番号・顧客はそのままに「お客様電話番号」画面へ戻る（日程調整で再設定できる）
-                          setState(() {
-                            _isCompletingPhone = false;
-                            if (_phoneSearchCandidates.every((c) => c.id != selected.id)) {
-                              _phoneSearchCandidates = [selected, ..._phoneSearchCandidates];
-                            }
-                          });
-                        } else {
-                          setState(() => _isCompletingPhone = false);
-                          _phoneController.text = _lastPhoneQuery;
-                          _lookupCustomer(_lastPhoneQuery);
-                        }
-                      }
-                    }
-                  }
+                  onStepTapped: _onStepTapped
                 )),
                   Expanded(
                     child: ColoredBox(
@@ -2258,6 +2496,89 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
   }
 
+  void _onStepTapped(int s) {
+    // 受注内容(s=4)が確定している、または移動先が到達済みステップなら移動可能
+    bool isJumpableToFinal = _confirmedItems.isNotEmpty && s == 4;
+    if (s <= _maxStepReached || isJumpableToFinal) {
+      _updateStep(s);
+      if (s == 0) {
+        final selected = _currentCustomer;
+        if (selected != null) {
+          // 顧客を選択済み：番号・顧客はそのままに「お客様電話番号」画面へ戻る（日程調整で再設定できる）
+          setState(() {
+            _isCompletingPhone = false;
+            if (_phoneSearchCandidates.every((c) => c.id != selected.id)) {
+              _phoneSearchCandidates = [selected, ..._phoneSearchCandidates];
+            }
+          });
+        } else {
+          setState(() => _isCompletingPhone = false);
+          _phoneController.text = _lastPhoneQuery;
+          _lookupCustomer(_lastPhoneQuery);
+        }
+      }
+    }
+  }
+
+  void _addConfirmedItems(List<Map<String, dynamic>> itemsList) {
+    setState(() {
+          // 同じ商品・特注内容・お茶設定・単価がすべて同じ行だけ数量を合算。違えば別行
+          String key(Map<String, dynamic> i) => [
+                i['id'],
+                i['specialOrder'] ?? '',
+                i['teaOption'] ?? 'なし',
+                i['teaType'] ?? '',
+                i['topping'] ?? '',
+                i['price'],
+              ].join('|');
+          final list = _confirmedItems.map((e) => Map<String, dynamic>.from(e)).toList();
+          for (final newItem in itemsList) {
+            final idx = list.indexWhere((e) => key(e) == key(newItem));
+            if (idx != -1) {
+              list[idx]['quantity'] = (list[idx]['quantity'] as int) + (newItem['quantity'] as int);
+              final sq = (list[idx]['specialOrderQuantity'] as int? ?? 0) + (newItem['specialOrderQuantity'] as int? ?? 0);
+              list[idx]['specialOrderQuantity'] = sq;
+            } else {
+              list.add(Map<String, dynamic>.from(newItem));
+            }
+          }
+          _confirmedItems = list;
+
+          // 数量マップを全再計算して整合性を保つ
+          _selectedQuantities.clear();
+          for (var item in _confirmedItems) {
+            final String id = item['id'];
+            _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
+          }
+    });
+  }
+
+  void _phoneNext() {
+        final String phoneDigits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+        if (!_isCompletingPhone && _currentCustomer == null && phoneDigits.length >= 10) {
+          // 番号がフルのまま進む：同じ番号の顧客が1人いればその顧客で、いなければ新規顧客として進む
+          final exact = _phoneSearchCandidates
+              .where((c) => c.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') == phoneDigits)
+              .toList();
+          () async {
+            if (exact.length == 1) await _selectCustomer(exact.first);
+            if (mounted) await _startPostPhoneFlow();
+          }();
+        } else if (!_isCompletingPhone && _currentCustomer == null) {
+          setState(() {
+            _isCompletingPhone = true;
+          });
+        } else {
+          if (_isCompletingPhone) {
+            final prefix = _phonePrefixController.text;
+            final suffix = _phoneController.text;
+            _phoneController.text = _formatPhone("$prefix$suffix");
+            setState(() => _isCompletingPhone = false);
+          }
+          _startPostPhoneFlow();
+        }
+  }
+
   /// 下4桁を入力したら（または電話番号の完成中は）、番号確認をポップアップで表示する。
   /// 右のダイヤルパッドは操作できるよう、ポップアップは左側（メイン領域）だけを覆う。
   bool get _phonePopupOpen =>
@@ -2343,31 +2664,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           phoneDisplay: phoneDisplay, 
           isCompletingPhone: _isCompletingPhone,
           phonePrefixController: _phonePrefixController,
-          onNext: () {
-            final String phoneDigits = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
-            if (!_isCompletingPhone && _currentCustomer == null && phoneDigits.length >= 10) {
-              // 番号がフルのまま進む：同じ番号の顧客が1人いればその顧客で、いなければ新規顧客として進む
-              final exact = _phoneSearchCandidates
-                  .where((c) => c.phoneNumber.replaceAll(RegExp(r'[^0-9]'), '') == phoneDigits)
-                  .toList();
-              () async {
-                if (exact.length == 1) await _selectCustomer(exact.first);
-                if (mounted) await _startPostPhoneFlow();
-              }();
-            } else if (!_isCompletingPhone && _currentCustomer == null) {
-              setState(() {
-                _isCompletingPhone = true;
-              });
-            } else {
-              if (_isCompletingPhone) {
-                final prefix = _phonePrefixController.text;
-                final suffix = _phoneController.text;
-                _phoneController.text = _formatPhone("$prefix$suffix");
-                setState(() => _isCompletingPhone = false);
-              }
-              _startPostPhoneFlow();
-            }
-          },
+          onNext: _phoneNext,
       );
       case 1: return CustomerConfirmationStep(
           phoneController: _phoneController,
@@ -2485,36 +2782,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           riceAmount: _calculateRiceAmount(), 
           packaging: _packagingType, 
           totalPrice: _totalPrice, 
-          onAddItem: (itemsList) => setState(() {
-            // 同じ商品・特注内容・お茶設定・単価がすべて同じ行だけ数量を合算。違えば別行
-            String key(Map<String, dynamic> i) => [
-                  i['id'],
-                  i['specialOrder'] ?? '',
-                  i['teaOption'] ?? 'なし',
-                  i['teaType'] ?? '',
-                  i['topping'] ?? '',
-                  i['price'],
-                ].join('|');
-            final list = _confirmedItems.map((e) => Map<String, dynamic>.from(e)).toList();
-            for (final newItem in itemsList) {
-              final idx = list.indexWhere((e) => key(e) == key(newItem));
-              if (idx != -1) {
-                list[idx]['quantity'] = (list[idx]['quantity'] as int) + (newItem['quantity'] as int);
-                final sq = (list[idx]['specialOrderQuantity'] as int? ?? 0) + (newItem['specialOrderQuantity'] as int? ?? 0);
-                list[idx]['specialOrderQuantity'] = sq;
-              } else {
-                list.add(Map<String, dynamic>.from(newItem));
-              }
-            }
-            _confirmedItems = list;
-
-            // 数量マップを全再計算して整合性を保つ
-            _selectedQuantities.clear();
-            for (var item in _confirmedItems) {
-              final String id = item['id'];
-              _selectedQuantities[id] = (_selectedQuantities[id] ?? 0) + (item['quantity'] as int);
-            }
-          }), 
+          onAddItem: _addConfirmedItems, 
           onQuantityChanged: (id, v) => setState(() { 
             _selectedQuantities[id] = v;
             final index = _confirmedItems.indexWhere((i) => i['id'] == id);

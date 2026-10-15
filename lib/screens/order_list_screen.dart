@@ -13,8 +13,10 @@ import 'package:katura_system/utils/name_format.dart';
 
 class OrderListScreen extends StatefulWidget {
   final Function(OrderModel, String)? onEditOrder;
+  final VoidCallback? onOpenMenu;
+  final void Function(int)? onNavigate;
 
-  const OrderListScreen({super.key, this.onEditOrder});
+  const OrderListScreen({super.key, this.onEditOrder, this.onOpenMenu, this.onNavigate});
 
   @override
   State<OrderListScreen> createState() => _OrderListScreenState();
@@ -195,6 +197,8 @@ class _OrderListScreenState extends State<OrderListScreen> {
       onToggle: (id) => setState(() => _expandedOrderId = _expandedOrderId == id ? null : id),
       onEdit: (order, section) => widget.onEditOrder?.call(order, section),
       onCancel: _cancelOrder,
+      onOpenMenu: widget.onOpenMenu,
+      onNavigate: widget.onNavigate,
     ));
   }
 

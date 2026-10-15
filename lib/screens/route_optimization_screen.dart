@@ -17,13 +17,17 @@ import '../services/reservation_service.dart';
 import '../widgets/delivery_schedule_dialog.dart';
 import '../widgets/k_button.dart';
 import '../widgets/k_responsive.dart';
+import 'mobile/mobile_delivery_schedule_calendar_89_4425.dart';
 
 /// 配送ルート最適化機能。これまでダイヤログの中に隠れていた「日時選択（カレンダー）」を、
 /// この画面ではポップアップではなく常時表示の画面として置く。
 /// 日付をタップすると、選んだ店舗・その日の配達予定ダイヤログ（号車ごとの時間軸）を開く。
 /// 実際のルート最適化（順序の自動並べ替えなど）は、今後この画面に追加していく。
 class RouteOptimizationScreen extends StatefulWidget {
-  const RouteOptimizationScreen({super.key});
+  final VoidCallback? onOpenMenu;
+  final void Function(int)? onNavigate;
+
+  const RouteOptimizationScreen({super.key, this.onOpenMenu, this.onNavigate});
 
   @override
   State<RouteOptimizationScreen> createState() => _RouteOptimizationScreenState();
@@ -188,6 +192,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     return Stack(
@@ -205,6 +210,43 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
           ),
       ],
     );
+  }
+
+  Widget _buildMobile() {
+    final day = _selectedDay ?? DateTime.now();
+    final warn = _travelWarn[_travelKey(_focusedDay)] ?? <DateTime>{};
+    return MobileDeliveryScheduleCalendar894425(MobileDeliveryScheduleData(
+      isLoading: _loading,
+      isOpening: _opening,
+      branches: [for (final b in _branches) b.name],
+      selectedBranch: _branchName,
+      focusedMonth: _focusedDay,
+      selectedDay: day,
+      orderDays: {for (final o in _branchOrders) DateWarningService.dayOf(o.deliveryDate)},
+      warnDays: warn.map(DateWarningService.dayOf).toSet(),
+      dayOrders: _dayOrders,
+      displayNames: {for (final o in _dayOrders) o.id: withHonorific(_names[o.id] ?? o.customerName)},
+      onSelectBranch: (name) {
+        setState(() => _branchName = name);
+        _loadTravelWarn(_focusedDay);
+        _ensureNames(_dayOrders);
+      },
+      onSelectDay: (d) {
+        setState(() {
+          _selectedDay = d;
+          if (d.month != _focusedDay.month) _focusedDay = d;
+        });
+        _loadTravelWarn(_focusedDay);
+        _ensureNames(_dayOrders);
+      },
+      onChangeMonth: (delta) {
+        setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + delta, 1));
+        _loadTravelWarn(_focusedDay);
+      },
+      onRouteConfirm: () => _openSchedule(day),
+      onOpenMenu: widget.onOpenMenu,
+      onNavigate: widget.onNavigate,
+    ));
   }
 
   Widget _buildMain(BuildContext context) {

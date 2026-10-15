@@ -30,6 +30,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final OrderFormHandle _orderFormHandle = OrderFormHandle();
   bool _sidebarOpen = true;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // 編集中の注文情報を保持（画面切り替えで消えないように）
   OrderModel? _currentEditingOrder;
@@ -95,6 +96,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildOrderFormScreen() {
     return OrderFormScreen(
       handle: _orderFormHandle,
+      onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(),
+      onNavigate: _goTo,
       key: ValueKey('order_form_${_currentEditingOrder?.id ?? "new"}'),
       initialOrder: _currentEditingOrder,
       initialSection: _editSection,
@@ -115,7 +118,10 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildCachedScreen(int index) {
     switch (index) {
       case 1: // 受注一覧
-        return OrderListScreen(onEditOrder: (order, section) {
+        return OrderListScreen(
+          onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(),
+          onNavigate: _goTo,
+          onEditOrder: (order, section) {
           setState(() {
             _currentEditingOrder = order;
             _editSection = section;
@@ -125,17 +131,17 @@ class _MainScreenState extends State<MainScreen> {
       case 2: // 調理・仕入れ計画
         return const PlanningScreen();
       case 3: // 配送ルート最適化
-        return const RouteOptimizationScreen();
+        return RouteOptimizationScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       case 6: // 顧客管理
-        return const CustomerListScreen();
+        return CustomerListScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       case 7: // メニューマスタ
-        return const MenuMasterScreen();
+        return MenuMasterScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       case 10: // 材料マスタ
         return const IngredientMasterScreen();
       case 8: // スタッフ管理
         return const StaffManagementScreen();
       case 9: // 設定
-        return const SettingsScreen();
+        return SettingsScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       default:
         return _buildUnderConstruction();
     }
@@ -156,7 +162,7 @@ class _MainScreenState extends State<MainScreen> {
         if (_selectedIndex == 0)
           _buildOrderFormScreen()
         else if (_selectedIndex == 5) // データ分析
-          const AnalysisScreen()
+          AnalysisScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo)
         else if (!_cachedIndices.contains(_selectedIndex))
           _buildUnderConstruction(),
       ],
@@ -169,6 +175,7 @@ class _MainScreenState extends State<MainScreen> {
     final bool isMobile = screenWidth < 900;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: AppColors.mainBackground,
       drawer: isMobile ? Drawer(
         child: KSidebar(

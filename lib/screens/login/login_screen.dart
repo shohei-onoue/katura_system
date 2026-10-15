@@ -123,6 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // スマホ幅(600未満)は端末標準キーボード、タブレットは独自キーボード
+    final bool useCustomKb = useOnScreenKeyboard && MediaQuery.of(context).size.width >= 600;
     // 画面幅・高さに対する比率でサイズ・余白を算出（widgets/k_responsive.dart の既存方式に準拠）
     final fieldWidth = rs(context, 340).clamp(240.0, 420.0);
     final fieldHeight = rs(context, 40).clamp(36.0, 56.0);
@@ -180,9 +182,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: fieldHeight,
                       child: TextField(
                         controller: _emailController,
-                        readOnly: useOnScreenKeyboard,
+                        readOnly: useCustomKb,
                         keyboardType: TextInputType.emailAddress,
-                        onTap: useOnScreenKeyboard
+                        onTap: useCustomKb
                             ? () => _openKeyboard(
                                 controller: _emailController,
                                 isEmailMode: true,
@@ -236,14 +238,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: TextField(
                         controller: _passwordController,
                         obscureText: _obscurePassword,
-                        readOnly: useOnScreenKeyboard,
-                        onTap: useOnScreenKeyboard
+                        readOnly: useCustomKb,
+                        onTap: useCustomKb
                             ? () => _openKeyboard(
                                 controller: _passwordController,
                                 isEmailMode: false,
                               )
                             : null,
-                        onSubmitted: useOnScreenKeyboard
+                        onSubmitted: useCustomKb
                             ? null
                             : (_) => _handleLogin(),
                         textAlign: TextAlign.center,
