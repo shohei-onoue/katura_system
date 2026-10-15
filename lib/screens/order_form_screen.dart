@@ -25,6 +25,7 @@ import '../widgets/k_order_intake_dialog.dart';
 import '../widgets/k_numeric_input_dialog.dart';
 import '../widgets/k_trash_pickup_dialog.dart';
 import 'order_form/widgets/step_widgets.dart';
+import 'order_form/widgets/steps/facility_search_host_dialog.dart';
 import 'order_form/widgets/order_form_sidebar.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -1332,6 +1333,83 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
   }
 
+  /// 配達先履歴1件の編集（「配達先の検索」ダイアログを再利用）。座標・写真・備考は施設/住所が同じなら引き継ぐ。
+  Future<void> _editHistoryEntry(String raw) async {
+    final cust = _currentCustomer;
+    if (cust == null) return;
+    final result = await showFacilitySearchHostDialog(context, title: '配達先履歴の編集');
+    if (result == null || !mounted) return;
+    final old = normalizeHistoryEntry(raw);
+    final oldPos = _parseCoordsFromAddress(old);
+    final sameCoord = oldPos != null && oldPos.latitude == result.lat && oldPos.longitude == result.lng;
+    final img = sameCoord ? RegExp(r'\[IMG:([^\]]+)\]').firstMatch(old)?.group(1) : null;
+    final rmk = RegExp(r'\[RMK:([^\]]*)\]').firstMatch(old)?.group(1)?.trim() ?? '';
+    final facility = result.name.trim().isEmpty ? '個人宅' : result.name.trim();
+    var entry = '$facility: ${result.address} (${result.lat}, ${result.lng})';
+    if (img != null) entry += ' [IMG:$img]';
+    if (rmk.isNotEmpty) entry += ' [RMK:$rmk]';
+    final list = List<String>.from(cust.deliveryAddresses);
+    final i = list.indexOf(raw);
+    if (i == -1) return;
+    list[i] = entry;
+    final updated = cust.copyWith(deliveryAddresses: list);
+    await _customerService.updateCustomer(updated);
+    if (!mounted) return;
+    setState(() {
+      _currentCustomer = updated;
+      _historyManuallySelected = false;
+    });
+    if (img == null) {
+      final oldImg = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(old)?.group(1);
+      if (oldImg != null) await StreetViewImageService().deleteByUrl(oldImg);
+    }
+  }
+
+  /// 配達先履歴1件の削除（確認ダイアログ付き）
+  Future<void> _deleteHistoryEntry(String raw) async {
+    final cust = _currentCustomer;
+    if (cust == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.popupBackground,
+        title: const Text('配達先履歴を削除しますか？'),
+        content: const Text('この配達先履歴を削除します。元に戻せません。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('戻る')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: AppColors.mainBackground),
+            child: const Text('削除する'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final list = List<String>.from(cust.deliveryAddresses)..remove(raw);
+    final updated = cust.copyWith(deliveryAddresses: list);
+    await _customerService.updateCustomer(updated);
+    final img = RegExp(r'\[IMG:([^\]]+)\]').firstMatch(raw)?.group(1);
+    if (img != null) await StreetViewImageService().deleteByUrl(img);
+    if (!mounted) return;
+    final n = normalizeHistoryEntry(raw);
+    final p = n.split(': ');
+    final fName = p.length > 1 ? p[0] : '個人宅';
+    final aOnly = p.length > 1 ? p[1].split(' (')[0] : n.split(' (')[0];
+    setState(() {
+      _currentCustomer = updated;
+      if (_facilityController.text == fName && _addressController.text == aOnly) {
+        _facilityController.clear();
+        _addressController.clear();
+        _selectedFacilityName = '';
+        _selectedFacilityAddress = '';
+        _selectedDestPos = null;
+        _pendingStreetViewImageUrl = null;
+      }
+      _historyManuallySelected = false;
+    });
+  }
+
   Future<void> _onAddressSelectedFromList(String fullAddr) async {
     // キーワード検索の結果：施設名は検索結果のカードの情報（企業名）をそのまま使う。
     // 最寄り施設・その他の入力は備考へ反映する。
@@ -2375,6 +2453,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           },
           onCancelOrder: _confirmCancelOrder,
           isEditingOrder: _isEditingOrder,
+          onEditHistory: _editHistoryEntry,
+          onDeleteHistory: _deleteHistoryEntry,
           onModeToggle: (v) => setState(() { _isHistoryMode = v; _historyManuallySelected = false; }),
           onHistoryCategoryChanged: (v) => setState(() => _selectedHistoryCategory = v),
           onAddressSelected: _onAddressSelectedFromList,

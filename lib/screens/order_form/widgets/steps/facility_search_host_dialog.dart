@@ -16,17 +16,18 @@ class KFacilitySearchResult {
 
 /// 受注入力「配達先の新規登録」と同じ検索フォーム（FacilitySearchForm）を、独立したダイアログで開く。
 /// 受注画面以外（顧客詳細など）から企業・住所を検索して選ぶときに使う。
-Future<KFacilitySearchResult?> showFacilitySearchHostDialog(BuildContext context, {int initialTab = 0}) {
+Future<KFacilitySearchResult?> showFacilitySearchHostDialog(BuildContext context, {int initialTab = 0, String title = '配達先の検索'}) {
   return showDialog<KFacilitySearchResult>(
     context: context,
     barrierDismissible: false,
-    builder: (_) => _FacilitySearchHostDialog(initialTab: initialTab),
+    builder: (_) => _FacilitySearchHostDialog(initialTab: initialTab, title: title),
   );
 }
 
 class _FacilitySearchHostDialog extends StatefulWidget {
   final int initialTab;
-  const _FacilitySearchHostDialog({required this.initialTab});
+  final String title;
+  const _FacilitySearchHostDialog({required this.initialTab, required this.title});
 
   @override
   State<_FacilitySearchHostDialog> createState() => _FacilitySearchHostDialogState();
@@ -134,7 +135,7 @@ class _FacilitySearchHostDialogState extends State<_FacilitySearchHostDialog> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const KDialogTitle('配達先の検索'),
+                  KDialogTitle(widget.title),
                   IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),

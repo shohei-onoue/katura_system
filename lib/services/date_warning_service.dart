@@ -10,6 +10,11 @@ class DateWarningService {
   static DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
   static String _digits(String v) => v.replaceAll(RegExp(r'[^0-9]'), '');
   static String _norm(String v) => v.replaceAll(RegExp(r'\s+'), '');
+  // 「個人宅」は施設名として一致判定しない（住所で判定する）
+  static String _nameKey(String v) {
+    final n = _norm(v);
+    return n == '個人宅' ? '' : n;
+  }
 
   static bool _inRange(DateTime d, DateTime? from, DateTime? to) {
     final day = dayOf(d);
@@ -38,8 +43,8 @@ class DateWarningService {
   }) {
     final phone = _digits(customer.phoneNumber);
     final name = _norm(customer.name);
-    final company = _norm(customer.companyName);
-    final dName = _norm(destName);
+    final company = _nameKey(customer.companyName);
+    final dName = _nameKey(destName);
     final dAddr = _norm(destAddress);
     final n = now ?? DateTime.now();
     final today = dayOf(n);
@@ -50,8 +55,8 @@ class DateWarningService {
           (_digits(o.phoneNumber) == phone && _norm(o.customerName) == name);
       if (sameCustomer) return OrderService.isActive(o) && !o.deliveryDate.isBefore(today);
       if (o.deliveryDate.isBefore(oldest)) return false;
-      final sameCompany = company.isNotEmpty && _norm(o.facilityName) == company;
-      final sameDest = (dName.isNotEmpty && _norm(o.facilityName) == dName) ||
+      final sameCompany = company.isNotEmpty && _nameKey(o.facilityName) == company;
+      final sameDest = (dName.isNotEmpty && _nameKey(o.facilityName) == dName) ||
           (dAddr.isNotEmpty && _norm(o.address) == dAddr);
       return sameCompany || sameDest;
     }).toList();
@@ -64,8 +69,8 @@ class DateWarningService {
     String destName = '',
     String destAddress = '',
   }) {
-    final company = _norm(customer.companyName);
-    final dName = _norm(destName);
+    final company = _nameKey(customer.companyName);
+    final dName = _nameKey(destName);
     final dAddr = _norm(destAddress);
     final map = <String, String>{};
     for (final o in related) {
@@ -74,8 +79,8 @@ class DateWarningService {
           (_digits(o.phoneNumber) == _digits(customer.phoneNumber) && _norm(o.customerName) == _norm(customer.name))) {
         r.add('同じお客様がこの日に注文済み');
       }
-      if (company.isNotEmpty && _norm(o.facilityName) == company) r.add('同じ会社名（${o.facilityName}）');
-      if (dName.isNotEmpty && _norm(o.facilityName) == dName) r.add('同じ届け先名（${o.facilityName}）');
+      if (company.isNotEmpty && _nameKey(o.facilityName) == company) r.add('同じ会社名（${o.facilityName}）');
+      if (dName.isNotEmpty && _nameKey(o.facilityName) == dName) r.add('同じ届け先名（${o.facilityName}）');
       if (dAddr.isNotEmpty && _norm(o.address) == dAddr) r.add('同じ住所（${o.address}）');
       map[o.id] = r.join(' / ');
     }
@@ -132,7 +137,7 @@ class DateWarningService {
         }
         seenCust[ck] = o;
         for (final dk in [
-          if (_norm(o.facilityName).isNotEmpty) 'n:${_norm(o.facilityName)}',
+          if (_nameKey(o.facilityName).isNotEmpty) 'n:${_nameKey(o.facilityName)}',
           if (_norm(o.address).isNotEmpty) 'a:${_norm(o.address)}',
         ]) {
           final prev = seenDest[dk];

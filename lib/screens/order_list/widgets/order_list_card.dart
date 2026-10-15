@@ -90,7 +90,6 @@ class _OrderListCardState extends State<OrderListCard> {
   @override
   Widget build(BuildContext context) {
     final order = widget.order;
-    final String preMethod = order.preConfirmationMethod.isEmpty ? '事前連絡なし' : order.preConfirmationMethod;
     final String deliveryDateTime = '${order.deliveryDate.month}/${order.deliveryDate.day} ${order.deliveryTime}';
 
     final card = Card(
@@ -109,76 +108,70 @@ class _OrderListCardState extends State<OrderListCard> {
             child: Container(
               width: double.infinity,
               color: widget.isWarning ? Colors.transparent : _branchColor.withValues(alpha: 0.18),
-              padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), 0, rs(context, 8)),
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 3)),
               child: Row(
                 children: [
-                  // 横幅の比率 顧客名:住所:支店名:編集アイコン = 2:5:2:1
+                  if (order.preConfirmationMethod.isNotEmpty) ...[
+                    Icon(Icons.notifications_active, size: rs(context, 24), color: widget.isWarning ? AppColors.whiteText : const Color(0xFFFFB300)),
+                    SizedBox(width: rs(context, 18)),
+                  ],
                   Expanded(
-                    flex: 2,
                     child: Text(
                       withHonorific(widget.displayName ?? order.customerName),
-                      style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : null),
+                      style: TextStyle(fontSize: rf(context, 22), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : Colors.black),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ),
-                  Expanded(
-                    flex: 5,
-                    child: Text(
-                      _addressWithoutZip(order.address),
-                      style: TextStyle(fontSize: rf(context, 13), color: widget.isWarning ? AppColors.whiteText : Colors.grey[700]),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
+                  SizedBox(width: rs(context, 7)),
+                  Text(
+                    order.branchName,
+                    style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : _branchColor),
+                    maxLines: 1,
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      order.branchName,
-                      style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : _branchColor),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  // 編集アイコンは割り当てられた幅の中央に配置
-                  Expanded(
-                    flex: 1,
-                    child: Center(
-                      child: InkWell(
-                        onTap: () => _showEditChoice(order),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 8)),
-                          child: Icon(Icons.edit, size: rs(context, 20), color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey),
-                        ),
-                      ),
+                  SizedBox(width: rs(context, 7)),
+                  InkWell(
+                    onTap: () => _showEditChoice(order),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: rs(context, 6), horizontal: rs(context, 8)),
+                      child: Icon(Icons.edit, size: rs(context, 20), color: widget.isWarning ? AppColors.whiteText : const Color(0xFF607D8B)),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          // アコーディオン展開部：配達日時 / 事前連絡方法 / 注文内容 / 合計金額
+          // アコーディオン展開部：配達日時・住所 / 区切り線 / 注文内容 / 合計金額
           if (_expanded) ...[
             Padding(
-              padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 8), rs(context, 12), rs(context, 10)),
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 5)),
               child: Row(
                 children: [
-                  Icon(Icons.event, size: rs(context, 18), color: widget.isWarning ? AppColors.whiteText : AppColors.accentOrange),
+                  Icon(Icons.event, size: rs(context, 18), color: widget.isWarning ? AppColors.whiteText : Colors.black),
                   SizedBox(width: rs(context, 4)),
                   Text(
                     deliveryDateTime,
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : AppColors.accentOrange),
+                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: widget.isWarning ? AppColors.whiteText : Colors.black),
                   ),
-                  SizedBox(width: rs(context, 16)),
-                  Icon(Icons.notifications_active_outlined, size: rs(context, 18), color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey),
-                  SizedBox(width: rs(context, 4)),
-                  Text(preMethod, style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.w500, color: widget.isWarning ? AppColors.whiteText : Colors.blueGrey)),
+                  SizedBox(width: rs(context, 20)),
+                  Expanded(
+                    child: Text(
+                      _addressWithoutZip(order.address),
+                      style: TextStyle(fontSize: rf(context, 13), color: widget.isWarning ? AppColors.whiteText : const Color(0xFF616161)),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ],
               ),
             ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 5)),
+              child: Divider(height: 1, thickness: 1, color: widget.isWarning ? AppColors.whiteText : Colors.grey.shade500),
+            ),
             if (order.items.isNotEmpty)
               Padding(
-                padding: EdgeInsets.fromLTRB(rs(context, 12), 0, rs(context, 12), rs(context, 10)),
+                padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 5)),
                 child: SizedBox(
                   width: double.infinity,
                   child: Wrap(
@@ -203,10 +196,10 @@ class _OrderListCardState extends State<OrderListCard> {
               ),
             Container(
               width: double.infinity,
-              padding: EdgeInsets.fromLTRB(rs(context, 12), rs(context, 10), rs(context, 12), rs(context, 12)),
+              padding: EdgeInsets.symmetric(horizontal: rs(context, 12), vertical: rs(context, 5)),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                color: const Color(0xFFFAFAFA),
+                border: const Border(top: BorderSide(color: Color(0xFFEEEEEE))),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

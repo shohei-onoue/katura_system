@@ -71,6 +71,9 @@ class DeliveryDestinationStep extends StatelessWidget {
   final void Function(Offset globalAnchor)? onBranchMenuAnchor;
   final VoidCallback onCancelOrder;
   final bool isEditingOrder; // 受注一覧の編集から遷移した場合 true
+  /// 履歴カードの編集・削除（履歴1件の元の文字列を渡す）
+  final void Function(String rawEntry)? onEditHistory;
+  final void Function(String rawEntry)? onDeleteHistory;
 
   const DeliveryDestinationStep({
     super.key,
@@ -127,6 +130,8 @@ class DeliveryDestinationStep extends StatelessWidget {
     this.onBranchMenuAnchor,
     required this.onCancelOrder,
     this.isEditingOrder = false,
+    this.onEditHistory,
+    this.onDeleteHistory,
   });
 
   @override
@@ -278,11 +283,34 @@ class DeliveryDestinationStep extends StatelessWidget {
                     ),
                   ),
                 ),
+                SizedBox(width: rs(context, 8)),
+                _historyActionBtn(context, Icons.edit, () => onEditHistory?.call(rawAddr)),
+                SizedBox(width: rs(context, 8)),
+                _historyActionBtn(context, Icons.delete, () => onDeleteHistory?.call(rawAddr)),
               ],
             ),
           );
         }),
       ],
+    );
+  }
+
+  Widget _historyActionBtn(BuildContext context, IconData icon, VoidCallback onTap) {
+    return SizedBox(
+      height: rs(context, 50),
+      width: rs(context, 50),
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.zero,
+          backgroundColor: AppColors.selectButton,
+          foregroundColor: AppColors.primaryText,
+          elevation: 0,
+          side: BorderSide.none,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 8))),
+        ),
+        child: Icon(icon, size: rs(context, 20)),
+      ),
     );
   }
 
