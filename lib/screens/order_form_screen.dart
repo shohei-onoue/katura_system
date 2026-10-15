@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/delivery_schedule_dialog.dart';
+import '../widgets/k_button.dart';
+import '../widgets/k_dialog_title.dart';
 import '../services/delivery_schedule_service.dart';
 import '../services/reservation_service.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -758,11 +760,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.popupBackground,
-        title: Row(children: [
-          const Icon(Icons.warning_rounded, color: AppColors.warningText),
-          const SizedBox(width: 8),
-          const Expanded(child: Text('日程の確認が必要です')),
-        ]),
+        title: Center(child: KDialogTitle('日程の確認が必要です')),
         content: SizedBox(
           width: 420,
           child: SingleChildScrollView(
@@ -773,30 +771,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 for (final w in warnings)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        backgroundColor: AppColors.selectButton,
-                        foregroundColor: AppColors.primaryText,
-                        padding: const EdgeInsets.all(12),
-                      ),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: Text(w, textAlign: TextAlign.left),
+                    child: Text(
+                      w.startsWith('重複：') ? '${w.substring(3).split('：').first}様と同じ配達先です' : w,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.warningText, fontSize: 16),
                     ),
                   ),
               ],
             ),
           ),
         ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
-            style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('このまま受注を続ける'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
-            onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('戻って調整する'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(child: KButton(label: '中止', color: AppColors.cancelButton, onPressed: () => Navigator.pop(ctx, null))),
+              const SizedBox(width: 12),
+              Expanded(child: KButton(label: '調整する', color: AppColors.accentOrange, onPressed: () => Navigator.pop(ctx, true))),
+              const SizedBox(width: 12),
+              Expanded(child: KButton(label: '注文継続', color: AppColors.acceptButton, onPressed: () => Navigator.pop(ctx, false))),
+            ],
           ),
         ],
       ),
