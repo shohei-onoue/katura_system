@@ -6,6 +6,7 @@ import '../services/customer_service.dart';
 import '../services/date_warning_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
+import 'mobile/mobile_order_list_89_4540.dart';
 import 'order_list/widgets/order_list_card.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
@@ -143,6 +144,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: Column(
@@ -159,6 +161,41 @@ class _OrderListScreenState extends State<OrderListScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildMobile() {
+    final warnTexts = <String, String>{};
+    for (final o in _visibleOrders) {
+      final w = (_warnDays[DateWarningService.dayOf(o.deliveryDate)] ?? const <String>[])
+          .where((t) => t.startsWith('${o.customerName}：'));
+      if (w.isNotEmpty) warnTexts[o.id] = w.join(' / ');
+    }
+    return MobileOrderList894540(MobileOrderListData(
+      isLoading: _isLoading,
+      orders: _visibleOrders,
+      displayNames: _displayNames,
+      warnTexts: warnTexts,
+      warnDays: _warnDays.keys.toSet(),
+      hasOrderDays: _allOrders.map((o) => _dateOnly(o.deliveryDate)).toSet(),
+      selectedDay: _selectedDay!,
+      focusedDay: _focusedDay,
+      selectedBranch: _selectedBranch,
+      expandedOrderId: _expandedOrderId,
+      onSelectDay: (day) {
+        setState(() {
+          _selectedDay = day;
+          _focusedDay = day;
+        });
+        _filterOrdersByDay(day);
+      },
+      onChangeMonth: (delta) => setState(() => _focusedDay = DateTime(_focusedDay.year, _focusedDay.month + delta, 1)),
+      onToday: _goToday,
+      onRefresh: _loadOrders,
+      onSelectBranch: (b) => setState(() => _selectedBranch = b),
+      onToggle: (id) => setState(() => _expandedOrderId = _expandedOrderId == id ? null : id),
+      onEdit: (order, section) => widget.onEditOrder?.call(order, section),
+      onCancel: _cancelOrder,
+    ));
   }
 
   double _dateTabsViewW = 0;
