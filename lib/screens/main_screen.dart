@@ -106,8 +106,8 @@ class _MainScreenState extends State<MainScreen> {
     0: '受注入力', 1: '受注一覧', 2: '調理・仕入れ計画', 3: '配達予定', 4: '配送ルート', 5: 'データ分析', 6: '顧客管理',
     7: 'メニューマスタ', 8: 'スタッフ管理', 9: '設定', 10: '材料マスタ', 11: '事前連絡進捗',
   };
-  // スマホ下部バー：画面インデックス（最後の「その他」はメニューを開く）
-  static const List<int> _bottomIndices = [0, 1, 3, 6, 9];
+  // スマホ下部バー：画面インデックス（受注一覧・配達予定・設定）
+  static const List<int> _bottomIndices = [1, 3, 9];
 
   Future<void> _logout() async {
     await AuthService().logout();
@@ -118,12 +118,14 @@ class _MainScreenState extends State<MainScreen> {
 
   PreferredSizeWidget _buildPhoneAppBar() {
     return AppBar(
-      backgroundColor: AppColors.mainBackground,
-      foregroundColor: AppColors.primaryText,
+      backgroundColor: AppColors.acceptButton,
+      foregroundColor: Colors.white,
+      iconTheme: const IconThemeData(color: Colors.white),
+      actionsIconTheme: const IconThemeData(color: Colors.white),
       automaticallyImplyLeading: false,
       leading: IconButton(icon: const Icon(Icons.logout), tooltip: 'ログアウト', onPressed: _logout),
       centerTitle: true,
-      title: Text(_titles[_selectedIndex] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+      title: Text(_titles[_selectedIndex] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
       actions: [
         IconButton(
           icon: const Icon(Icons.notifications_active),
@@ -138,24 +140,16 @@ class _MainScreenState extends State<MainScreen> {
     final pos = _bottomIndices.indexOf(_selectedIndex);
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      backgroundColor: AppColors.mainBackground,
-      selectedItemColor: AppColors.accentPurple,
-      unselectedItemColor: AppColors.secondaryText,
-      currentIndex: pos >= 0 ? pos : _bottomIndices.length,
-      onTap: (i) {
-        if (i == _bottomIndices.length) {
-          _scaffoldKey.currentState?.openDrawer();
-        } else {
-          _goTo(_bottomIndices[i]);
-        }
-      },
+      backgroundColor: AppColors.acceptButton,
+      // バーに無い画面のときは currentIndex を0にし、選択色も白にして全項目を白で表示する
+      selectedItemColor: pos >= 0 ? Colors.orange : Colors.white,
+      unselectedItemColor: Colors.white,
+      currentIndex: pos >= 0 ? pos : 0,
+      onTap: (i) => _goTo(_bottomIndices[i]),
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.edit_note), label: '受注入力'),
         BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: '受注一覧'),
         BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: '配達予定'),
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: '顧客管理'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: '設定'),
-        BottomNavigationBarItem(icon: Icon(Icons.menu), label: 'その他'),
       ],
     );
   }
