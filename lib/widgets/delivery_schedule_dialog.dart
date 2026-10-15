@@ -1124,21 +1124,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                                   height: 1,
                                   child: Row(
                                     children: [
-                                      SizedBox(
-                                        width: labelW,
-                                        child: m % 60 == 0
-                                            ? Transform.translate(
-                                                offset: Offset(0, rs(context, 8)),
-                                                child: Text(
-                                                  '${m ~/ 60}:00',
-                                                  style: TextStyle(
-                                                    fontSize: rf(context, 13),
-                                                    color: AppColors.secondaryText,
-                                                  ),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
+                                      SizedBox(width: labelW),
                                       Expanded(
                                         child: Container(
                                           height: 1,
@@ -1151,6 +1137,21 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                             ],
                           ),
                         ),
+                        // 縦軸の時間表記（時間単位）
+                        for (int h = _startHour; h <= _endHour; h++)
+                          Positioned(
+                            top: yOf(h * 60) - rs(context, 9),
+                            left: 0,
+                            width: labelW,
+                            height: rs(context, 18),
+                            child: Text(
+                              '$h:00',
+                              style: TextStyle(
+                                fontSize: rf(context, 13),
+                                color: AppColors.secondaryText,
+                              ),
+                            ),
+                          ),
                         // 号車ごとのカード間の点線矢印（カードより下のレイヤー）
                         for (int lane = 0; lane < _laneCount; lane++)
                           ...() {
