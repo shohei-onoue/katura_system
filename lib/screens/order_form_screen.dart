@@ -144,6 +144,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   List<Map<String, dynamic>> _searchBuffer = []; // 取得済みで、まだ一覧に出していない結果
   static const int _searchPageSize = 20; // 一覧に出す件数（最初・追加とも）
   List<String> _searchGenreKeywords = [];
+  final List<({String query, String town})> _searchQueue = []; // 町名ごとの追加検索（「すべて」のとき順に検索）
+  final Set<String> _searchSeen = {};
   String _searchTownForFilter = '';
   final _facilityResultsNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
   bool _isSearchResultsDialogOpen = false;
@@ -1646,23 +1648,24 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
         if (areaPart.isEmpty || facilityTerm.isEmpty) { _isLoadingNotifier.value = false; return; }
         
-        final raw = await _customerService.getGoogleMapsService().searchPlacesPage(kw, location: _branchCoordinates[_branchName]);
         _searchGenreKeywords = genreKeywords;
         _searchTownForFilter = town;
-        // 最初は20件だけ一覧に出し、残りは取っておく（一番下までスクロールするたびに20件ずつ追加）
-        final ranked = _filterAndRank(raw.results, genreKeywords, town);
-        var next = raw.next;
-        // 絞り込みで20件に満たなければ、次ページも取得して候補を探す（上限なし）
-        while (ranked.length < _searchPageSize && next != null) {
-          await Future.delayed(const Duration(seconds: 2)); // 次ページのトークンは発行直後は使えない
-          final page = await _customerService.getGoogleMapsService().searchPlacesPage('', pageToken: next);
-          next = page.next;
-          final known = ranked.map((e) => '${e['name']}|${e['address']}').toSet();
-          ranked.addAll(_filterAndRank(page.results, genreKeywords, town).where((r) => known.add('${r['name']}|${r['address']}')));
+        _searchSeen.clear();
+        _searchQueue
+          ..clear()
+          ..add((query: kw, town: town));
+        // 町名「すべて」のときは、町名ごとの検索も続けて行い、検索漏れを防ぐ
+        if (town.isEmpty && _searchCity.isNotEmpty && _searchCity != '（すべて）') {
+          final towns = await _customerService.getAddressService().getTowns(_searchPrefecture, _searchCity);
+          for (final t in towns) {
+            if (t.isEmpty || t == '（すべて）') continue;
+            _searchQueue.add((query: '$_searchPrefecture$_searchCity$t $facilityTerm', town: t));
+          }
         }
-        results = ranked.take(_searchPageSize).toList();
-        _searchBuffer = ranked.skip(_searchPageSize).toList();
-        _searchNextToken = next;
+        // 最初は20件だけ一覧に出し、残りは取っておく（一番下までスクロールするたびに20件ずつ追加）
+        await _fillSearchBuffer();
+        results = _searchBuffer.take(_searchPageSize).toList();
+        _searchBuffer = _searchBuffer.skip(results.length).toList();
 
         for (var i in results) {
           await _customerService.getAddressService().upsertKigyouEntity(
@@ -1681,6 +1684,27 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     }
     _isLoadingNotifier.value = false;
     _facilityResultsNotifier.value = List.from(results);
+  }
+
+  /// 一覧に出す分（20件）が溜まるまで、次ページ→次の町名の順に検索して [_searchBuffer] へ足す。
+  Future<void> _fillSearchBuffer() async {
+    var townForFilter = _searchTownForFilter;
+    while (_searchBuffer.length < _searchPageSize && (_searchNextToken != null || _searchQueue.isNotEmpty)) {
+      ({List<Map<String, dynamic>> results, String? next}) page;
+      if (_searchNextToken != null) {
+        await Future.delayed(const Duration(seconds: 2)); // 次ページのトークンは発行直後は使えない
+        page = await _customerService.getGoogleMapsService().searchPlacesPage('', pageToken: _searchNextToken);
+      } else {
+        final q = _searchQueue.removeAt(0);
+        townForFilter = q.town;
+        _searchTownForFilter = q.town;
+        page = await _customerService.getGoogleMapsService().searchPlacesPage(q.query);
+      }
+      _searchNextToken = page.next;
+      for (final r in _filterAndRank(page.results, _searchGenreKeywords, townForFilter)) {
+        if (_searchSeen.add('${r['name']}|${r['address']}')) _searchBuffer.add(r);
+      }
+    }
   }
 
   /// 検索結果を、選んだ住所と一致するものだけに絞り、（地域に合う→ジャンルに合う）順に並べる。
@@ -1709,19 +1733,11 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   /// 検索結果の一番下までスクロールしたとき、続きを20件追加する（足りなければ次ページを取得）。
   Future<void> _loadMoreResults() async {
     if (_loadingMoreNotifier.value) return;
-    if (_searchBuffer.isEmpty && _searchNextToken == null) return;
+    if (_searchBuffer.isEmpty && _searchNextToken == null && _searchQueue.isEmpty) return;
     _loadingMoreNotifier.value = true;
     final added = <Map<String, dynamic>>[];
     try {
-      final known = {..._facilityResultsNotifier.value, ..._searchBuffer}.map((e) => '${e['name']}|${e['address']}').toSet();
-      while (_searchBuffer.length < _searchPageSize && _searchNextToken != null) {
-        await Future.delayed(const Duration(seconds: 2)); // 次ページのトークンは発行直後は使えない
-        final page = await _customerService.getGoogleMapsService().searchPlacesPage('', pageToken: _searchNextToken);
-        _searchNextToken = page.next;
-        for (final r in _filterAndRank(page.results, _searchGenreKeywords, _searchTownForFilter)) {
-          if (known.add('${r['name']}|${r['address']}')) _searchBuffer.add(r);
-        }
-      }
+      await _fillSearchBuffer();
       added.addAll(_searchBuffer.take(_searchPageSize));
       _searchBuffer.removeRange(0, added.length);
       for (var i in added) {
