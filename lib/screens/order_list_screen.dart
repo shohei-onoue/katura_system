@@ -149,6 +149,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     if (MediaQuery.of(context).size.width < 600) return _buildMobile();
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      endDrawer: _buildContactDrawer(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -161,6 +162,68 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 : _buildOrderList(),
           ),
         ],
+      ),
+    );
+  }
+
+  // 事前連絡が必要な受注（連絡未完了、またはSMS返信が承認以外）
+  List<OrderModel> get _contactOrders => _allOrders.where((o) {
+        if (o.preConfirmationMethod.isEmpty) return false;
+        if (o.preConfirmationMethod == '電話') return true;
+        return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
+      }).toList()
+        ..sort((a, b) => a.deliveryDate.compareTo(b.deliveryDate));
+
+  // 右側パネル：事前連絡の進捗カード一覧
+  Widget _buildContactDrawer() {
+    final list = _contactOrders;
+    return Drawer(
+      backgroundColor: AppColors.mainBackground,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsets.all(rs(context, 12)),
+              child: Text('事前連絡の進捗（${list.length}件）', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: list.isEmpty
+                  ? const Center(child: Text('連絡待ちはありません'))
+                  : ListView(
+                      padding: EdgeInsets.all(rs(context, 8)),
+                      children: list.map(_buildContactCard).toList(),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactCard(OrderModel o) {
+    final isPhone = o.preConfirmationMethod == '電話';
+    final phone = isPhone && o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
+    final reaction = !isPhone && o.smsReply.isNotEmpty && o.smsReply != '承認';
+    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? '返信待ち' : 'SMS未送信');
+    return Card(
+      color: reaction ? AppColors.cancelButton : null,
+      child: Padding(
+        padding: EdgeInsets.all(rs(context, 10)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(isPhone ? Icons.phone : Icons.mail, size: rs(context, 18), color: reaction ? AppColors.whiteText : null),
+              SizedBox(width: rs(context, 6)),
+              Expanded(child: Text(withHonorific(_displayNames[o.id] ?? o.customerName), style: TextStyle(fontSize: rf(context, 15), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : null))),
+            ]),
+            if (o.facilityName.trim().isNotEmpty) Text(o.facilityName.trim(), style: TextStyle(fontSize: rf(context, 13), color: reaction ? AppColors.whiteText : null)),
+            Text(phone, style: TextStyle(fontSize: rf(context, 13), color: reaction ? AppColors.whiteText : null)),
+            Text(status, style: TextStyle(fontSize: rf(context, 12), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : Colors.red)),
+          ],
+        ),
       ),
     );
   }
@@ -248,6 +311,14 @@ class _OrderListScreenState extends State<OrderListScreen> {
             child: Text('今日', style: TextStyle(fontSize: rf(context, 13), fontWeight: FontWeight.bold)),
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: () => _loadOrders()),
+          Builder(builder: (ctx) {
+            final n = _contactOrders.length;
+            return IconButton(
+              tooltip: '事前連絡の進捗',
+              icon: Badge(isLabelVisible: n > 0, label: Text('$n'), child: const Icon(Icons.notifications_active)),
+              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+            );
+          }),
         ],
       ),
     );

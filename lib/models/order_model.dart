@@ -43,6 +43,7 @@ class OrderModel {
   final String preConfirmationSmsTime; // SMS送信時間 (例: "09:00")
   final DateTime? scheduledSmsDateTime; // 送信予定日時
   final bool smsSent; // 送信済みフラグ
+  final String smsReply; // お客様のSMS返信（空=未返信, 承認, キャンセル, その他）
 
   final String status;
   final String branchName; // 店舗名
@@ -87,6 +88,7 @@ class OrderModel {
     this.preConfirmationSmsTime = '09:00',
     this.scheduledSmsDateTime,
     this.smsSent = false,
+    this.smsReply = '',
     this.status = '受注済み',
     this.branchName = '岡崎本店',
     this.remarks = '',
@@ -141,6 +143,7 @@ class OrderModel {
       'preConfirmationSmsTime': preConfirmationSmsTime,
       'scheduledSmsDateTime': scheduledSmsDateTime?.toUtc().toIso8601String(),
       'smsSent': smsSent,
+      'smsReply': smsReply,
       'status': status,
       'branchName': branchName,
       'remarks': remarks,
@@ -218,6 +221,7 @@ class OrderModel {
           ? DateTime.parse(map['scheduledSmsDateTime']) 
           : null,
       smsSent: map['smsSent'] ?? false,
+      smsReply: map['smsReply'] ?? '',
       status: map['status'] ?? '受注済み',
       branchName: map['branchName'] ?? '岡崎本店',
       remarks: map['remarks'] ?? '',

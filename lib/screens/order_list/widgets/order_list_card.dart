@@ -111,7 +111,7 @@ class _OrderListCardState extends State<OrderListCard> {
               child: Row(
                 children: [
                   if (order.preConfirmationMethod.isNotEmpty) ...[
-                    Icon(Icons.notifications_active, size: rs(context, 24), color: widget.isWarning ? AppColors.whiteText : const Color(0xFFFFB300)),
+                    Icon(order.preConfirmationMethod == '電話' ? Icons.phone : Icons.mail, size: rs(context, 24), color: widget.isWarning ? AppColors.whiteText : const Color(0xFFFFB300)),
                     SizedBox(width: rs(context, 18)),
                   ],
                   Expanded(
