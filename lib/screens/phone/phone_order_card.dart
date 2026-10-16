@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:katura_system/utils/name_format.dart';
 import '../../models/order_model.dart';
 import 'phone_common.dart';
-import 'phone_order_list_dialogs.dart';
 import 'phone_order_list_style.dart';
 
 /// スマホ用の受注カード（Figma: 受注一覧）。タップで展開、鉛筆アイコンで「変更内容を選択」。
@@ -35,13 +33,6 @@ class PhoneOrderCard extends StatelessWidget {
     final special = m['specialOrder'];
     if (special != null && special.toString().isNotEmpty) buf.write(' ($special)');
     return buf.toString();
-  }
-
-  Future<void> _editChoice(BuildContext context) async {
-    final name = withHonorific(displayName ?? order.customerName);
-    final choice = await showPhoneChangeSelectSheet(context, name);
-    if (choice == null) return;
-    choice == '予約キャンセル' ? onCancel(order) : onEdit(order, choice);
   }
 
   Widget _chip(String text) => Container(
@@ -90,11 +81,7 @@ class PhoneOrderCard extends StatelessWidget {
                       decoration: BoxDecoration(color: PL.branchBg(order.branchName), borderRadius: BorderRadius.circular(6)),
                       child: Text(order.branchName, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: PL.branchFg(order.branchName))),
                     ),
-                    InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: () => _editChoice(context),
-                      child: const Padding(padding: EdgeInsets.all(8), child: Icon(Icons.edit_rounded, size: 18, color: PL.iconGrey)),
-                    ),
+                    const SizedBox(width: 8),
                   ],
                 ),
                 const SizedBox(height: 2),

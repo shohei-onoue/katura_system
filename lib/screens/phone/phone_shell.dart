@@ -23,7 +23,7 @@ class PhoneColors {
 /// 上部バー(白・左にメニュー・タイトル・右に[actions])
 PreferredSizeWidget buildPhoneTopBar({
   required String title,
-  required VoidCallback onMenu,
+  required VoidCallback onLogout,
   List<Widget> actions = const [],
 }) {
   return AppBar(
@@ -37,11 +37,11 @@ PreferredSizeWidget buildPhoneTopBar({
     leadingWidth: 52,
     titleSpacing: 0,
     leading: InkWell(
-      onTap: onMenu,
+      onTap: onLogout,
       child: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 16),
-        child: const Icon(Icons.menu_rounded, size: 20, color: Colors.white),
+        child: const Icon(Icons.logout_rounded, size: 20, color: Colors.white),
       ),
     ),
     title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -49,18 +49,19 @@ PreferredSizeWidget buildPhoneTopBar({
   );
 }
 
-/// 下部バー: 受注入力(0)・受注一覧(1)・配送予定(3)・顧客(6)・メニュー(ドロワーを開く)
+/// 下部バー: 受注一覧(1)・配送予定(3)・顧客(6)・スタッフ(8)・データ(5)・設定(9)
 class PhoneBottomBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onNavigate;
-  final VoidCallback onMenu;
-  const PhoneBottomBar({super.key, required this.selectedIndex, required this.onNavigate, required this.onMenu});
+  const PhoneBottomBar({super.key, required this.selectedIndex, required this.onNavigate});
 
   static const List<(int, IconData, String)> _items = [
-    (0, Icons.post_add_rounded, '受注入力'),
     (1, Icons.list_alt_rounded, '受注一覧'),
     (3, Icons.local_shipping_rounded, '配送予定'),
     (6, Icons.people_rounded, '顧客'),
+    (8, Icons.badge_rounded, 'スタッフ'),
+    (5, Icons.analytics_rounded, 'データ'),
+    (9, Icons.settings_rounded, '設定'),
   ];
 
   Widget _item({required IconData icon, required String label, required bool selected, required VoidCallback onTap}) {
@@ -93,7 +94,6 @@ class PhoneBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final inBar = _items.any((e) => e.$1 == selectedIndex);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.acceptButton,
@@ -106,7 +106,6 @@ class PhoneBottomBar extends StatelessWidget {
             children: [
               for (final e in _items)
                 _item(icon: e.$2, label: e.$3, selected: e.$1 == selectedIndex, onTap: () => onNavigate(e.$1)),
-              _item(icon: Icons.apps_rounded, label: 'メニュー', selected: !inBar, onTap: onMenu),
             ],
           ),
         ),

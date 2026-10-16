@@ -7,6 +7,8 @@ import '../../models/order_model.dart';
 import '../../services/customer_service.dart';
 import '../../services/delivery_schedule_service.dart';
 import '../../services/reservation_service.dart';
+import '../../widgets/k_route_map_dialog.dart';
+import 'phone_order_list_dialogs.dart';
 import 'phone_delivery_common.dart';
 
 const Color _orange = Color(0xFFFF8A65);
@@ -479,6 +481,41 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
     _loadNames();
   }
 
+  /// 号車の見出しタップ → 確認 → ルート地図を表示（出発は店舗、最後の配達先が目的地）
+  Future<void> _confirmRoute(int lane) async {
+    final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
+    final origin = _branchPos;
+    if (group.isEmpty || origin == null) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(group.isEmpty ? 'この号車には配達予定がありません' : '店舗の位置が取得できないため、ルートを表示できません'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
+        ),
+      );
+      return;
+    }
+    final ok = await showPhoneRouteConfirm(context, lane + 1);
+    if (ok != true || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => KRouteMapDialog(
+          title: '- ${lane + 1}号車 -　配送ルート',
+          origin: origin,
+          vertical: true,
+          stops: [
+            for (final o in group)
+              KRouteStop(
+                location: (o.latitude != null && o.longitude != null) ? LatLng(o.latitude!, o.longitude!) : phoneCleanAddress(o),
+                time: o.deliveryTime,
+                place: phoneCityOf(o),
+                color: _blue,
+              ),
+          ],
+      ),
+    );
+  }
+
   double _yOf(int minutes) => _top + (minutes - _startHour * 60) * _hourH / 60;
 
   String get _title => '配達予定 ${DateFormat('M/d(E)', 'ja_JP').format(widget.date)}';
@@ -557,10 +594,14 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
                 top: 8,
                 width: colW,
                 height: 27,
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(color: const Color(0xFF333333), borderRadius: BorderRadius.circular(8)),
-                  child: Text('${i + 1}号車', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _confirmRoute(i),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: const Color(0xFF333333), borderRadius: BorderRadius.circular(8)),
+                    child: Text('${i + 1}号車', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                  ),
                 ),
               ),
           ],

@@ -19,6 +19,7 @@ import '../services/email_auth_service.dart';
 import 'login/login_screen.dart';
 import 'phone/phone_common.dart';
 import '../services/pre_contact_settings_service.dart';
+import '../services/settings_service.dart';
 import 'phone/phone_shell.dart';
 import '../services/order_service.dart';
 
@@ -47,8 +48,6 @@ class _MainScreenState extends State<MainScreen> {
   // 常駐キャッシュ対象の画面インデックス（受注入力=0とデータ分析=5は対象外）
   static const List<int> _cachedIndices = [1, 2, 3, 6, 7, 10, 8, 9, 11];
 
-  String? _staffId; // ログインID
-  String? _staffName; // ログイン者名（スマホ挨拶用）
   int _pendingCount = 0; // 上部バーの事前連絡バッジ（未連絡件数）
 
   Future<void> _loadContactSummary() async {
@@ -68,15 +67,26 @@ class _MainScreenState extends State<MainScreen> {
     } catch (_) {}
   }
 
+  bool _initialIndexSet = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialIndexSet) return;
+    _initialIndexSet = true;
+    if (isPhoneWidth(context)) _selectedIndex = 1; // スマホは受注一覧から開始
+  }
+
   @override
   void initState() {
     super.initState();
     AuthService().restoreSession().then((staff) {
-      if (mounted) setState(() { _staffId = staff?.id; _staffName = staff?.name; });
+      if (mounted) setState(() {});
     }).catchError((_) {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && isPhoneWidth(context)) {
+        SettingsService.inputMode.value = KInputMode.keyboard;
         PreContactSettingsService.load();
         _loadContactSummary();
       }
@@ -147,7 +157,7 @@ class _MainScreenState extends State<MainScreen> {
   PreferredSizeWidget _buildPhoneAppBar() {
     return buildPhoneTopBar(
       title: _titles[_selectedIndex] ?? '',
-      onMenu: () => _scaffoldKey.currentState?.openDrawer(),
+      onLogout: _logout,
       actions: [
         IconButton(
           icon: Badge(
@@ -202,7 +212,6 @@ class _MainScreenState extends State<MainScreen> {
     return PhoneBottomBar(
       selectedIndex: _selectedIndex,
       onNavigate: _goTo,
-      onMenu: () => _scaffoldKey.currentState?.openDrawer(),
     );
   }
 
@@ -295,19 +304,8 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: AppColors.mainBackground,
       appBar: isPhone ? _buildPhoneAppBar() : null,
       bottomNavigationBar: isPhone ? _buildPhoneBottomBar() : null,
-      drawerScrimColor: isPhone ? PhoneColors.scrim : null,
       drawer: isPhone
-          ? PhoneDrawer(
-              selectedIndex: _selectedIndex,
-              staffName: _staffName ?? '',
-              loginId: _staffId ?? '',
-              onClose: () => Navigator.pop(context),
-              onLogout: _logout,
-              onSelect: (index) async {
-                Navigator.pop(context); // 先にDrawerを閉じる（確認ダイヤログはその上に出す）
-                await _goTo(index);
-              },
-            )
+          ? null
           : isMobile ? Drawer(
         child: KSidebar(
           selectedIndex: _selectedIndex,

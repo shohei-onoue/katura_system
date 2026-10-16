@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/staff_model.dart';
 import '../services/staff_service.dart';
 import '../widgets/k_responsive.dart';
+import 'phone/phone_common.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 class StaffManagementScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(
+      appBar: isPhoneWidth(context) ? null : AppBar(
         title: Text('スタッフ管理', style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 18))),
         backgroundColor: AppColors.mainBackground,
         foregroundColor: AppColors.primaryText,
@@ -55,7 +56,7 @@ class _StaffManagementScreenState extends State<StaffManagementScreen> {
           : GridView.builder(
               padding: EdgeInsets.all(rav(context, 24)),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+                crossAxisCount: isPhoneWidth(context) ? 1 : 3,
                 crossAxisSpacing: rs(context, 16),
                 mainAxisSpacing: rs(context, 16),
                 childAspectRatio: 2.8,

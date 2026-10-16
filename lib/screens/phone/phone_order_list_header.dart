@@ -42,8 +42,6 @@ class PhoneOrderListHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final d = selectedDay;
-    final sunday = DateTime(d.year, d.month, d.day).subtract(Duration(days: d.weekday % 7));
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,21 +76,10 @@ class PhoneOrderListHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onHorizontalDragEnd: (e) {
-                  final v = e.primaryVelocity ?? 0;
-                  if (v.abs() < 200) return;
-                  onSelectDay(selectedDay.add(Duration(days: v < 0 ? 7 : -7)));
-                },
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: Row(
-                    children: [
-                      for (int i = 0; i < 7; i++) _dayCell(sunday.add(Duration(days: i)), i),
-                    ],
-                  ),
-                ),
+              _DayStrip(
+                selectedDay: selectedDay,
+                focusedDay: focusedDay,
+                cell: _dayCell,
               ),
             ],
           ),
@@ -130,12 +117,14 @@ class PhoneOrderListHeader extends StatelessWidget {
     );
   }
 
-  Widget _dayCell(DateTime day, int i) {
+  Widget _dayCell(DateTime day) {
+    final i = day.weekday % 7;
     final selected = isSameDay(day, selectedDay);
     final color = i == 0 ? PL.redText : (i == 6 ? PL.sat : PL.ink);
     final hasOrder = orderDays.contains(day);
     final hasWarn = warnDays.contains(day);
-    return Expanded(
+    return SizedBox(
+      width: 48,
       child: Center(
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -181,4 +170,65 @@ class PhoneOrderSectionTitle extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PL.grey)),
         ]),
       );
+}
+
+/// 選択中の月の日付を横スクロールで並べる帯（選択日が見える位置へ自動で動く）
+class _DayStrip extends StatefulWidget {
+  final DateTime selectedDay;
+  final DateTime focusedDay;
+  final Widget Function(DateTime day) cell;
+  const _DayStrip({required this.selectedDay, required this.focusedDay, required this.cell});
+
+  @override
+  State<_DayStrip> createState() => _DayStripState();
+}
+
+class _DayStripState extends State<_DayStrip> {
+  static const double _cellW = 48;
+  final ScrollController _c = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToSelected();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DayStrip old) {
+    super.didUpdateWidget(old);
+    if (!isSameDay(old.selectedDay, widget.selectedDay)) _scrollToSelected();
+  }
+
+  void _scrollToSelected() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_c.hasClients) return;
+      final w = _c.position.viewportDimension;
+      final target = (widget.selectedDay.day - 1) * _cellW - (w - _cellW) / 2;
+      _c.animateTo(target.clamp(0.0, _c.position.maxScrollExtent), duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.selectedDay;
+    final last = DateTime(m.year, m.month + 1, 0).day;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SizedBox(
+        height: 50,
+        child: SingleChildScrollView(
+          controller: _c,
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(children: [for (int d = 1; d <= last; d++) widget.cell(DateTime(m.year, m.month, d))]),
+        ),
+      ),
+    );
+  }
 }

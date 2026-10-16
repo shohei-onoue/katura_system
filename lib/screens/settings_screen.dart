@@ -107,6 +107,10 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(height: rs(context, 32)),
               const Divider(),
               SizedBox(height: rs(context, 16)),
+              const _PhonePreContactSection(),
+              SizedBox(height: rs(context, 32)),
+              const Divider(),
+              SizedBox(height: rs(context, 16)),
               Row(
                 children: [
                   Icon(Icons.storefront_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
@@ -138,28 +142,6 @@ class _PhoneSettingsBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _phoneSectionTitle(Icons.edit_note_rounded, '文字入力方式'),
-            _phoneCard(
-              Padding(
-                padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('アプリ内すべての文字入力欄に、選択した入力方式が一括で反映されます。', style: _phoneDescStyle),
-                    const SizedBox(height: 14),
-                    ValueListenableBuilder<KInputMode>(
-                      valueListenable: SettingsService.inputMode,
-                      builder: (context, mode, _) => PhoneSegmented<KInputMode>(
-                        items: const [(KInputMode.pen, 'ペンタブ'), (KInputMode.keyboard, 'キーボード')],
-                        value: mode,
-                        onChanged: SettingsService.setInputMode,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
             _phoneSectionTitle(Icons.mail_outline_rounded, '事前確認・事前連絡'),
             _phoneCard(
               Column(
@@ -1271,7 +1253,6 @@ class _PhonePreContactSection extends StatefulWidget {
 
 class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
   final _smsCtrl = TextEditingController();
-  final _mailCtrl = TextEditingController();
   String _method = '';
   bool _saving = false;
 
@@ -1283,7 +1264,6 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
       setState(() {
         _method = s.defaultMethod;
         _smsCtrl.text = s.smsTemplate;
-        _mailCtrl.text = s.mailTemplate;
       });
     });
   }
@@ -1291,7 +1271,6 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
   @override
   void dispose() {
     _smsCtrl.dispose();
-    _mailCtrl.dispose();
     super.dispose();
   }
 
@@ -1301,7 +1280,7 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
       await PreContactSettingsService.save(
         defaultMethod: _method,
         smsTemplate: _smsCtrl.text,
-        mailTemplate: _mailCtrl.text,
+        mailTemplate: '',
       );
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('保存しました')));
     } catch (e) {
@@ -1352,22 +1331,18 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
           ),
         ),
         const SizedBox(height: 15),
-        _phoneSectionTitle(Icons.sms_outlined, 'メール/SMSのテンプレート文章の作成'),
+        _phoneSectionTitle(Icons.sms_outlined, 'SMSのテンプレート文章の作成'),
         _phoneCard(
           Padding(
             padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}  {お弁当}  {お会計}', style: _phoneDescStyle),
+                const Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}  {お弁当}  {お会計}  {お支払い方法}', style: _phoneDescStyle),
                 const SizedBox(height: 14),
                 const Text('SMS用', style: labelStyle),
                 const SizedBox(height: 6),
                 _field(_smsCtrl, '例：{お客様名} 様 {配達日} {配達時間} のお届けで間違いございませんか。'),
-                const SizedBox(height: 14),
-                const Text('メール用', style: labelStyle),
-                const SizedBox(height: 6),
-                _field(_mailCtrl, '例：{お客様名} 様 ご注文の事前確認です。'),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
