@@ -73,16 +73,20 @@ class PreContactSettingsService {
     ));
   }
 
-  /// {お客様名} {配達日} {配達時間} を置換する。
+  /// {お客様名} {配達日} {配達時間} {お弁当} {お会計} を置換する。
   static String applyTemplate(
     String template, {
     required String name,
     required DateTime date,
     required String time,
+    String items = '',
+    String total = '',
   }) {
     return template
         .replaceAll('{お客様名}', name)
         .replaceAll('{配達日}', '${date.month}月${date.day}日')
-        .replaceAll('{配達時間}', time);
+        .replaceAll('{配達時間}', time)
+        .replaceAll('{お弁当}', items)
+        .replaceAll('{お会計}', total);
   }
 }

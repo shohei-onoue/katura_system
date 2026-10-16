@@ -14,7 +14,8 @@ String preContactSmsBody(OrderModel o, String name) {
   final d = o.deliveryDate;
   final t = PreContactSettingsService.cachedSmsTemplate;
   if (t.trim().isNotEmpty) {
-    return PreContactSettingsService.applyTemplate(t, name: name, date: d, time: o.deliveryTime);
+    final items = o.items.map((e) => '${e['name'] ?? ''} / ${e['quantity'] ?? 0}個').join('\n');
+    return PreContactSettingsService.applyTemplate(t, name: name, date: d, time: o.deliveryTime, items: items, total: '¥${NumberFormat('#,###').format(o.totalPrice)}');
   }
   return '$name 様\nご注文の事前確認です。${d.month}月${d.day}日 ${o.deliveryTime} のお届け(お引取り)で間違いございませんでしょうか。';
 }
