@@ -65,12 +65,7 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
       if (!cleanPhone) continue;
 
       const internationalPhone = cleanPhone.startsWith("0") ? "81" + cleanPhone.substring(1) : cleanPhone;
-      let token = order.replyToken;
-      if (!token) {
-        token = crypto.randomBytes(15).toString("base64url");
-        await doc.ref.update({ replyToken: token });
-      }
-      const message = buildSmsMessage(order, doc.id, token);
+      const message = buildSmsMessage(order);
 
       try {
         const response = await axios.post("https://rest.nexmo.com/sms/json", {
@@ -95,7 +90,7 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
   }
 });
 
-function buildSmsMessage(order, orderId, token) {
+function buildSmsMessage(order) {
   const deliveryDate = new Date(order.deliveryDate);
   const dateStr = `${deliveryDate.getMonth() + 1}月${deliveryDate.getDate()}日`;
   const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -114,9 +109,8 @@ function buildSmsMessage(order, orderId, token) {
   }
   const isPickup = order.deliveryType === '引取' || order.deliveryType === '店頭引取';
   const storePhone = BRANCH_PHONES[order.branchName] || DEFAULT_PHONE;
-  const confirmUrl = `${REPLY_BASE_URL}?o=${encodeURIComponent(orderId)}&t=${encodeURIComponent(token)}`;
 
-  return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${isPickup ? "お待ちしております" : "お届けいたします"}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber || order.phoneDisplay}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\nご確認はこちら\n${confirmUrl}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
+  return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${isPickup ? "お待ちしております" : "お届けいたします"}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber || order.phoneDisplay}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
 }
 
 

@@ -139,7 +139,8 @@ class AddressService {
 
   Future<List<String>> getTowns(String state, String city) async {
     await initDatabase();
-    return _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? ORDER BY town_kana', [state, city]).map((row) => row['town'] as String).toList();
+    final base = _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? ORDER BY town_kana', [state, city]).map((row) => row['town'] as String).toList();
+    return _mergeCustomTowns(base, state, city, null);
   }
 
   Future<List<String>> getTownsByInitial(String state, String city, String initial) async {
@@ -149,7 +150,41 @@ class AddressService {
     await initDatabase();
     final List<String> prefixes = _getPrefixes(initial);
     final String whereClause = prefixes.map((_) => 'town_kana LIKE ?').join(' OR ');
-    return _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? AND ($whereClause) ORDER BY town_kana', [state, city, ...prefixes.map((p) => '$p%')]).map((row) => row['town'] as String).toList();
+    final base = _db!.select('SELECT DISTINCT town FROM post_all WHERE prefecture = ? AND city = ? AND ($whereClause) ORDER BY town_kana', [state, city, ...prefixes.map((p) => '$p%')]).map((row) => row['town'] as String).toList();
+    return _mergeCustomTowns(base, state, city, prefixes);
+  }
+
+  void _ensureTownUserTable() {
+    _db!.execute('CREATE TABLE IF NOT EXISTS town_user(prefecture TEXT, city TEXT, town TEXT, town_kana TEXT, UNIQUE(prefecture, city, town))');
+  }
+
+  /// 追加登録した町名（字など）を結果に足す。prefixes が null なら全件、あれば読み(town_kana)の先頭一致のみ。
+  List<String> _mergeCustomTowns(List<String> base, String pref, String city, List<String>? prefixes) {
+    _ensureTownUserTable();
+    final rows = _db!.select('SELECT town, town_kana FROM town_user WHERE prefecture = ? AND city = ? ORDER BY town_kana, town', [pref, city]);
+    final result = [...base];
+    for (final r in rows) {
+      final t = r['town'] as String;
+      final k = (r['town_kana'] as String?) ?? '';
+      if (prefixes != null && !prefixes.any((p) => k.startsWith(p))) continue;
+      if (!result.contains(t)) result.add(t);
+    }
+    return result;
+  }
+
+  /// 追加検索で見つけた町名（字など）を端末のdb(town_user)に保存する。次回から getTowns / getTownsByInitial に出る。
+  /// townKana(ひらがな/カナ読み)を渡すと頭文字フィルタにも出る。省略時は「すべて」のみ。
+  Future<void> saveCustomTown(String pref, String city, String town, {String townKana = ''}) async {
+    final t = town.trim();
+    if (t.isEmpty) return;
+    await initDatabase();
+    _ensureTownUserTable();
+    _db!.execute('INSERT OR REPLACE INTO town_user VALUES (?, ?, ?, ?)', [pref, city, t, townKana.trim()]);
+  }
+
+  /// NAVITIMEの検索ページURL（外部ブラウザで開く用）。APIではなく公開ページへのリンク。
+  Uri buildNavitimeSearchUri(String pref, String city, String town) {
+    return Uri.https('www.navitime.co.jp', '/maps/address/search', {'keyword': '$pref$city$town'.trim()});
   }
 
   Future<List<Map<String, String>>> getRandomOkazakiEntities({int limit = 10}) async {

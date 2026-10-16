@@ -67,14 +67,32 @@ class _MainScreenState extends State<MainScreen> {
     } catch (_) {}
   }
 
-  bool _initialIndexSet = false;
+  bool? _wasPhone;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_initialIndexSet) return;
-    _initialIndexSet = true;
-    if (isPhoneWidth(context)) _selectedIndex = 1; // スマホは受注一覧から開始
+    final isPhone = isPhoneWidth(context);
+    final was = _wasPhone;
+    _wasPhone = isPhone;
+    if (was == isPhone) return;
+    if (isPhone) {
+      // PC→スマホ（初回起動含む）: 受注一覧から開始
+      _currentEditingOrder = null;
+      _selectedIndex = 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _wasPhone != true) return;
+        SettingsService.inputMode.value = KInputMode.keyboard;
+        PreContactSettingsService.load();
+        _loadContactSummary();
+      });
+    } else if (was != null) {
+      // スマホ→PC: 保存済みの入力方式に戻す
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _wasPhone != false) return;
+        SettingsService.load();
+      });
+    }
   }
 
   @override
@@ -83,13 +101,6 @@ class _MainScreenState extends State<MainScreen> {
     AuthService().restoreSession().then((staff) {
       if (mounted) setState(() {});
     }).catchError((_) {
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && isPhoneWidth(context)) {
-        SettingsService.inputMode.value = KInputMode.keyboard;
-        PreContactSettingsService.load();
-        _loadContactSummary();
-      }
     });
   }
 

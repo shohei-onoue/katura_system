@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'k_button.dart';
 import 'k_dialog_title.dart';
 import 'k_responsive.dart';
@@ -30,13 +31,18 @@ class KDirectAddressPickerDialog extends StatefulWidget {
 }
 
 class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog> {
-  int phase = 0; // 0: Pref, 1: City, 2: Town, 3: Detail
+  int phase = 0; // 0: Pref, 1: City, 2: Town, 3: 字・丁目など(その他), 4: 番地住所
   bool isNumericMode = false; // Zip入力中かどうか
   String tempZip = "";
   String tempPref = "";
   String tempCity = "";
   String tempTown = "";
   String tempDetail = "";
+  String tempOther = ""; // 字・丁目など（任意）
+  bool _otherDone = false;
+  List<({String town, String detail})> _azaCandidates = [];
+  bool _azaLoading = false;
+  bool _azaAllTown = false;
   String selectedInitial = 'すべて';
   List<String> items = [];
   List<Map<String, dynamic>> zipResults = [];
@@ -103,6 +109,106 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     });
   }
 
+  String get _townText => tempTown == '（すべて）' ? '' : tempTown;
+  String get _fullAddress => '$tempPref$tempCity$_townText$tempOther$tempDetail';
+
+  /// 「その他（字・丁目など）」ステップに入るとき候補を読み込む。候補がなくてもスキップしない。
+  Future<void> _loadAza() async {
+    setState(() {
+      _azaLoading = true;
+      tempOther = '';
+      _otherDone = false;
+      _azaCandidates = [];
+      _azaAllTown = tempTown == '（すべて）';
+    });
+    try {
+      final list = tempCity.isEmpty ? <({String town, String detail})>[] : await _addressService.getAzaCandidates(tempPref, tempCity, _townText);
+      if (mounted) setState(() => _azaCandidates = list);
+    } catch (e) {
+      debugPrint('aza load error: $e');
+    }
+    if (mounted) setState(() => _azaLoading = false);
+  }
+
+  void _goNextFromAza() {
+    setState(() {
+      _otherDone = true;
+      phase = 4;
+    });
+  }
+
+  void _confirmNow() {
+    widget.onAddressConfirmed(_fullAddress);
+    Navigator.pop(context);
+  }
+
+  List<String> get _azaLabels => [
+        'なし',
+        for (final c in _azaCandidates) _azaAllTown ? '${c.town}${c.detail}' : c.detail,
+      ];
+
+  void _selectAzaLabel(String label) {
+    final i = _azaLabels.indexOf(label);
+    setState(() {
+      if (i <= 0) {
+        tempOther = '';
+      } else {
+        final c = _azaCandidates[i - 1];
+        tempOther = c.detail;
+        if (_azaAllTown) tempTown = c.town;
+      }
+    });
+  }
+
+  /// 町名が検索結果に無い場合の追加検索：NAVITIMEを外部で開き、町名を入力して端末に保存する。
+  Future<void> _addTownByNavitime() async {
+    try {
+      await launchUrl(_addressService.buildNavitimeSearchUri(tempPref, tempCity, ''), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('navitime open error: $e');
+    }
+    if (!mounted) return;
+    final townCtrl = TextEditingController();
+    final kanaCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('町名を追加'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: townCtrl, decoration: const InputDecoration(labelText: '町名・字')),
+            TextField(controller: kanaCtrl, decoration: const InputDecoration(labelText: '読み（ひらがな・任意）')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('キャンセル')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('追加')),
+        ],
+      ),
+    );
+    final town = townCtrl.text.trim();
+    final kana = kanaCtrl.text.trim();
+    townCtrl.dispose();
+    kanaCtrl.dispose();
+    if (ok != true || town.isEmpty || !mounted) return;
+    await _addressService.saveCustomTown(tempPref, tempCity, town, townKana: kana);
+    if (!mounted) return;
+    setState(() {
+      selectedInitial = 'すべて';
+      isSearching = true;
+    });
+    _refreshItems();
+  }
+
+  Widget _addSearchButton() {
+    return OutlinedButton.icon(
+      onPressed: _addTownByNavitime,
+      icon: const Icon(Icons.travel_explore, size: 18),
+      label: const Text('追加検索'),
+    );
+  }
+
   // ---- スマホ版（幅600未満）----
   void _phoneMode(bool toNumeric) {
     if (toNumeric == isNumericMode) return;
@@ -129,15 +235,17 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       _loadCities();
     } else if (phase == 2) {
       _loadTowns();
+    } else if (phase == 3) {
+      _loadAza();
     }
   }
 
   Widget _buildPhone() {
-    final values = [tempPref, tempCity, tempTown, tempDetail];
-    const titles = ['都道府県', '市区町村', '町名', '番地住所'];
+    final values = [tempPref, tempCity, tempTown, _otherDone ? (tempOther.isEmpty ? 'なし' : tempOther) : '', tempDetail];
+    const titles = ['都道府県', '市区町村', '町名', '字など', '番地住所'];
     final chips = Row(
       children: [
-        for (var i = 0; i < 4; i++) ...[
+        for (var i = 0; i < 5; i++) ...[
           if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: PcStepChip(
@@ -181,10 +289,25 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     } else if (phase == 3) {
       body = Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+            child: Align(alignment: Alignment.centerLeft, child: Text('字・丁目などの項目${_azaLoading ? '（読込中）' : ''}', style: const TextStyle(fontSize: 11.5, color: PcColors.sub))),
+          ),
+          Expanded(
+            child: _azaCandidates.isEmpty && !_azaLoading
+                ? const Center(child: Text('該当なし（字・丁目などはありません）', style: TextStyle(color: PcColors.hint)))
+                : PcChevronList(items: _azaLabels, selected: tempOther.isEmpty ? 'なし' : null, onTap: _selectAzaLabel),
+          ),
+          const SizedBox(height: 10),
+        ],
+      );
+    } else if (phase == 4) {
+      body = Column(
+        children: [
           const SizedBox(height: 18),
           const Text('詳細住所を入力してください', style: TextStyle(fontSize: 11.5, color: PcColors.sub)),
           const SizedBox(height: 8),
-          Text('$tempPref$tempCity$tempTown', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PcColors.text)),
+          Text('$tempPref$tempCity$_townText$tempOther', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PcColors.text)),
           const SizedBox(height: 8),
           Text(
             tempDetail.isEmpty ? '丁目-番地-号' : tempDetail,
@@ -199,12 +322,19 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
-            child: Align(alignment: Alignment.centerLeft, child: Text('頭文字［$selectedInitial］の項目', style: const TextStyle(fontSize: 11.5, color: PcColors.sub))),
+            child: Row(
+              children: [
+                Expanded(child: Text('頭文字［$selectedInitial］の項目', style: const TextStyle(fontSize: 11.5, color: PcColors.sub))),
+                if (phase == 2) _addSearchButton(),
+              ],
+            ),
           ),
           Expanded(
             child: isSearching
                 ? const Center(child: CircularProgressIndicator())
-                : PcChevronList(items: items, onTap: _handleAddressItemSelect),
+                : (phase == 2 && items.where((e) => e != '（すべて）').isEmpty
+                    ? _townEmptyState()
+                    : PcChevronList(items: items, onTap: _handleAddressItemSelect)),
           ),
           const SizedBox(height: 10),
           PcKanaPad(
@@ -223,15 +353,21 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       child: PcSheet(
         title: '住所・郵便番号で検索',
         full: true,
-        footer: phase == 3 && !isNumericMode
-            ? PcButton(
-                label: 'この内容で確定',
-                onTap: () {
-                  widget.onAddressConfirmed('$tempPref$tempCity$tempTown$tempDetail');
-                  Navigator.pop(context);
-                },
-              )
-            : null,
+        footer: isNumericMode
+            ? null
+            : (phase == 4
+                ? PcButton(label: 'この内容で確定', onTap: _confirmNow)
+                : (phase == 3
+                    ? Row(
+                        children: [
+                          Expanded(child: PcButton(label: '戻る', onTap: _handleBack)),
+                          const SizedBox(width: 8),
+                          Expanded(child: PcButton(label: 'このまま確定', onTap: _confirmNow)),
+                          const SizedBox(width: 8),
+                          Expanded(child: PcButton(label: '次へ', onTap: _goNextFromAza)),
+                        ],
+                      )
+                    : null)),
         child: Column(
           children: [
             Padding(
@@ -269,6 +405,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               tempTown = res['town'] ?? '';
               phase = 3;
               isNumericMode = false;
+              _loadAza();
             }),
             child: Container(
               height: 43,
@@ -339,18 +476,28 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                 ],
               ),
             ),
-            if (phase == 3) ...[
+            if (phase == 3 && !isNumericMode) ...[
               Divider(height: rs(context, 32)),
               SizedBox(
                 width: double.infinity,
                 height: rs(context, 50),
-                child: KButton(
-                  label: 'この内容で確定',
-                  onPressed: () {
-                    widget.onAddressConfirmed("$tempPref$tempCity$tempTown$tempDetail");
-                    Navigator.pop(context);
-                  },
+                child: Row(
+                  children: [
+                    Expanded(child: KButton(label: '戻る', onPressed: _handleBack)),
+                    SizedBox(width: rs(context, 12)),
+                    Expanded(child: KButton(label: 'このまま確定', onPressed: _confirmNow)),
+                    SizedBox(width: rs(context, 12)),
+                    Expanded(child: KButton(label: '次へ', onPressed: _goNextFromAza)),
+                  ],
                 ),
+              ),
+            ],
+            if (phase == 4 && !isNumericMode) ...[
+              Divider(height: rs(context, 32)),
+              SizedBox(
+                width: double.infinity,
+                height: rs(context, 50),
+                child: KButton(label: 'この内容で確定', onPressed: _confirmNow),
               ),
             ],
           ],
@@ -364,7 +511,8 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       {'title': '都道府県', 'value': tempPref, 'phase': 0},
       {'title': '市区町村', 'value': tempCity, 'phase': 1},
       {'title': '町名', 'value': tempTown, 'phase': 2},
-      {'title': '詳細住所', 'value': tempDetail, 'phase': 3},
+      {'title': 'その他', 'value': _otherDone ? (tempOther.isEmpty ? 'なし' : tempOther) : '', 'phase': 3},
+      {'title': '詳細住所', 'value': tempDetail, 'phase': 4},
     ];
 
     return Row(
@@ -388,6 +536,8 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                 _loadCities();
               } else if (phase == 2) {
                 _loadTowns();
+              } else if (phase == 3) {
+                _loadAza();
               }
             } : null,
             child: Card(
@@ -477,6 +627,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                           phase = 3;
                           isNumericMode = false;
                         });
+                        _loadAza();
                       },
                     ),
                   );
@@ -487,13 +638,15 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       );
     }
 
-    if (phase == 3) {
+    if (phase == 3) return _buildAzaContent();
+
+    if (phase == 4) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text('詳細住所を入力してください', style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold, color: Colors.blueGrey)),
           SizedBox(height: rs(context, 20)),
-          Text("$tempPref$tempCity$tempTown", style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
+          Text("$tempPref$tempCity$_townText$tempOther", style: TextStyle(fontSize: rf(context, 20), fontWeight: FontWeight.bold)),
           SizedBox(height: rs(context, 40)),
           Text(tempDetail.isEmpty ? '丁目-番地-号' : tempDetail,
             style: TextStyle(fontSize: rf(context, 48), fontWeight: FontWeight.bold, color: tempDetail.isEmpty ? Colors.grey.shade300 : AppColors.accentPurple)),
@@ -504,9 +657,15 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('頭文字 [$selectedInitial] の項目', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey, fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            Expanded(child: Text('頭文字 [$selectedInitial] の項目', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey, fontWeight: FontWeight.bold))),
+            if (phase == 2) _addSearchButton(),
+          ],
+        ),
         if (isSearching) const Expanded(child: Center(child: CircularProgressIndicator())),
-        if (!isSearching)
+        if (!isSearching && phase == 2 && items.where((e) => e != '（すべて）').isEmpty) Expanded(child: _townEmptyState()),
+        if (!isSearching && !(phase == 2 && items.where((e) => e != '（すべて）').isEmpty))
           Expanded(
             child: ListView.builder(
               itemCount: items.length,
@@ -524,8 +683,67 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     );
   }
 
+  Widget _townEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('該当なし（この条件の町名はありません）', style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () {
+              setState(() {
+                tempTown = '（すべて）';
+                phase = 3;
+                selectedInitial = 'すべて';
+              });
+              _loadAza();
+            },
+            child: const Text('町名なしで次へ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAzaContent() {
+    final labels = _azaLabels;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('その他（字・丁目など）の項目', style: TextStyle(fontSize: rf(context, 14), color: Colors.grey, fontWeight: FontWeight.bold)),
+            if (_azaLoading) ...[
+              SizedBox(width: rs(context, 12)),
+              SizedBox(width: rs(context, 12), height: rs(context, 12), child: const CircularProgressIndicator(strokeWidth: 2)),
+            ],
+          ],
+        ),
+        SizedBox(height: rs(context, 12)),
+        Expanded(
+          child: _azaCandidates.isEmpty && !_azaLoading
+              ? const Center(child: Text('該当なし（字・丁目などはありません）。「このまま確定」か「次へ」で進めます', style: TextStyle(color: Colors.grey)))
+              : ListView.builder(
+                  itemCount: labels.length,
+                  itemBuilder: (context, i) {
+                    final selected = i == 0 ? tempOther.isEmpty : (tempOther.isNotEmpty && labels[i] == (_azaAllTown ? '$tempTown$tempOther' : tempOther));
+                    return ListTile(
+                      tileColor: selected ? AppColors.selectButton : null,
+                      title: Text(labels[i], style: TextStyle(fontSize: rf(context, 18), fontWeight: FontWeight.bold)),
+                      trailing: Icon(selected ? Icons.check_circle : Icons.chevron_right, color: AppColors.accentPurple),
+                      onTap: () => _selectAzaLabel(labels[i]),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildRightDialArea() {
-    if (phase == 3) return _buildNumericDialPad();
+    if (phase == 4) return _buildNumericDialPad();
+    if (phase == 3) return const SizedBox.shrink();
 
     return isNumericMode ? _buildNumericDialPad() : _buildKanaDialPad();
   }
@@ -619,7 +837,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               tempZip = tempZip.substring(0, tempZip.length - 1);
             }
           }
-        } else if (phase == 3) {
+        } else if (phase == 4) {
           if (tempDetail.isNotEmpty) tempDetail = tempDetail.substring(0, tempDetail.length - 1);
         }
       });
@@ -633,7 +851,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
           tempZip += val;
           if (tempZip.length == 3) tempZip += "-";
         }
-      } else if (phase == 3) {
+      } else if (phase == 4) {
         tempDetail += val;
       }
     });
@@ -702,6 +920,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       tempTown = item;
       phase = 3;
       isSearching = false;
+      _loadAza();
     }
   }
 
@@ -718,6 +937,8 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
       } else if (phase == 3) {
         phase = 2;
         _loadTowns();
+      } else if (phase == 4) {
+        phase = 3;
       }
       selectedInitial = 'すべて';
     });
