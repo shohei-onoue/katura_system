@@ -58,32 +58,35 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
       color: PhoneUi.bg,
       child: Stack(
         children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 12, bottom: 96),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                PhoneChipRow(labels: branchNames, selected: branch, onTap: onBranch),
-                const SizedBox(height: 10),
-                _calendarCard(),
-                const SizedBox(height: 15),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.event_note_rounded, size: 16, color: PhoneUi.purple),
-                      const SizedBox(width: 5),
-                      Text(
-                        '${sel == null ? '' : '${DateFormat('M/d(E)', 'ja_JP').format(sel)} の'}受注 ${dayOrders.length}件',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneUi.sub),
-                      ),
-                    ],
-                  ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 8),
+              PhoneChipRow(labels: branchNames, selected: branch, onTap: onBranch),
+              const SizedBox(height: 6),
+              _calendarCard(),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_note_rounded, size: 16, color: PhoneUi.purple),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${sel == null ? '' : '${DateFormat('M/d(E)', 'ja_JP').format(sel)} の'}受注 ${dayOrders.length}件',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneUi.sub),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 7),
-                _ordersCard(),
-              ],
-            ),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 96),
+                  child: _ordersCard(),
+                ),
+              ),
+            ],
           ),
           Positioned(
             right: 16,
@@ -142,14 +145,14 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: () => onSelect(DateTime(d.year, d.month, d.day)),
           child: SizedBox(
-            height: 42,
+            height: 32,
             child: Center(
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 34,
-                    height: 34,
+                    width: 28,
+                    height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -159,7 +162,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                     child: Text(
                       '${d.day}',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: (isSel || isToday) ? FontWeight.bold : FontWeight.normal,
                         color: isToday ? PhoneUi.red : dayColor(d, inMonth),
                       ),
@@ -194,7 +197,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14),
-      padding: const EdgeInsets.fromLTRB(15, 0, 15, 14),
+      padding: const EdgeInsets.fromLTRB(15, 0, 15, 6),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -203,13 +206,13 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
       child: Column(
         children: [
           SizedBox(
-            height: 46,
+            height: 32,
             child: Row(
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onMonthMove(-1),
-                  child: const SizedBox(width: 44, height: 46, child: Align(alignment: Alignment.centerLeft, child: Icon(Icons.chevron_left_rounded, size: 20, color: PhoneUi.ink))),
+                  child: const SizedBox(width: 44, height: 32, child: Align(alignment: Alignment.centerLeft, child: Icon(Icons.chevron_left_rounded, size: 20, color: PhoneUi.ink))),
                 ),
                 Expanded(
                   child: Center(
@@ -219,7 +222,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onMonthMove(1),
-                  child: const SizedBox(width: 44, height: 46, child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20, color: PhoneUi.ink))),
+                  child: const SizedBox(width: 44, height: 32, child: Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right_rounded, size: 20, color: PhoneUi.ink))),
                 ),
               ],
             ),
@@ -237,16 +240,16 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 2),
           for (int r = 0; r < 6; r++)
             Row(
               children: [
                 for (int c = 0; c < 7; c++) cell(DateTime(first.year, first.month, 1 - offset + r * 7 + c)),
               ],
             ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
           SizedBox(
-            height: 16,
+            height: 14,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

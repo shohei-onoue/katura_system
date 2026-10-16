@@ -141,6 +141,19 @@ class OrderService {
     }
   }
 
+  /// SMSを送信済みにする（スマホから手動でSMSを送ったとき用）。
+  Future<void> markSmsSent(String orderId) async {
+    await _orderCollection.doc(orderId).update({'smsSent': true, 'smsSentAt': FieldValue.serverTimestamp()});
+    _cache = null;
+    await _initLocalDb();
+    final res = _localDb!.select('SELECT data FROM orders WHERE id = ?', [orderId]);
+    if (res.isNotEmpty) {
+      final map = jsonDecode(res.first['data'] as String) as Map<String, dynamic>;
+      map['smsSent'] = true;
+      _localDb!.execute('UPDATE orders SET data = ? WHERE id = ?', [jsonEncode(map), orderId]);
+    }
+  }
+
   /// 配送車両の号車だけを更新する（配達予定ダイアログのドラッグ&ドロップ用）。
   Future<void> updateVehicleNumber(String orderId, int vehicleNumber) async {
     await _orderCollection.doc(orderId).update({'vehicleNumber': vehicleNumber});

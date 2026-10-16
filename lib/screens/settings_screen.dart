@@ -53,15 +53,19 @@ class SettingsScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.edit_note, color: AppColors.accentPurple.withValues(alpha: 0.7)),
-                  SizedBox(width: rs(context, 8)),
-                  Text('文字入力方式',
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
-                ],
-              ),
-              SizedBox(height: rs(context, 4)),
+              _AccordionSection(
+                headerPadding: EdgeInsets.only(bottom: rs(context, 4)),
+                title: Row(
+                  children: [
+                    Icon(Icons.edit_note, color: AppColors.accentPurple.withValues(alpha: 0.7)),
+                    SizedBox(width: rs(context, 8)),
+                    Text('文字入力方式',
+                      style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               Text(
                 'アプリ内すべての文字入力欄に、選択した入力方式が一括で反映されます。',
                 style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade600),
@@ -86,24 +90,34 @@ class SettingsScreen extends StatelessWidget {
                   );
                 },
               ),
+                  ],
+                ),
+              ),
               SizedBox(height: rs(context, 32)),
               const Divider(),
               SizedBox(height: rs(context, 16)),
-              Row(
-                children: [
-                  Icon(Icons.email_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
-                  SizedBox(width: rs(context, 8)),
-                  Text('事前確認・事前連絡',
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
-                ],
-              ),
-              SizedBox(height: rs(context, 4)),
+              _AccordionSection(
+                headerPadding: EdgeInsets.only(bottom: rs(context, 4)),
+                title: Row(
+                  children: [
+                    Icon(Icons.email_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
+                    SizedBox(width: rs(context, 8)),
+                    Text('事前確認・事前連絡',
+                      style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               Text(
                 '事前確認メールを配達前日に自動送信する時刻と、事前電話連絡の担当者番号を設定します。担当者番号には、電話連絡のし忘れ防止リマインドSMSが送信されます。',
                 style: TextStyle(fontSize: rf(context, 12), color: Colors.grey.shade600),
               ),
               SizedBox(height: rs(context, 16)),
               const _PreConfirmSettingsSection(),
+                  ],
+                ),
+              ),
               SizedBox(height: rs(context, 32)),
               const Divider(),
               SizedBox(height: rs(context, 16)),
@@ -111,16 +125,18 @@ class SettingsScreen extends StatelessWidget {
               SizedBox(height: rs(context, 32)),
               const Divider(),
               SizedBox(height: rs(context, 16)),
-              Row(
-                children: [
-                  Icon(Icons.storefront_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
-                  SizedBox(width: rs(context, 8)),
-                  Text('店舗登録',
-                    style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
-                ],
+              _AccordionSection(
+                headerPadding: EdgeInsets.only(bottom: rs(context, 16)),
+                title: Row(
+                  children: [
+                    Icon(Icons.storefront_outlined, color: AppColors.accentPurple.withValues(alpha: 0.7)),
+                    SizedBox(width: rs(context, 8)),
+                    Text('店舗登録',
+                      style: TextStyle(fontSize: rf(context, 16), fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                child: const _BranchSettingsSection(),
               ),
-              SizedBox(height: rs(context, 16)),
-              const _BranchSettingsSection(),
             ],
           ),
         ),
@@ -142,8 +158,10 @@ class _PhoneSettingsBody extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _phoneSectionTitle(Icons.mail_outline_rounded, '事前確認・事前連絡'),
-            _phoneCard(
+            _phoneAccordion(
+              Icons.mail_outline_rounded,
+              '事前確認・事前連絡',
+              _phoneCard(
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
@@ -158,9 +176,9 @@ class _PhoneSettingsBody extends StatelessWidget {
                 ],
               ),
             ),
+            ),
             const SizedBox(height: 15),
-            _phoneSectionTitle(Icons.storefront_rounded, '店舗登録'),
-            const _BranchSettingsSection(),
+            _phoneAccordion(Icons.storefront_rounded, '店舗登録', const _BranchSettingsSection()),
             const SizedBox(height: 15),
             const _PhonePreContactSection(),
           ],
@@ -172,16 +190,65 @@ class _PhoneSettingsBody extends StatelessWidget {
 
 const TextStyle _phoneDescStyle = TextStyle(fontSize: 11.5, color: PhoneColors.sub, height: 1.35);
 
-Widget _phoneSectionTitle(IconData icon, String text) => Padding(
-      padding: const EdgeInsets.only(left: 2, bottom: 6),
-      child: Row(
+Widget _phoneAccordion(IconData icon, String text, Widget child) => _AccordionSection(
+      headerPadding: const EdgeInsets.only(left: 2, bottom: 6),
+      title: Row(
         children: [
           Icon(icon, size: 16, color: PhoneColors.purple),
           const SizedBox(width: 5),
           Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneColors.sub)),
         ],
       ),
+      child: child,
     );
+
+/// 見出し右の＋/－アイコンで中身を開閉する共通ウィジェット（初期は開）。
+/// 閉じても中身は破棄せず（入力中の内容を保持）、高さだけ0にする。
+class _AccordionSection extends StatefulWidget {
+  const _AccordionSection({required this.title, required this.child, this.headerPadding = EdgeInsets.zero});
+  final Widget title;
+  final Widget child;
+  final EdgeInsets headerPadding;
+
+  @override
+  State<_AccordionSection> createState() => _AccordionSectionState();
+}
+
+class _AccordionSectionState extends State<_AccordionSection> {
+  bool _open = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: widget.headerPadding,
+            child: Row(
+              children: [
+                Expanded(child: widget.title),
+                Icon(_open ? Icons.remove : Icons.add, size: 20, color: Colors.grey.shade600),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.topCenter,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: _open ? 1 : 0,
+              child: SizedBox(width: double.infinity, child: widget.child),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 Widget _phoneCard(Widget child) => Container(
       width: double.infinity,
@@ -1312,7 +1379,7 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _phoneSectionTitle(Icons.phone_in_talk_outlined, '事前連絡方法の設定'),
+        _phoneAccordion(Icons.phone_in_talk_outlined, '事前連絡方法の設定',
         _phoneCard(
           Padding(
             padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
@@ -1329,9 +1396,9 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
               ],
             ),
           ),
-        ),
+        )),
         const SizedBox(height: 15),
-        _phoneSectionTitle(Icons.sms_outlined, 'SMSのテンプレート文章の作成'),
+        _phoneAccordion(Icons.sms_outlined, 'SMSのテンプレート文章の作成',
         _phoneCard(
           Padding(
             padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
@@ -1361,7 +1428,7 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
               ],
             ),
           ),
-        ),
+        )),
       ],
     );
   }

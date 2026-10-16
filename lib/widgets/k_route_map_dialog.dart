@@ -46,6 +46,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   final Map<String, RouteLeg?> _optLegs = {}; // 開いたカードに出す「一般／高速」それぞれの区間（キー＝"区間-高速か"）
   int _selected = -1;
   bool _mapReady = false;
+  bool _sheetOpen = true; // スマホ版：配達時間シートの開閉
 
   String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
@@ -100,6 +101,9 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
       const SELECTED_COLOR = '${_hex(_selectedLine)}';
       const lines = [];
       let selectedIdx = -1;
+      function notifyDart(m) {
+        try { if (window.KMap) window.KMap.postMessage(m); } catch (e) {}
+      }
       function selectLeg(idx) {
         selectedIdx = idx;
         lines.forEach(function (l, i) {
@@ -119,14 +123,18 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
         const bounds = new google.maps.LatLngBounds();
         legs.forEach(function (enc) {
           const path = google.maps.geometry.encoding.decodePath(enc);
-          lines.push(new google.maps.Polyline({ path: path, map: map, strokeColor: DEFAULT_COLOR, strokeWeight: 6, strokeOpacity: 0.9, zIndex: 1 }));
+          const line = new google.maps.Polyline({ path: path, map: map, strokeColor: DEFAULT_COLOR, strokeWeight: 6, strokeOpacity: 0.9, zIndex: 1 });
+          const lineIdx = lines.length;
+          line.addListener('click', function () { notifyDart('leg:' + lineIdx); });
+          lines.push(line);
           path.forEach(function (p) { bounds.extend(p); });
         });
         points.forEach(function (p, i) {
-          new google.maps.Marker({
+          const marker = new google.maps.Marker({
             position: p, map: map,
             label: { text: i === 0 ? '店' : String(i), color: '${_hex(AppColors.whiteText)}', fontWeight: 'bold' },
           });
+          marker.addListener('click', function () { notifyDart(i === 0 ? 'open' : 'leg:' + (i - 1)); });
           bounds.extend(p);
         });
         map.fitBounds(bounds);
@@ -139,7 +147,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     setState(() {
       _updateSummary();
       _mapReady = true;
-      _controller = KHtmlController()..loadHtml(html);
+      _controller = (widget.vertical ? KHtmlController(channelName: 'KMap', onMessage: _onMapMessage) : KHtmlController())..loadHtml(html);
     });
   }
 
@@ -147,6 +155,16 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     final meters = _legs.fold<int>(0, (a, l) => a + (l?.meters ?? 0));
     final seconds = _legs.fold<int>(0, (a, l) => a + (l?.seconds ?? 0));
     _summary = '全${widget.stops.length}件　合計 ${(meters / 1000).toStringAsFixed(1)}km　約${(seconds / 60).ceil()}分（移動のみ）';
+  }
+
+  /// 地図のピン/ラインのタップ（スマホ版）：カード欄を開き、該当カードを選択する（選択中でも閉じない）。
+  void _onMapMessage(String m) {
+    if (!mounted) return;
+    setState(() => _sheetOpen = true);
+    if (!m.startsWith('leg:')) return;
+    final i = int.tryParse(m.substring(4));
+    if (i == null || i < 0 || i >= widget.stops.length || _selected == i) return;
+    _select(i);
   }
 
   void _select(int i) {
@@ -388,33 +406,55 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
             ),
             Expanded(
               child: LayoutBuilder(
-                builder: (context, c) => Stack(
-                  children: [
-                    Positioned.fill(child: _mapView()),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: c.maxHeight * 0.555,
-                      child: Container(
+                builder: (context, c) {
+                  final full = c.maxHeight * 0.555;
+                  final collapsed = 32.0 + MediaQuery.of(context).viewPadding.bottom; // ハンドル32 + ジェスチャーバー余白
+                  return Column(
+                    children: [
+                      Expanded(child: _mapView()), // 地図とシートは重ねない（重ねるとWebViewにタップを奪われるため）
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        height: _sheetOpen ? full : collapsed,
                         decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
-                        child: Column(
-                          children: [
-                            Container(margin: const EdgeInsets.only(top: 10, bottom: 6), width: 40, height: 5, decoration: BoxDecoration(color: const Color(0xFFD4D7DC), borderRadius: BorderRadius.circular(2.5))),
-                            Expanded(
-                              child: ListView(
-                                padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
-                                children: [
-                                  for (int i = 0; i < widget.stops.length; i++) ...[_vTravel(i), _vCard(i)],
-                                ],
+                        clipBehavior: Clip.antiAlias,
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          minHeight: full,
+                          maxHeight: full,
+                          child: Column(
+                            children: [
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () => setState(() => _sheetOpen = !_sheetOpen),
+                                onVerticalDragEnd: (d) {
+                                  final v = d.primaryVelocity ?? 0;
+                                  if (v > 100) setState(() => _sheetOpen = false);
+                                  if (v < -100) setState(() => _sheetOpen = true);
+                                },
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 32,
+                                  padding: const EdgeInsets.only(top: 10, bottom: 6),
+                                  alignment: Alignment.topCenter,
+                                  child: Container(width: 40, height: 5, decoration: BoxDecoration(color: const Color(0xFFD4D7DC), borderRadius: BorderRadius.circular(2.5))),
+                                ),
                               ),
-                            ),
-                          ],
+                              Expanded(
+                                child: ListView(
+                                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                                  children: [
+                                    for (int i = 0; i < widget.stops.length; i++) ...[_vTravel(i), _vCard(i)],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
             ),
           ],

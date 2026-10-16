@@ -13,6 +13,7 @@ class KSidebar extends StatefulWidget {
   final bool collapsed; // trueならアイコンのみ表示
   final VoidCallback? onClose;
   final VoidCallback? onOpen;
+  final int preContactPending; // 事前連絡の未連絡件数（0なら非表示）
 
   const KSidebar({
     super.key,
@@ -21,6 +22,7 @@ class KSidebar extends StatefulWidget {
     this.collapsed = false,
     this.onClose,
     this.onOpen,
+    this.preContactPending = 0,
   });
 
   @override
@@ -97,7 +99,7 @@ class _KSidebarState extends State<KSidebar> {
             icon: Icons.edit_document,
             label: '受注入力',
           ),
-          _buildItem(context, index: 11, icon: Icons.notifications_active, label: '事前連絡進捗'),
+          _buildItem(context, index: 11, icon: Icons.notifications_active, label: '事前連絡', badgeCount: widget.preContactPending),
           _buildItem(context, index: 1, icon: Icons.list_alt, label: '受注一覧'),
           _buildItem(
             context,
@@ -214,24 +216,48 @@ class _KSidebarState extends State<KSidebar> {
     required int index,
     required IconData icon,
     required String label,
+    int badgeCount = 0,
   }) {
     final isSelected = widget.selectedIndex == index;
+    Widget badge() => Container(
+          padding: EdgeInsets.symmetric(horizontal: rs(context, 5), vertical: rs(context, 1)),
+          constraints: BoxConstraints(minWidth: rs(context, 16), minHeight: rs(context, 16)),
+          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.rectangle, borderRadius: BorderRadius.all(Radius.circular(999))),
+          alignment: Alignment.center,
+          child: Text('$badgeCount',
+              style: TextStyle(color: Colors.white, fontSize: rf(context, 10), fontWeight: FontWeight.bold, height: 1.1)),
+        );
+    final iconWidget = Icon(icon, color: AppColors.whiteText, size: rs(context, 17.5));
+    final labelText = Text(
+      label,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: rf(context, 12.25),
+        height: 1.2,
+        color: AppColors.whiteText,
+      ),
+    );
+    final show = badgeCount > 0;
     return _buildRow(
       context,
       isSelected: isSelected,
       onTap: () => widget.onDestinationSelected(index),
-      icon: Icon(icon, color: AppColors.whiteText, size: rs(context, 17.5)),
-      label: Text(
-        label,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: rf(context, 12.25),
-          height: 1.2,
-          color: AppColors.whiteText,
-        ),
-      ),
+      icon: (show && widget.collapsed)
+          ? Stack(
+              clipBehavior: Clip.none,
+              children: [iconWidget, Positioned(right: -rs(context, 10), top: -rs(context, 8), child: badge())],
+            )
+          : iconWidget,
+      label: (show && !widget.collapsed)
+          ? Row(
+              children: [
+                Flexible(child: labelText),
+                Transform.translate(offset: Offset(rs(context, 2), -rs(context, 7)), child: badge()),
+              ],
+            )
+          : labelText,
     );
   }
 

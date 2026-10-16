@@ -99,7 +99,11 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
             if (o.facilityName.trim().isNotEmpty) Text(o.facilityName.trim(), style: TextStyle(fontSize: _rf(context, 13), color: fg)),
             if (isPhoneWidth(context))
               InkWell(
-                onTap: () => isPhone ? callPhone(phone) : sendSms(phone, preContactSmsBody(o, withHonorific(_displayNames[o.id] ?? o.customerName))),
+                onTap: () async {
+                  if (isPhone) { callPhone(phone); return; }
+                  await sendSms(phone, preContactSmsBody(o, withHonorific(_displayNames[o.id] ?? o.customerName)));
+                  if (!o.smsSent) { await _orderService.markSmsSent(o.id); _load(refresh: false); }
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Text(phone, style: TextStyle(fontSize: 15, color: fg ?? AppColors.accentPurple, decoration: TextDecoration.underline)),

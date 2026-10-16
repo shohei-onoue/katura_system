@@ -144,7 +144,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static const Map<int, String> _titles = {
     0: '受注入力', 1: '受注一覧', 2: '調理・仕入れ計画', 3: '配達予定', 4: '配送ルート', 5: 'データ分析', 6: '顧客管理',
-    7: 'メニューマスタ', 8: 'スタッフ管理', 9: '設定', 10: '材料マスタ', 11: '事前連絡進捗',
+    7: 'メニューマスタ', 8: 'スタッフ管理', 9: '設定', 10: '材料マスタ', 11: '事前連絡',
   };
 
   Future<void> _logout() async {
@@ -258,7 +258,7 @@ class _MainScreenState extends State<MainScreen> {
         return CustomerListScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       case 7: // メニューマスタ
         return MenuMasterScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
-      case 11: // 事前連絡進捗
+      case 11: // 事前連絡
         return const ContactProgressScreen();
       case 10: // 材料マスタ
         return const IngredientMasterScreen();
@@ -309,6 +309,7 @@ class _MainScreenState extends State<MainScreen> {
           : isMobile ? Drawer(
         child: KSidebar(
           selectedIndex: _selectedIndex,
+          preContactPending: _pendingCount,
           onDestinationSelected: (index) async {
             Navigator.pop(context); // 先にDrawerを閉じる（確認ダイヤログはその上に出す）
             await _goTo(index);
@@ -325,6 +326,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: KSidebar(
                     selectedIndex: _selectedIndex,
                     onDestinationSelected: _goTo,
+                    preContactPending: _pendingCount,
                     onClose: () => setState(() => _sidebarOpen = false),
                   ),
                 )
@@ -334,6 +336,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: KSidebar(
                     selectedIndex: _selectedIndex,
                     onDestinationSelected: _goTo,
+                    preContactPending: _pendingCount,
                     collapsed: true,
                     onOpen: () => setState(() => _sidebarOpen = true),
                   ),
