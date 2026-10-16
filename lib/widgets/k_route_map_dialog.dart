@@ -349,11 +349,20 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     await _openNav(from == 0 ? widget.origin : _stopLoc(from - 1), from, to);
   }
 
-  Widget _navButton() => TextButton.icon(
-        onPressed: _startNav,
-        icon: const Icon(Icons.navigation_rounded, size: 18),
-        label: const Text('ナビ開始', style: TextStyle(fontWeight: FontWeight.bold)),
-        style: TextButton.styleFrom(foregroundColor: PL.purple, visualDensity: VisualDensity.compact),
+  Widget _navButton() => Padding(
+        padding: const EdgeInsets.only(right: 10),
+        child: TextButton.icon(
+          onPressed: _startNav,
+          icon: const Icon(Icons.navigation_rounded, size: 18),
+          label: const Text('ナビ開始', style: TextStyle(fontWeight: FontWeight.bold)),
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: PL.purple,
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
       );
 
   Widget _vRadio(int i, String label, bool value) {
@@ -434,6 +443,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
           titleSpacing: 0,
           leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20), onPressed: () => Navigator.pop(context)),
           title: Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          actions: [Center(child: _navButton())],
         ),
         body: Column(
           children: [
@@ -447,7 +457,6 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
                   const Icon(Icons.alt_route_rounded, size: 20, color: PL.red),
                   const SizedBox(width: 12),
                   Expanded(child: Text(_summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.ink))),
-                  _navButton(),
                 ],
               ),
             ),
@@ -533,7 +542,6 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
                   const Icon(Icons.route, color: AppColors.accentOrange),
                   SizedBox(width: _s(12)),
                   Expanded(child: Text(_summary, style: TextStyle(fontWeight: FontWeight.bold, fontSize: _f(16)))),
-                  _navButton(),
                 ],
               ),
             ),
