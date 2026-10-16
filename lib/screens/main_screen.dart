@@ -50,6 +50,7 @@ class _MainScreenState extends State<MainScreen> {
   String? _staffName; // ログイン者名（スマホ挨拶用）
   bool _staffNameLoaded = false;
   String? _contactSummary; // スマホ挨拶の下に出す「N件中n件連絡済み」
+  int _pendingCount = 0; // 上部バーの事前連絡バッジ（未連絡件数）
 
   String _greeting() {
     final h = DateTime.now().hour;
@@ -62,9 +63,18 @@ class _MainScreenState extends State<MainScreen> {
     try {
       final all = await OrderService().getAllOrders();
       final targets = OrderService.preContactTargets(all, DateTime.now());
-      if (targets.isEmpty) return;
-      final done = targets.where((o) => !OrderService.isPreContactPending(o)).length;
-      if (mounted) setState(() => _contactSummary = '${targets.length}件中$done件連絡済み');
+      final pending = targets.where(OrderService.isPreContactPending).length;
+      if (targets.isEmpty) {
+        if (mounted) setState(() => _pendingCount = 0);
+        return;
+      }
+      final done = targets.length - pending;
+      if (mounted) {
+        setState(() {
+          _pendingCount = pending;
+          _contactSummary = '${targets.length}件中$done件連絡済み';
+        });
+      }
     } catch (_) {}
   }
 
@@ -159,29 +169,78 @@ class _MainScreenState extends State<MainScreen> {
       title: Text(_titles[_selectedIndex] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
       actions: [
         IconButton(
-          icon: const Icon(Icons.notifications_active),
+          icon: Badge(
+            isLabelVisible: _pendingCount > 0,
+            label: Text('$_pendingCount'),
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            child: const Icon(Icons.notifications_active),
+          ),
           tooltip: '事前連絡',
-          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ContactProgressScreen(asPage: true))),
+          onPressed: _showContactDialog,
         ),
       ],
     );
   }
 
+  Future<void> _showContactDialog() async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '閉じる',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, _, _) => SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480, maxHeight: 640),
+                child: const ContactProgressScreen(asPage: true),
+              ),
+            ),
+          ),
+        ),
+      ),
+      transitionBuilder: (ctx, anim, _, child) {
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(scale: Tween<double>(begin: 0.9, end: 1.0).animate(curved), child: child),
+        );
+      },
+    );
+    if (mounted) _loadContactSummary();
+  }
+
   Widget _buildPhoneBottomBar() {
     final pos = _bottomIndices.indexOf(_selectedIndex);
-    return BottomNavigationBar(
-      type: BottomNavigationBarType.fixed,
-      backgroundColor: AppColors.acceptButton,
-      // バーに無い画面のときは currentIndex を0にし、選択色も白にして全項目を白で表示する
-      selectedItemColor: pos >= 0 ? Colors.orange : Colors.white,
-      unselectedItemColor: Colors.white,
-      currentIndex: pos >= 0 ? pos : 0,
-      onTap: (i) => _goTo(_bottomIndices[i]),
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: '受注一覧'),
-        BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: '配達予定'),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: '設定'),
-      ],
+    return NavigationBarTheme(
+      data: NavigationBarThemeData(
+        backgroundColor: AppColors.acceptButton,
+        indicatorColor: Colors.transparent,
+        iconTheme: WidgetStateProperty.resolveWith((st) =>
+            IconThemeData(color: pos >= 0 && st.contains(WidgetState.selected) ? Colors.orange : Colors.white)),
+        labelTextStyle: WidgetStateProperty.resolveWith((st) =>
+            TextStyle(fontSize: 12, color: pos >= 0 && st.contains(WidgetState.selected) ? Colors.orange : Colors.white)),
+      ),
+      child: NavigationBar(
+        // バーに無い画面のときは選択なし扱い（全項目を白で表示）
+        selectedIndex: pos >= 0 ? pos : 0,
+        onDestinationSelected: (i) => _goTo(_bottomIndices[i]),
+        destinations: [
+          for (final d in const [
+            (Icons.list_alt, '受注一覧'),
+            (Icons.local_shipping, '配達予定'),
+            (Icons.settings, '設定'),
+          ])
+            NavigationDestination(icon: Icon(d.$1), label: d.$2),
+        ],
+      ),
     );
   }
 
@@ -260,7 +319,7 @@ class _MainScreenState extends State<MainScreen> {
                   text: (_staffName == null || _staffName!.isEmpty) ? _greeting() : '${_greeting()}、$_staffNameさん',
                   subText: _contactSummary,
                 )
-              : Container(color: Colors.black))
+              : Container(color: Colors.white))
         else if (_selectedIndex == 0)
           _buildOrderFormScreen()
         else if (_selectedIndex == 5) // データ分析

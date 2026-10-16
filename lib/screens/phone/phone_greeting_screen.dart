@@ -39,7 +39,7 @@ class _PhoneGreetingScreenState extends State<PhoneGreetingScreen>
     final chars = widget.text.characters.toList();
     final total = _controller.duration!.inMilliseconds.toDouble();
     return Container(
-      color: Colors.black,
+      color: Colors.white,
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: AnimatedBuilder(
@@ -61,7 +61,7 @@ class _PhoneGreetingScreenState extends State<PhoneGreetingScreen>
                       child: Text(
                         chars[i],
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Colors.black,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -78,7 +78,7 @@ class _PhoneGreetingScreenState extends State<PhoneGreetingScreen>
                     ),
                     child: Text(
                       widget.subText!,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      style: const TextStyle(color: Colors.black, fontSize: 16),
                     ),
                   ),
                 ),

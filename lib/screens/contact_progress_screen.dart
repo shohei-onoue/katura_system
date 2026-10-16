@@ -64,7 +64,8 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: AppColors.mainBackground,
-        automaticallyImplyLeading: widget.asPage,
+        automaticallyImplyLeading: false,
+        leading: widget.asPage ? IconButton(icon: const Icon(Icons.close), tooltip: '閉じる', onPressed: () => Navigator.of(context).pop()) : null,
         title: Text('明日ご予約分事前連絡 ${_orders.length}件', style: TextStyle(fontSize: _rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
