@@ -14,7 +14,7 @@ String preContactSmsBody(OrderModel o, String name) {
   final d = o.deliveryDate;
   final t = PreContactSettingsService.cachedSmsTemplate;
   if (t.trim().isNotEmpty) {
-    final items = o.items.map((e) => '${e['name'] ?? ''} / ${e['quantity'] ?? 0}個').join('\n');
+    final items = o.items.map((e) => '${e['name'] ?? ''}（${e['quantity'] ?? 0}個）').join('\n');
     return PreContactSettingsService.applyTemplate(t, name: name, date: d, time: o.deliveryTime, items: items, total: '¥${NumberFormat('#,###').format(o.totalPrice)}');
   }
   return '$name 様\nご注文の事前確認です。${d.month}月${d.day}日 ${o.deliveryTime} のお届け(お引取り)で間違いございませんでしょうか。';
@@ -29,7 +29,7 @@ Future<void> callPhone(String phone) async {
 Future<void> sendSms(String phone, String body) async {
   final p = phone.replaceAll(RegExp(r'[^0-9+]'), '');
   if (p.isEmpty) return;
-  await launchUrl(Uri(scheme: 'sms', path: p, queryParameters: {'body': body}));
+  await launchUrl(Uri.parse('sms:$p?body=${Uri.encodeComponent(body)}'));
 }
 
 /// 住所または緯度経度でGoogleマップを開く
