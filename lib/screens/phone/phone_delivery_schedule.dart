@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -5,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:katura_system/utils/name_format.dart';
 import '../../models/order_model.dart';
 import '../../services/customer_service.dart';
+import '../../services/order_service.dart';
 import '../../services/delivery_schedule_service.dart';
 import '../../services/reservation_service.dart';
 import '../../widgets/k_route_map_dialog.dart';
@@ -374,6 +376,23 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
   Map<String, DeliveryStop> _stops = {};
   Map<String, String> _names = {};
   final Set<String> _late = {};
+  final OrderService _orderService = OrderService();
+  // ドラッグで号車を変えた予定（親の注文データは古いままなので、こちらを優先する）
+  final Map<String, int> _vehicleOverride = {};
+  final GlobalKey _vScrollKey = GlobalKey();
+  final GlobalKey _timelineKey = GlobalKey();
+  final ScrollController _vScroll = ScrollController();
+  final ScrollController _hScroll = ScrollController();
+  Timer? _autoScrollTimer;
+  Offset? _dragPos;
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _vScroll.dispose();
+    _hScroll.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -403,9 +422,10 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
     final laneEnds = <int>[];
     int maxAssigned = 0;
     for (final o in _dayOrders) {
-      if (o.vehicleNumber > 0) {
-        _lanes[o.id] = o.vehicleNumber - 1;
-        maxAssigned = math.max(maxAssigned, o.vehicleNumber);
+      final vn = _vehicleOverride[o.id] ?? o.vehicleNumber;
+      if (vn > 0) {
+        _lanes[o.id] = vn - 1;
+        maxAssigned = math.max(maxAssigned, vn);
         continue;
       }
       final m = DeliveryScheduleService.minutesOf(o.deliveryTime)!;
@@ -517,6 +537,117 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
           ],
       ),
     );
+  }
+
+  static const int _cardMinutes = 30;
+
+  /// [o] を [lane] の列へ移せるか（同じ列の他の予定・予約枠と30分以内で重ならない）。
+  bool _canDrop(OrderModel o, int lane) {
+    if (_lanes[o.id] == lane) return false;
+    final m = DeliveryScheduleService.minutesOf(o.deliveryTime)!;
+    bool clash(int other) => (other - m).abs() < _cardMinutes;
+    for (final x in _dayOrders) {
+      if (x.id != o.id && _lanes[x.id] == lane && clash(DeliveryScheduleService.minutesOf(x.deliveryTime)!)) return false;
+    }
+    for (final r in _reservations) {
+      final rm = DeliveryScheduleService.minutesOf(r.time);
+      if (r.vehicleNumber - 1 == lane && rm != null && clash(rm)) return false;
+    }
+    return true;
+  }
+
+  /// カードを別の号車の列へ移す（保存に失敗したら元に戻す）。
+  Future<void> _moveToLane(OrderModel o, int lane) async {
+    final before = _lanes[o.id]!;
+    final beforeOverride = _vehicleOverride[o.id];
+    setState(() {
+      _lanes[o.id] = lane;
+      _vehicleOverride[o.id] = lane + 1;
+      _late.remove(o.id);
+    });
+    try {
+      await _orderService.updateVehicleNumber(o.id, lane + 1);
+      await _loadStops();
+      if (!mounted) return;
+      final shortage = _shortageAfterMove(o, lane);
+      if (shortage > 0) _showNotice('移動時間が足りません（$shortage分不足）');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _lanes[o.id] = before;
+        if (beforeOverride == null) {
+          _vehicleOverride.remove(o.id);
+        } else {
+          _vehicleOverride[o.id] = beforeOverride;
+        }
+      });
+      _showNotice('号車の変更を保存できませんでした');
+    }
+  }
+
+  /// 移した [o] の前後の区間で、移動時間が間隔を超える最大の不足分（分）。間に合うなら0。
+  int _shortageAfterMove(OrderModel o, int lane) {
+    final group = _dayOrders.where((x) => _lanes[x.id] == lane).toList();
+    final i = group.indexWhere((x) => x.id == o.id);
+    int shortage = 0;
+    int gap(OrderModel from, OrderModel to) {
+      final sec = _stops[to.id]?.travelSeconds;
+      if (sec == null) return 0;
+      final spare = DeliveryScheduleService.minutesOf(to.deliveryTime)! - DeliveryScheduleService.minutesOf(from.deliveryTime)! - (sec / 60).ceil();
+      return spare < 0 ? -spare : 0;
+    }
+
+    if (i > 0) shortage = math.max(shortage, gap(group[i - 1], o));
+    if (i >= 0 && i + 1 < group.length) shortage = math.max(shortage, gap(o, group[i + 1]));
+    return shortage;
+  }
+
+  void _showNotice(String text) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 4)));
+  }
+
+  // ---- ドラッグ中の画面端オートスクロール ----
+  void _onDragStart() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 16), (_) => _autoScrollTick());
+  }
+
+  void _onDragEnd() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = null;
+    _dragPos = null;
+  }
+
+  void _autoScrollTick() {
+    final pos = _dragPos;
+    if (pos == null) return;
+    const edge = 60.0;
+    const step = 8.0;
+    void scroll(ScrollController c, double v, double lo, double hi) {
+      if (!c.hasClients) return;
+      double d = 0;
+      if (v < lo + edge) {
+        d = -step;
+      } else if (v > hi - edge) {
+        d = step;
+      }
+      if (d == 0) return;
+      final target = (c.offset + d).clamp(c.position.minScrollExtent, c.position.maxScrollExtent);
+      if (target != c.offset) c.jumpTo(target);
+    }
+
+    final vBox = _vScrollKey.currentContext?.findRenderObject() as RenderBox?;
+    if (vBox != null && vBox.attached) {
+      final top = vBox.localToGlobal(Offset.zero).dy;
+      scroll(_vScroll, pos.dy, top, top + vBox.size.height);
+    }
+    final tBox = _timelineKey.currentContext?.findRenderObject() as RenderBox?;
+    if (tBox != null && tBox.attached) {
+      final left = tBox.localToGlobal(Offset.zero).dx;
+      scroll(_hScroll, pos.dx, left, left + tBox.size.width);
+    }
   }
 
   double _yOf(int minutes) => _top + (minutes - _startHour * 60) * _hourH / 60;
@@ -638,6 +769,21 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
         ));
       }
 
+      // 号車の列ごとのドロップ先（見た目は無し）
+      for (int lane = 0; lane < n; lane++) {
+        children.add(Positioned(
+          left: colX(lane),
+          top: 0,
+          width: colW,
+          height: totalH,
+          child: DragTarget<OrderModel>(
+            onWillAcceptWithDetails: (d) => _canDrop(d.data, lane),
+            onAcceptWithDetails: (d) => _moveToLane(d.data, lane),
+            builder: (context, candidate, _) => const SizedBox.expand(),
+          ),
+        ));
+      }
+
       for (int lane = 0; lane < n; lane++) {
         final group = _dayOrders.where((o) => _lanes[o.id] == lane).toList();
         final x = colX(lane);
@@ -684,7 +830,7 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
             top: _yOf(m) + 6,
             width: pillW,
             height: 26,
-            child: _pill('${o.deliveryTime} ${phoneCityOf(o)}', late: _late.contains(o.id), onTap: () => showPhoneDeliveryDetail(context, order: o, name: withHonorific(_names[o.id] ?? o.customerName))),
+            child: _draggablePill(o, pillW),
           ));
         }
         // 予約枠
@@ -697,13 +843,33 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
 
       final body = Expanded(
         child: SingleChildScrollView(
+          key: _vScrollKey,
+          controller: _vScroll,
           child: SizedBox(width: contentW, height: totalH, child: Stack(children: children)),
         ),
       );
       final content = SizedBox(width: contentW, child: Column(children: [header, body]));
       if (n <= 3) return content;
-      return SingleChildScrollView(scrollDirection: Axis.horizontal, child: content);
+      return SingleChildScrollView(key: _timelineKey, controller: _hScroll, scrollDirection: Axis.horizontal, child: content);
     });
+  }
+
+  /// 長押ししてドラッグすると、別の号車の列へ移せる予定カード（タップは詳細表示のまま）。
+  Widget _draggablePill(OrderModel o, double pillW) {
+    final pill = _pill('${o.deliveryTime} ${phoneCityOf(o)}',
+        late: _late.contains(o.id), onTap: () => showPhoneDeliveryDetail(context, order: o, name: withHonorific(_names[o.id] ?? o.customerName)));
+    return LongPressDraggable<OrderModel>(
+      data: o,
+      onDragStarted: _onDragStart,
+      onDragUpdate: (d) => _dragPos = d.globalPosition,
+      onDragEnd: (_) => _onDragEnd(),
+      feedback: Material(
+        color: Colors.transparent,
+        child: SizedBox(width: pillW, height: 26, child: Opacity(opacity: 0.85, child: pill)),
+      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: pill),
+      child: pill,
+    );
   }
 
   Widget _pill(String label, {bool late = false, VoidCallback? onTap}) {
