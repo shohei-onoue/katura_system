@@ -22,6 +22,21 @@ class OrderService {
   static bool isActive(OrderModel o) =>
       o.status != '配送済み' && o.status != 'キャンセル済み' && o.status != '当日キャンセル';
 
+  /// 事前連絡の対象（有効・配達日が明日・事前連絡方法あり）。
+  static List<OrderModel> preContactTargets(List<OrderModel> all, DateTime now) {
+    final t = DateTime(now.year, now.month, now.day + 1);
+    return all.where((o) =>
+        isActive(o) &&
+        o.deliveryDate.year == t.year && o.deliveryDate.month == t.month && o.deliveryDate.day == t.day &&
+        o.preConfirmationMethod.isNotEmpty).toList();
+  }
+
+  /// 事前連絡が未完了か（電話は常に未完了、SMSは未送信・承認以外の返信あり）。
+  static bool isPreContactPending(OrderModel o) {
+    if (o.preConfirmationMethod == '電話') return true;
+    return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
+  }
+
   /// データベースの一本化 (katura_cache.db)
   Future<void> _initLocalDb() async {
     if (_localDb != null) return;

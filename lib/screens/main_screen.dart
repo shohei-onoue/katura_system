@@ -19,6 +19,8 @@ import '../services/email_auth_service.dart';
 import 'login/login_screen.dart';
 import 'phone/phone_common.dart';
 import '../services/pre_contact_settings_service.dart';
+import 'phone/phone_greeting_screen.dart';
+import '../services/order_service.dart';
 
 /// 経営効率化を極めたメイン司令塔画面
 /// ループエンジニアリング評価：
@@ -45,11 +47,40 @@ class _MainScreenState extends State<MainScreen> {
   // 常駐キャッシュ対象の画面インデックス（受注入力=0とデータ分析=5は対象外）
   static const List<int> _cachedIndices = [1, 2, 3, 6, 7, 10, 8, 9, 11];
 
+  String? _staffName; // ログイン者名（スマホ挨拶用）
+  bool _staffNameLoaded = false;
+  String? _contactSummary; // スマホ挨拶の下に出す「N件中n件連絡済み」
+
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h >= 5 && h <= 10) return 'おはよう';
+    if (h >= 11 && h <= 17) return 'こんにちは';
+    return 'こんばんは';
+  }
+
+  Future<void> _loadContactSummary() async {
+    try {
+      final all = await OrderService().getAllOrders();
+      final targets = OrderService.preContactTargets(all, DateTime.now());
+      if (targets.isEmpty) return;
+      final done = targets.where((o) => !OrderService.isPreContactPending(o)).length;
+      if (mounted) setState(() => _contactSummary = '${targets.length}件中$done件連絡済み');
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
+    AuthService().restoreSession().then((staff) {
+      if (mounted) setState(() { _staffName = staff?.name; _staffNameLoaded = true; });
+    }).catchError((_) {
+      if (mounted) setState(() => _staffNameLoaded = true);
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && isPhoneWidth(context)) PreContactSettingsService.load();
+      if (mounted && isPhoneWidth(context)) {
+        PreContactSettingsService.load();
+        _loadContactSummary();
+      }
     });
   }
 
@@ -222,7 +253,15 @@ class _MainScreenState extends State<MainScreen> {
             children: _cachedIndices.map(_buildCachedScreen).toList(),
           ),
         ),
-        if (_selectedIndex == 0)
+        if (_selectedIndex == 0 && isPhoneWidth(context) && _currentEditingOrder == null)
+          (_staffNameLoaded
+              ? PhoneGreetingScreen(
+                  key: ValueKey('greeting_${_staffName ?? ""}'),
+                  text: (_staffName == null || _staffName!.isEmpty) ? _greeting() : '${_greeting()}、$_staffNameさん',
+                  subText: _contactSummary,
+                )
+              : Container(color: Colors.black))
+        else if (_selectedIndex == 0)
           _buildOrderFormScreen()
         else if (_selectedIndex == 5) // データ分析
           AnalysisScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo)

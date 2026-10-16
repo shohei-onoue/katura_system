@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart' show isSameDay;
 import '../models/order_model.dart';
 import '../services/customer_service.dart';
 import '../services/order_service.dart';
@@ -14,7 +13,7 @@ import 'phone/phone_common.dart';
 double _rf(BuildContext c, double v) => isPhoneWidth(c) ? v : KR.rf(c, v);
 double _rs(BuildContext c, double v) => isPhoneWidth(c) ? v : KR.rs(c, v);
 
-/// 事前連絡の進捗（本日分のみ）
+/// 明日ご予約分の事前連絡の進捗（明日分のみ）
 class ContactProgressScreen extends StatefulWidget {
   final bool asPage; // true＝別画面として開く（戻るボタンを出す）
   const ContactProgressScreen({super.key, this.asPage = false});
@@ -51,15 +50,10 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
     final list = await _orderService.getAllOrders(forceRefresh: refresh);
     final names = await _customerService.resolveOrderNames(list);
     if (!mounted) return;
-    final today = DateTime.now();
     setState(() {
       _displayNames = names;
-      // 本日分のみ。電話、またはSMSが未送信・返信待ち・承認以外の返信あり
-      _orders = list.where(OrderService.isActive).where((o) {
-        if (!isSameDay(o.deliveryDate, today) || o.preConfirmationMethod.isEmpty) return false;
-        if (o.preConfirmationMethod == '電話') return true;
-        return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
-      }).toList();
+      // 明日分のみ（事前連絡は前日に行う）。電話、またはSMSが未送信・返信待ち・承認以外の返信あり
+      _orders = OrderService.preContactTargets(list, DateTime.now()).where(OrderService.isPreContactPending).toList();
       _isLoading = false;
     });
   }
@@ -71,13 +65,13 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.mainBackground,
         automaticallyImplyLeading: widget.asPage,
-        title: Text('事前連絡の進捗（本日 ${_orders.length}件）', style: TextStyle(fontSize: _rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
+        title: Text('明日ご予約分事前連絡 ${_orders.length}件', style: TextStyle(fontSize: _rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _orders.isEmpty
-              ? const Center(child: Text('本日の連絡待ちはありません'))
+              ? const Center(child: Text('明日の連絡待ちはありません'))
               : ListView(padding: EdgeInsets.all(_rs(context, 8)), children: _orders.map(_buildCard).toList()),
     );
   }
