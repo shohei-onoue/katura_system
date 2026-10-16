@@ -17,8 +17,10 @@ import '../services/reservation_service.dart';
 import '../widgets/delivery_schedule_dialog.dart';
 import '../widgets/k_button.dart';
 import '../widgets/k_responsive.dart';
-import '../widgets/k_route_map_dialog.dart';
 import 'phone/phone_common.dart';
+import 'phone/phone_delivery_common.dart';
+import 'phone/phone_delivery_schedule.dart';
+import 'phone/phone_order_list_dialogs.dart';
 
 /// 配送ルート最適化機能。これまでダイヤログの中に隠れていた「日時選択（カレンダー）」を、
 /// この画面ではポップアップではなく常時表示の画面として置く。
@@ -58,6 +60,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
       setState(() {
         _orders = orders;
         _travelWarn.clear();
+        _travelWarnTexts.clear();
         _travelLoading.clear();
       });
       _loadTravelWarn(_focusedDay);
@@ -67,6 +70,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   StreamSubscription<List<OrderModel>>? _ordersSub;
 
   final Map<String, Set<DateTime>> _travelWarn = {}; // 店舗+月 → 移動時間不足の日
+  final Map<String, Map<DateTime, List<String>>> _travelWarnTexts = {}; // 店舗+月 → 日付ごとの警告内容
   final Set<String> _travelLoading = {};
 
   String _travelKey(DateTime m) => '$_branchName|${m.year}-${m.month}';
@@ -88,7 +92,10 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         to: to,
       );
       if (!mounted) return;
-      setState(() => _travelWarn[key] = res.keys.toSet());
+      setState(() {
+        _travelWarn[key] = res.keys.toSet();
+        _travelWarnTexts[key] = res;
+      });
     } catch (e) {
       debugPrint('travel warn error: $e');
     } finally {
@@ -166,6 +173,27 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
       debugPrint('reservation load error: $e'); // 取得できなくても画面は開く
     }
     if (!mounted) return;
+    if (isPhoneWidth(context)) {
+      // スマホ：Figmaの車両タイムライン画面
+      final pushedPhone = Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => PhoneDeliveryTimelinePage(
+            date: day,
+            orders: _orders.where((o) => OrderService.isActive(o) && o.deliveryType == '配送').toList(),
+            branchNames: [for (final b in _branches) b.name],
+            initialBranch: _branchName,
+            branchPositions: {for (final b in _branches) b.name: LatLng(b.latitude, b.longitude)},
+            branchVehicleCounts: {for (final b in _branches) b.name: b.deliveryVehicleCount},
+            service: _scheduleService,
+            initialReservations: reservations,
+            reservationLoader: (name) => _reservationService.listByDate(name, day),
+          ),
+        ),
+      );
+      setState(() => _opening = false);
+      await pushedPhone;
+      return;
+    }
     // ダイアログではなく画面として表示する（配達日時ダイアログと同じ内容）
     final pushed = Navigator.of(context).push<DeliverySlot>(
       MaterialPageRoute(
@@ -212,140 +240,57 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
     );
   }
 
-  /// 号車ごとの配送受注（号車未割当は時間が重ならない最初の列へ）
-  List<List<OrderModel>> _lanesOf(List<OrderModel> day, int minCount) {
-    final lanes = <List<OrderModel>>[];
-    final ends = <int>[];
-    int maxAssigned = minCount;
-    for (final o in day) {
-      if (o.vehicleNumber > maxAssigned) maxAssigned = o.vehicleNumber;
-    }
-    for (int i = 0; i < maxAssigned; i++) {
-      lanes.add([]);
-      ends.add(-1000);
-    }
-    for (final o in day) {
-      final m = DeliveryScheduleService.minutesOf(o.deliveryTime) ?? 0;
-      int lane;
-      if (o.vehicleNumber > 0) {
-        lane = o.vehicleNumber - 1;
-      } else {
-        lane = ends.indexWhere((e) => e <= m - 30);
-        if (lane == -1) {
-          lanes.add([]);
-          ends.add(-1000);
-          lane = lanes.length - 1;
-        }
-      }
-      lanes[lane].add(o);
-      ends[lane] = m;
-    }
-    return lanes;
-  }
-
-  Color _phoneBranchColor(String n) => n.contains('名古屋') ? AppColors.nagoya : (n.contains('岐阜') ? AppColors.gifu : AppColors.okazaki);
-
-  void _openPhoneRoute(int lane, List<OrderModel> group) {
-    final branch = _selectedBranch;
-    if (group.isEmpty || branch == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(group.isEmpty ? 'この号車には配達予定がありません' : '店舗の位置が取得できません')));
-      return;
-    }
-    Object point(OrderModel o) => (o.latitude != null && o.longitude != null) ? LatLng(o.latitude!, o.longitude!) : o.address;
-    showDialog<void>(
-      context: context,
-      builder: (_) => KRouteMapDialog(
-        vertical: true,
-        title: '${lane + 1}号車 配送ルート',
-        origin: LatLng(branch.latitude, branch.longitude),
-        stops: [for (final o in group) KRouteStop(location: point(o), time: o.deliveryTime, place: _areaLabel(o), color: _phoneBranchColor(o.branchName))],
-      ),
-    );
-  }
-
-  // スマホ(幅600未満)：日付バー＋店舗ドロップダウン、車両ボタン、スケジュール
+  // スマホ(幅600未満)：Figma「配送予定（カレンダー）」
   Widget _buildPhone(BuildContext context) {
-    final day = _selectedDay ?? DateTime.now();
-    final lanes = _lanesOf(_dayOrders, _selectedBranch?.deliveryVehicleCount ?? 1);
-    return Scaffold(
-      backgroundColor: AppColors.mainBackground,
-      body: Column(
-        children: [
-          PhoneDateBar(
-            date: day,
-            onChanged: (d) {
-              setState(() {
-                _selectedDay = d;
-                _focusedDay = d;
-              });
-              _ensureNames(_dayOrders);
-            },
-            trailing: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(color: AppColors.selectButton, borderRadius: BorderRadius.circular(8)),
-              child: DropdownButton<String>(
-                value: _branches.any((b) => b.name == _branchName) ? _branchName : null,
-                underline: const SizedBox.shrink(),
-                dropdownColor: AppColors.mainBackground,
-                style: const TextStyle(color: AppColors.primaryText, fontWeight: FontWeight.bold, fontSize: 14),
-                items: [for (final b in _branches) DropdownMenuItem(value: b.name, child: Text(b.name))],
-                onChanged: (v) {
-                  if (v == null) return;
-                  setState(() => _branchName = v);
-                  _loadTravelWarn(_focusedDay);
-                  _ensureNames(_dayOrders);
-                },
+    final day = _selectedDay;
+    return PhoneDeliveryCalendarView(
+      branchNames: [for (final b in _branches) b.name],
+      branch: _branchName,
+      onBranch: (n) {
+        setState(() => _branchName = n);
+        _loadTravelWarn(_focusedDay);
+        _ensureNames(_dayOrders);
+      },
+      month: _focusedDay,
+      selected: day,
+      hasOrders: (d) => _branchOrders.any((o) => isSameDay(o.deliveryDate, d)),
+      hasWarning: (d) => _travelWarn[_travelKey(d)]?.contains(DateWarningService.dayOf(d)) ?? false,
+      onSelect: (d) {
+        setState(() {
+          _selectedDay = d;
+          _focusedDay = d;
+        });
+        _loadTravelWarn(d);
+        _ensureNames(_dayOrders);
+        final texts = _travelWarnTexts[_travelKey(d)]?[DateWarningService.dayOf(d)];
+        if (texts != null && texts.isNotEmpty) {
+          showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Row(children: const [
+                Icon(Icons.warning_amber_rounded, color: Colors.red),
+                SizedBox(width: 6),
+                Text('警告', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ]),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [for (final t in texts) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(t, style: const TextStyle(fontSize: 14)))],
               ),
+              actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('閉じる'))],
             ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (int i = 0; i < lanes.length; i++)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(backgroundColor: AppColors.selectButton, foregroundColor: AppColors.primaryText),
-                    icon: const Icon(Icons.local_shipping, size: 18),
-                    label: Text('${i + 1}号車 (${lanes[i].length}件)', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    onPressed: () => _openPhoneRoute(i, lanes[i]),
-                  ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: _dayOrders.isEmpty
-                ? const Center(child: Text('この日の配達予定はありません'))
-                : ListView(
-                    padding: const EdgeInsets.all(10),
-                    children: [
-                      for (int i = 0; i < lanes.length; i++)
-                        if (lanes[i].isNotEmpty) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(top: 6, bottom: 4),
-                            child: Text('${i + 1}号車', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryText)),
-                          ),
-                          for (final o in lanes[i])
-                            Card(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              child: ListTile(
-                                dense: true,
-                                leading: Text(o.deliveryTime, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primaryText)),
-                                title: Text(withHonorific(_names[o.id] ?? o.customerName), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text(o.facilityName.isNotEmpty ? '${_areaLabel(o)}　${o.facilityName}' : _areaLabel(o), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: o.phoneNumber.isEmpty ? null : IconButton(icon: const Icon(Icons.phone, size: 20), onPressed: () => callPhone(o.phoneNumber)),
-                              ),
-                            ),
-                        ],
-                    ],
-                  ),
-          ),
-        ],
-      ),
+          );
+        }
+      },
+      onMonthMove: (delta) {
+        final m = DateTime(_focusedDay.year, _focusedDay.month + delta, 1);
+        setState(() => _focusedDay = m);
+        _loadTravelWarn(m);
+      },
+      dayOrders: _dayOrders,
+      names: _names,
+      onOrderTap: (o) => showPhoneDeliveryDetail(context, order: o, name: withHonorific(_names[o.id] ?? o.customerName)),
+      onRoute: day == null ? null : () => _openSchedule(day),
     );
   }
 

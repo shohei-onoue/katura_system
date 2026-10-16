@@ -13,6 +13,9 @@ import '../widgets/k_responsive.dart';
 import '../widgets/k_multimodal_text_field.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
+import 'phone/phone_common.dart';
+import 'phone/phone_customer_list.dart';
+import 'phone/phone_customer_style.dart';
 
 class CustomerListScreen extends StatefulWidget {
   final VoidCallback? onOpenMenu;
@@ -334,8 +337,67 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         },
       );
 
+  // ---- スマホ版（幅600未満）----
+  Future<void> _phoneSearch() async {
+    final r = await showPhoneCustomerSearchSheet(context, _searchController.text);
+    if (r != null) _searchController.text = r;
+  }
+
+  Future<void> _phoneMenu(Customer c) async {
+    final r = await showPhoneCustomerMenu(context, c);
+    if (!mounted) return;
+    if (r == 'detail') {
+      _showCustomerDetail(c);
+    } else if (r == 'delete') {
+      if (await showPhoneDeleteCustomerDialog(context, c) && mounted) {
+        await _customerService.deleteCustomer(c.id);
+        if (!mounted) return;
+        _loadCustomers();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
+      }
+    }
+  }
+
+  /// 行タップ：所属企業があれば「所属顧客一覧」、なければ詳細を開く
+  Future<void> _phoneTap(Customer c) async {
+    setState(() => _selectedCustomer = c);
+    if (c.companyName.isEmpty) {
+      _showCustomerDetail(c);
+      return;
+    }
+    final colleagues = _customers.where((x) => x.companyName == c.companyName && x.id != c.id).toList();
+    final picked = await showPhoneColleaguesSheet(context, c.companyName, colleagues);
+    if (picked != null && mounted) {
+      setState(() => _selectedCustomer = picked);
+      _showCustomerDetail(picked);
+    }
+  }
+
+  Widget _buildPhone() {
+    return Scaffold(
+      backgroundColor: PcColors.bg,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : PhoneCustomerList(
+              customers: _filteredCustomers,
+              elapsedDays: _elapsedDays,
+              selectedId: _selectedCustomer?.id,
+              sortKey: _sortKey,
+              sortAscending: _sortAscending,
+              searchText: _searchController.text,
+              onSort: _onSort,
+              onSearch: _phoneSearch,
+              onClearSearch: _searchController.clear,
+              onGenerateDummy: _generateDummy,
+              onTap: _phoneTap,
+              onMenu: _phoneMenu,
+            ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone();
     final bool hasQuery = _searchController.text.isNotEmpty;
     return Scaffold(
       appBar: AppBar(

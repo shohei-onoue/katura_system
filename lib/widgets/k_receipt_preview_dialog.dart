@@ -6,6 +6,8 @@ import '../models/branch_model.dart';
 import '../services/branch_service.dart';
 import '../services/receipt_service.dart';
 import 'k_responsive.dart';
+import '../screens/phone/phone_common.dart';
+import '../screens/phone/phone_order_list_style.dart';
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 受注内容から領収書HTMLを生成し、WebViewでプレビュー・印刷するダイアログ。
@@ -488,8 +490,106 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
 </html>''';
   }
 
+  // スマホ(幅600未満)：Figma「領収書プレビュー」（全画面シート）
+  Widget _buildPhone(BuildContext context) {
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(margin: const EdgeInsets.only(top: 8), width: 40, height: 5, decoration: BoxDecoration(color: const Color(0xFFD4D7DC), borderRadius: BorderRadius.circular(2.5))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(30, 8, 10, 0),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('領収書プレビュー No.${_no4(_issueNo)}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: PL.ink))),
+                    InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(color: Color(0xFFF1F3F5), shape: BoxShape.circle),
+                        child: const Icon(Icons.close_rounded, size: 20, color: PL.ink),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Container(
+                  decoration: BoxDecoration(color: const Color(0xFFECEFF1), borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.all(14),
+                  child: AspectRatio(
+                    aspectRatio: 972 / 688,
+                    child: _loading || _controller == null
+                        ? const ColoredBox(color: Colors.white, child: Center(child: CircularProgressIndicator()))
+                        : FittedBox(
+                            fit: BoxFit.contain,
+                            child: SizedBox(width: 972, height: 688, child: KHtmlView(controller: _controller!)),
+                          ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.fromLTRB(18, 11, 18, 11),
+                decoration: const BoxDecoration(border: Border(top: BorderSide(color: PL.border))),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: PL.ink,
+                            side: const BorderSide(color: PL.border),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('閉じる', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: PL.purple,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: (_loading || _printing) ? null : _print,
+                          icon: const Icon(Icons.print_rounded, size: 20),
+                          label: const Text('印刷', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone(context);
     final screen = MediaQuery.of(context).size;
     return Dialog(
       insetPadding: EdgeInsets.all(rs(context, 12)),

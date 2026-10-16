@@ -14,6 +14,7 @@ import 'k_button.dart';
 import 'k_numeric_input_dialog.dart';
 import 'k_route_map_dialog.dart';
 import 'k_responsive.dart';
+import '../screens/phone/phone_common.dart' show isPhoneWidth;
 import 'package:katura_system/utils/name_format.dart';
 
 /// 配達予定ダイアログ。縦の時間軸（9:00〜20:00）に、その日の配達予定カードを号車ごとの列に並べ、
@@ -263,11 +264,13 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
     final style = TextStyle(
       fontSize: rf(context, 14),
       fontWeight: FontWeight.bold,
-      color: AppColors.warningText,
+      color: Colors.red,
     );
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
+        backgroundColor: isPhoneWidth(context) ? Colors.white : null,
+        surfaceTintColor: isPhoneWidth(context) ? Colors.transparent : null,
         contentPadding: EdgeInsets.fromLTRB(
           rs(context, 32),
           rs(context, 28),
@@ -286,7 +289,7 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
                   children: [
                     Icon(
                       Icons.warning_amber_rounded,
-                      color: AppColors.warningText,
+                      color: Colors.red,
                       size: rf(context, 20),
                     ),
                     SizedBox(width: rs(context, 6)),

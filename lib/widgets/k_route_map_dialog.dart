@@ -6,6 +6,7 @@ import '../firebase_options.dart';
 import '../services/google_maps_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'k_responsive.dart';
+import '../screens/phone/phone_order_list_style.dart';
 
 /// ルート上の配達先1件。[location] は LatLng か住所(String)。
 class KRouteStop {
@@ -275,8 +276,156 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
         ],
       );
 
+  // ---- スマホ(vertical)：Figma「1号車 配送ルート」 ----
+  Widget _vTravel(int i) {
+    final sec = i < _legs.length ? _legs[i]?.seconds : null;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.directions_car_rounded, size: 14, color: PL.blue),
+          const SizedBox(width: 3),
+          Text(sec == null ? '移動--分' : '移動${(sec / 60).ceil()}分', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: PL.blue)),
+        ],
+      ),
+    );
+  }
+
+  Widget _vRadio(int i, String label, bool value) {
+    final on = _highway[i] == value;
+    final sec = _optLegs['$i-$value']?.seconds;
+    return InkWell(
+      onTap: _mapReady ? () => _setHighway(i, value) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Row(
+          children: [
+            Icon(on ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, size: 20, color: on ? PL.purple : PL.iconGrey),
+            const SizedBox(width: 8),
+            Expanded(child: Text(label, style: TextStyle(fontSize: 13, fontWeight: on ? FontWeight.bold : FontWeight.normal, color: PL.ink))),
+            Text(sec == null ? '--分' : '${(sec / 60).ceil()}分', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.ink)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _vCard(int i) {
+    final st = widget.stops[i];
+    final sel = _selected == i;
+    final head = Row(
+      children: [
+        sel
+            ? SizedBox(width: 20, child: Text('${i + 1}', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: st.color)))
+            : Container(
+                width: 20,
+                height: 20,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: st.color)),
+              ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('${st.time} ${st.place}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: sel ? PL.ink : Colors.white)),
+        ),
+        Icon(sel ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: sel ? PL.ink : Colors.white),
+      ],
+    );
+    return GestureDetector(
+      onTap: () => _select(i),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(12, sel ? 10 : 9, 12, sel ? 6 : 9),
+        decoration: BoxDecoration(
+          color: sel ? Colors.white : st.color.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+          border: sel ? Border.all(color: _selectedLine, width: 2) : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            head,
+            if (sel) ...[
+              const SizedBox(height: 6),
+              _vRadio(i, '一般道', false),
+              _vRadio(i, '高速道路', true),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVertical(BuildContext context) {
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      child: Scaffold(
+        backgroundColor: PL.bg,
+        appBar: AppBar(
+          toolbarHeight: 52,
+          backgroundColor: PL.purple,
+          foregroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          automaticallyImplyLeading: false,
+          titleSpacing: 0,
+          leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20), onPressed: () => Navigator.pop(context)),
+          title: Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        body: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              color: PL.purpleBar,
+              child: Row(
+                children: [
+                  const Icon(Icons.alt_route_rounded, size: 20, color: PL.red),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(_summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.ink))),
+                ],
+              ),
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, c) => Stack(
+                  children: [
+                    Positioned.fill(child: _mapView()),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: c.maxHeight * 0.555,
+                      child: Container(
+                        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+                        child: Column(
+                          children: [
+                            Container(margin: const EdgeInsets.only(top: 10, bottom: 6), width: 40, height: 5, decoration: BoxDecoration(color: const Color(0xFFD4D7DC), borderRadius: BorderRadius.circular(2.5))),
+                            Expanded(
+                              child: ListView(
+                                padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                                children: [
+                                  for (int i = 0; i < widget.stops.length; i++) ...[_vTravel(i), _vCard(i)],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.vertical) return _buildVertical(context);
     return Dialog(
       insetPadding: EdgeInsets.zero,
       child: Scaffold(

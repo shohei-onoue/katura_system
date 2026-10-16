@@ -5,6 +5,8 @@ import 'k_responsive.dart';
 import 'k_dial_pad.dart';
 import '../services/address_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import '../screens/phone/phone_common.dart';
+import '../screens/phone/phone_customer_style.dart';
 
 /// 住所・郵便番号から住所を確定する共有ダイヤログ。
 /// 受注入力「配達先の確定」ステップの「住所検索」で使用しているものと同一。
@@ -101,8 +103,192 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
     });
   }
 
+  // ---- スマホ版（幅600未満）----
+  void _phoneMode(bool toNumeric) {
+    if (toNumeric == isNumericMode) return;
+    setState(() {
+      isNumericMode = toNumeric;
+      if (isNumericMode) {
+        tempZip = '';
+        zipResults = [];
+      } else {
+        selectedInitial = 'すべて';
+      }
+    });
+  }
+
+  void _phoneGoPhase(int index) {
+    setState(() {
+      phase = index;
+      selectedInitial = 'すべて';
+      isNumericMode = false;
+    });
+    if (phase == 0) {
+      _loadInitialData();
+    } else if (phase == 1) {
+      _loadCities();
+    } else if (phase == 2) {
+      _loadTowns();
+    }
+  }
+
+  Widget _buildPhone() {
+    final values = [tempPref, tempCity, tempTown, tempDetail];
+    const titles = ['都道府県', '市区町村', '町名', '番地住所'];
+    final chips = Row(
+      children: [
+        for (var i = 0; i < 4; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: PcStepChip(
+              title: titles[i],
+              value: values[i],
+              done: values[i].isNotEmpty,
+              active: phase == i,
+              onTap: (i == 0 || values[i - 1].isNotEmpty) ? () => _phoneGoPhase(i) : null,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    Widget body;
+    if (isNumericMode) {
+      body = Column(
+        children: [
+          Container(
+            height: 52,
+            margin: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: PcColors.field, border: Border.all(color: PcColors.line), borderRadius: BorderRadius.circular(10)),
+            child: Text('〒 $tempZip', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: PcColors.purple)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+            child: Align(alignment: Alignment.centerLeft, child: Text('郵便番号で検索中：$tempZip', style: const TextStyle(fontSize: 11.5, color: PcColors.sub))),
+          ),
+          Expanded(
+            child: isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : (zipResults.isEmpty
+                    ? const Center(child: Text('該当する住所がありません', style: TextStyle(color: PcColors.hint)))
+                    : _phoneZipList()),
+          ),
+          const SizedBox(height: 10),
+          PcNumPad(onKey: _handleNumericInput),
+        ],
+      );
+    } else if (phase == 3) {
+      body = Column(
+        children: [
+          const SizedBox(height: 18),
+          const Text('詳細住所を入力してください', style: TextStyle(fontSize: 11.5, color: PcColors.sub)),
+          const SizedBox(height: 8),
+          Text('$tempPref$tempCity$tempTown', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PcColors.text)),
+          const SizedBox(height: 8),
+          Text(
+            tempDetail.isEmpty ? '丁目-番地-号' : tempDetail,
+            style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: tempDetail.isEmpty ? PcColors.handle : PcColors.purple),
+          ),
+          const SizedBox(height: 18),
+          PcNumPad(onKey: _handleNumericInput),
+        ],
+      );
+    } else {
+      body = Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+            child: Align(alignment: Alignment.centerLeft, child: Text('頭文字［$selectedInitial］の項目', style: const TextStyle(fontSize: 11.5, color: PcColors.sub))),
+          ),
+          Expanded(
+            child: isSearching
+                ? const Center(child: CircularProgressIndicator())
+                : PcChevronList(items: items, onTap: _handleAddressItemSelect),
+          ),
+          const SizedBox(height: 10),
+          PcKanaPad(
+            selected: selectedInitial,
+            kanaMap: kanaMap,
+            onKana: _handleKanaTap,
+            onAll: _handleAllTap,
+            onBack: phase > 0 ? _handleBack : () => Navigator.pop(context),
+          ),
+        ],
+      );
+    }
+
+    return Dialog.fullscreen(
+      backgroundColor: Colors.white,
+      child: PcSheet(
+        title: '住所・郵便番号で検索',
+        full: true,
+        footer: phase == 3 && !isNumericMode
+            ? PcButton(
+                label: 'この内容で確定',
+                onTap: () {
+                  widget.onAddressConfirmed('$tempPref$tempCity$tempTown$tempDetail');
+                  Navigator.pop(context);
+                },
+              )
+            : null,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+              child: PcSegment(
+                labels: const ['住所検索', '郵便番号検索'],
+                index: isNumericMode ? 1 : 0,
+                onChanged: (i) => _phoneMode(i == 1),
+                selectedFill: PcColors.purple,
+                selectedText: Colors.white,
+              ),
+            ),
+            Padding(padding: const EdgeInsets.fromLTRB(18, 0, 18, 6), child: chips),
+            Expanded(child: body),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneZipList() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: PcColors.line2), borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: zipResults.length,
+        itemBuilder: (_, i) {
+          final res = zipResults[i];
+          return InkWell(
+            onTap: () => setState(() {
+              tempPref = res['pref'] ?? res['name'] ?? '';
+              tempCity = res['city'] ?? '';
+              tempTown = res['town'] ?? '';
+              phase = 3;
+              isNumericMode = false;
+            }),
+            child: Container(
+              height: 43,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  Expanded(child: Text('${res['address']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: PcColors.text))),
+                  const Icon(Icons.chevron_right, size: 20, color: PcColors.chevron),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone();
     // 画面より大きくならないようダイヤログサイズを制限する（ナンバーキーの見切れ防止）
     final media = MediaQuery.of(context);
     final double maxW = media.size.width - rs(context, 64);

@@ -9,6 +9,9 @@ import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
 import 'phone/phone_common.dart';
 import 'phone/phone_order_card.dart';
+import 'phone/phone_order_list_dialogs.dart';
+import 'phone/phone_order_list_header.dart';
+import 'phone/phone_order_list_style.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
 
@@ -41,7 +44,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
   bool _dateTabsScrolled = false;
   ScrollController? _dateTabsController;
   String _selectedBranch = '全店舗';
-  bool _phonePickup = false; // スマホ：false=配達 / true=引取り
 
   static const List<String> _branchTabs = ['全店舗', '岡崎店', '名古屋店', '岐阜店'];
 
@@ -84,7 +86,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
   Future<void> _cancelOrder(OrderModel order) async {
     // 当日キャンセルはキャンセル料100%を確認し、削除せず履歴（status）として残す
     if (isSameDay(order.deliveryDate, DateTime.now())) {
-      final agreed = await showDialog<bool>(
+      final agreed = isPhoneWidth(context)
+          ? await showPhoneSameDayCancelConfirm(context, withHonorific(_displayNames[order.id] ?? order.customerName))
+          : await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: AppColors.popupBackground,
@@ -106,7 +110,9 @@ class _OrderListScreenState extends State<OrderListScreen> {
       }
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = isPhoneWidth(context)
+        ? await showPhoneReservationCancelConfirm(context, withHonorific(_displayNames[order.id] ?? order.customerName))
+        : await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -154,48 +160,66 @@ class _OrderListScreenState extends State<OrderListScreen> {
     _filterOrdersByDay(d);
   }
 
-  // スマホ(幅600未満)：日付バー＋配達/引取り切替＋カード縦並び
+  void _phoneChangeMonth(int delta) {
+    final base = _selectedDay ?? _focusedDay;
+    final last = DateTime(base.year, base.month + delta + 1, 0).day;
+    _setPhoneDay(DateTime(base.year, base.month + delta, base.day > last ? last : base.day));
+  }
+
+  // スマホ(幅600未満)：月切替・1週間の日付・店舗チップ＋配達/引取りのカード縦並び（Figma: 受注一覧）
   Widget _buildPhone() {
-    final list = _visibleOrders.where((o) => (o.deliveryType == '引取') == _phonePickup).toList();
+    final visible = _visibleOrders;
+    final delivery = visible.where((o) => o.deliveryType != '引取').toList();
+    final pickup = visible.where((o) => o.deliveryType == '引取').toList();
+    Widget card(OrderModel order) {
+      final warns = (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[]).where((t) => t.startsWith('${order.customerName}：')).toList();
+      return PhoneOrderCard(
+        order: order,
+        displayName: _displayNames[order.id],
+        isWarning: warns.isNotEmpty,
+        warningText: warns.join(' / '),
+        expanded: _expandedOrderId == order.id,
+        onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
+        onEdit: (o, section) => widget.onEditOrder?.call(o, section),
+        onCancel: _cancelOrder,
+      );
+    }
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: PL.bg,
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          PhoneDateBar(
-            date: _selectedDay ?? _focusedDay,
-            onChanged: _setPhoneDay,
-            trailing: Row(children: [
-              Text(_phonePickup ? '引取り' : '配達', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryText)),
-              Switch(
-                value: _phonePickup,
-                activeThumbColor: AppColors.primaryText,
-                activeTrackColor: AppColors.selectButton,
-                onChanged: (v) => setState(() => _phonePickup = v),
-              ),
-            ]),
+          PhoneOrderListHeader(
+            focusedDay: _focusedDay,
+            selectedDay: _selectedDay ?? _focusedDay,
+            onSelectDay: _setPhoneDay,
+            onChangeMonth: _phoneChangeMonth,
+            onToday: _goToday,
+            onRefresh: () => _loadOrders(),
+            branches: _branchTabs,
+            selectedBranch: _selectedBranch,
+            onSelectBranch: (b) => setState(() => _selectedBranch = b),
+            orderDays: {for (final o in _allOrders) _dateOnly(o.deliveryDate)},
+            warnDays: _warnDays.keys.map(_dateOnly).toSet(),
           ),
-          const Divider(height: 1),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : list.isEmpty
-                    ? const Center(child: Text('この日の受注はありません'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(10),
-                        itemCount: list.length,
-                        itemBuilder: (context, i) {
-                          final order = list[i];
-                          final warns = (_warnDays[DateWarningService.dayOf(order.deliveryDate)] ?? const <String>[]).where((t) => t.startsWith('${order.customerName}：')).toList();
-                          return PhoneOrderCard(
-                            order: order,
-                            displayName: _displayNames[order.id],
-                            isWarning: warns.isNotEmpty,
-                            expanded: _expandedOrderId == order.id,
-                            onToggle: () => setState(() => _expandedOrderId = _expandedOrderId == order.id ? null : order.id),
-                            onEdit: (o, section) => widget.onEditOrder?.call(o, section),
-                            onCancel: _cancelOrder,
-                          );
-                        },
+                : visible.isEmpty
+                    ? const Center(child: Text('この日の受注はありません', style: TextStyle(color: PL.grey)))
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                        children: [
+                          if (delivery.isNotEmpty) ...[
+                            PhoneOrderSectionTitle(icon: Icons.directions_car_rounded, label: '配達 ${delivery.length}件'),
+                            for (final o in delivery) card(o),
+                          ],
+                          if (pickup.isNotEmpty) ...[
+                            PhoneOrderSectionTitle(icon: Icons.volunteer_activism_rounded, label: '引取り ${pickup.length}件'),
+                            for (final o in pickup) card(o),
+                          ],
+                        ],
                       ),
           ),
         ],

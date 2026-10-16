@@ -11,6 +11,8 @@ import '../../../widgets/k_pen_input_dialog.dart';
 import '../../../widgets/k_numeric_input_dialog.dart';
 import '../../order_form/widgets/steps/facility_search_host_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import '../../phone/phone_common.dart';
+import '../../phone/phone_customer_style.dart';
 
 class CustomerDetailDialog extends StatefulWidget {
   final Customer customer;
@@ -244,8 +246,123 @@ class _CustomerDetailDialogState extends State<CustomerDetailDialog> {
     Navigator.pop(context);
   }
 
+  /// スマホ版（幅600未満）：全画面の縦1列レイアウト
+  Widget _buildPhone(BuildContext context) {
+    Widget field(String label, String value, {VoidCallback? onEdit}) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PcLabel(label),
+              const SizedBox(height: 6),
+              PcFieldBox(text: value, trailing: Icons.edit, onTap: onEdit),
+            ],
+          ),
+        );
+    return Dialog.fullscreen(
+      backgroundColor: PcColors.bg,
+      child: Stack(
+        children: [
+          Column(
+            children: [
+              Container(
+                color: PcColors.purple,
+                padding: EdgeInsets.fromLTRB(4, MediaQuery.of(context).padding.top, 16, 0),
+                height: 52 + MediaQuery.of(context).padding.top,
+                child: Row(
+                  children: [
+                    IconButton(icon: const Icon(Icons.close, color: Colors.white, size: 20), onPressed: () => Navigator.pop(context)),
+                    const Text('顧客詳細', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
+                  children: [
+                    field('顧客名', _name, onEdit: () => _editText(_name, (t) => _name = t)),
+                    field('ふりがな', _furigana.isEmpty ? '未設定' : _furigana, onEdit: () => _editText(_furigana, (t) => _furigana = t)),
+                    field('電話番号', _phone.isEmpty ? '未設定' : _phone, onEdit: _editPhone),
+                    field('企業名', _companyName.isEmpty ? '未設定' : _companyName, onEdit: _editCompany),
+                    field('住所', _address.isEmpty ? '未設定' : _address, onEdit: _editAddress),
+                    field('座標', '${_latitude ?? "-"}, ${_longitude ?? "-"}'),
+                    const SizedBox(height: 10),
+                    const Padding(padding: EdgeInsets.only(left: 2, bottom: 8), child: Text('配達先履歴', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PcColors.sub))),
+                    if (_addresses.isEmpty)
+                      const Padding(padding: EdgeInsets.all(8), child: Text('履歴なし', style: TextStyle(color: PcColors.hint))),
+                    for (var i = 0; i < _addresses.length; i++) _phoneHistoryCard(i),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: PcColors.line))),
+                padding: EdgeInsets.fromLTRB(14, 11, 14, 12 + MediaQuery.of(context).padding.bottom),
+                child: Row(
+                  children: [
+                    Expanded(child: PcOutlineButton(label: '閉じる', onTap: () => Navigator.pop(context))),
+                    const SizedBox(width: 10),
+                    Expanded(child: PcButton(label: '保存', onTap: _saving ? null : _save)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_busy)
+            const Positioned.fill(
+              child: AbsorbPointer(child: ColoredBox(color: Color(0x80000000), child: Center(child: CircularProgressIndicator()))),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneHistoryCard(int i) {
+    final info = _info(_addresses[i]);
+    final selected = i == _selected;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      height: 58,
+      decoration: BoxDecoration(color: selected ? PcColors.green : Colors.white, border: Border.all(color: PcColors.line2), borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => setState(() => _selected = i),
+        child: Row(
+          children: [
+            const SizedBox(width: 13),
+            const Icon(Icons.business, size: 20, color: PcColors.orangeSoft),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(info.facility, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: PcColors.text)),
+                  const SizedBox(height: 2),
+                  Text(info.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: PcColors.sub)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _adjustAddress(i),
+              child: Container(
+                width: 54,
+                height: 30,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white, border: Border.all(color: PcColors.red), borderRadius: BorderRadius.circular(15)),
+                child: const Text('調整', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PcColors.red)),
+              ),
+            ),
+            const SizedBox(width: 13),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone(context);
     return Dialog(
       backgroundColor: AppColors.popupBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),

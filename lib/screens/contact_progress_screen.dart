@@ -53,7 +53,7 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
     setState(() {
       _displayNames = names;
       // 明日分のみ（事前連絡は前日に行う）。電話、またはSMSが未送信・返信待ち・承認以外の返信あり
-      _orders = OrderService.preContactTargets(list, DateTime.now()).where(OrderService.isPreContactPending).toList();
+      _orders = OrderService.preContactTargets(list, DateTime.now()).toList();
       _isLoading = false;
     });
   }
@@ -79,9 +79,10 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
 
   Widget _buildCard(OrderModel o) {
     final isPhone = o.preConfirmationMethod == '電話';
-    final phone = isPhone && o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
+    final phone = o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
     final reaction = !isPhone && o.smsReply.isNotEmpty && o.smsReply != '承認';
-    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? '返信待ち' : 'SMS未送信');
+    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? (o.smsReply == '承認' ? '連絡済み' : '返信待ち') : 'SMS未送信');
+    final done = !isPhone && o.smsSent && o.smsReply == '承認';
     final fg = reaction ? AppColors.whiteText : null;
     return Card(
       color: reaction ? AppColors.cancelButton : null,
@@ -106,7 +107,7 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
               )
             else
               Text(phone, style: TextStyle(fontSize: _rf(context, 13), color: fg)),
-            Text(status, style: TextStyle(fontSize: _rf(context, 12), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : Colors.red)),
+            Text(status, style: TextStyle(fontSize: _rf(context, 12), fontWeight: FontWeight.bold, color: reaction ? AppColors.whiteText : done ? AppColors.dialogLine : Colors.red)),
           ],
         ),
       ),

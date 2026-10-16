@@ -10,6 +10,8 @@ import '../../widgets/k_responsive.dart';
 import '../../widgets/k_multimodal_text_field.dart';
 import '../../widgets/k_numeric_input_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'phone/phone_common.dart';
+import 'phone/phone_menu_master.dart';
 
 class MenuMasterScreen extends StatefulWidget {
   const MenuMasterScreen({super.key, this.onOpenMenu, this.onNavigate});
@@ -82,6 +84,29 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => fallback,
     );
+  }
+
+  Future<void> _phoneEdit([MenuModel? menu]) async {
+    final saved = await showPhoneMenuEditSheet(
+      context,
+      menu: menu,
+      categories: _categoryPresets.where((c) => c != 'すべて').toList(),
+      ingredients: _ingredients,
+      menuService: _menuService,
+    );
+    if (saved == true && mounted) {
+      _loadMenus();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを保存しました')));
+    }
+  }
+
+  Future<void> _phoneDelete(MenuModel menu) async {
+    final ok = await showPhoneMenuDeleteDialog(context, menu.name);
+    if (ok != true) return;
+    await _menuService.deleteMenu(menu.id);
+    if (!mounted) return;
+    _loadMenus();
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('メニューを削除しました')));
   }
 
   void _showEditMenuDialog([MenuModel? menu]) {
@@ -304,6 +329,26 @@ class _MenuMasterScreenState extends State<MenuMasterScreen> {
     final filteredMenus = _selectedCategory == 'すべて'
         ? _menus
         : _menus.where((m) => m.category == _selectedCategory).toList();
+
+    if (isPhoneWidth(context)) {
+      return Scaffold(
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _menus.isEmpty
+                ? _buildEmptyState()
+                : PhoneMenuMasterBody(
+                    menus: _menus,
+                    categories: _categoryPresets,
+                    selectedCategory: _selectedCategory,
+                    selectedMenu: _selectedMenu,
+                    onCategory: (c) => setState(() => _selectedCategory = c),
+                    onSelect: (m) => setState(() => _selectedMenu = m),
+                    onEdit: _phoneEdit,
+                    onDelete: _phoneDelete,
+                    onAdd: () => _phoneEdit(),
+                  ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

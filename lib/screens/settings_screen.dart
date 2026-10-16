@@ -19,6 +19,7 @@ import '../widgets/k_location_adjustment_dialog.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import '../services/pre_contact_settings_service.dart';
 import 'phone/phone_common.dart';
+import 'phone/phone_shell.dart';
 
 /// アプリ全体の設定を一括管理する画面
 class SettingsScreen extends StatelessWidget {
@@ -29,6 +30,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return const _PhoneSettingsBody();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -115,12 +117,6 @@ class SettingsScreen extends StatelessWidget {
               ),
               SizedBox(height: rs(context, 16)),
               const _BranchSettingsSection(),
-              if (isPhoneWidth(context)) ...[
-                SizedBox(height: rs(context, 32)),
-                const Divider(),
-                SizedBox(height: rs(context, 16)),
-                const _PhonePreContactSection(),
-              ],
             ],
           ),
         ),
@@ -128,6 +124,123 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
+
+/// スマホ用の設定画面(Figma 08/09/63/33/41)
+class _PhoneSettingsBody extends StatelessWidget {
+  const _PhoneSettingsBody();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: PhoneColors.bg,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(14, 15, 14, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _phoneSectionTitle(Icons.edit_note_rounded, '文字入力方式'),
+            _phoneCard(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('アプリ内すべての文字入力欄に、選択した入力方式が一括で反映されます。', style: _phoneDescStyle),
+                    const SizedBox(height: 14),
+                    ValueListenableBuilder<KInputMode>(
+                      valueListenable: SettingsService.inputMode,
+                      builder: (context, mode, _) => PhoneSegmented<KInputMode>(
+                        items: const [(KInputMode.pen, 'ペンタブ'), (KInputMode.keyboard, 'キーボード')],
+                        value: mode,
+                        onChanged: SettingsService.setInputMode,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+            _phoneSectionTitle(Icons.mail_outline_rounded, '事前確認・事前連絡'),
+            _phoneCard(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(15, 13, 15, 8),
+                    child: Text(
+                      '事前確認メールを配達前日に自動送信する時刻と、事前電話連絡の担当者番号を設定します。担当者番号には、電話連絡のし忘れ防止リマインドSMSが送信されます。',
+                      style: _phoneDescStyle,
+                    ),
+                  ),
+                  _PreConfirmSettingsSection(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 15),
+            _phoneSectionTitle(Icons.storefront_rounded, '店舗登録'),
+            const _BranchSettingsSection(),
+            const SizedBox(height: 15),
+            const _PhonePreContactSection(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+const TextStyle _phoneDescStyle = TextStyle(fontSize: 11.5, color: PhoneColors.sub, height: 1.35);
+
+Widget _phoneSectionTitle(IconData icon, String text) => Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: PhoneColors.purple),
+          const SizedBox(width: 5),
+          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneColors.sub)),
+        ],
+      ),
+    );
+
+Widget _phoneCard(Widget child) => Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: PhoneColors.cardBorder),
+      ),
+      child: child,
+    );
+
+/// 角丸の入力枠(薄グレー背景)
+Widget _phoneBox({required Widget child, VoidCallback? onTap}) => InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        height: 44,
+        width: double.infinity,
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        decoration: BoxDecoration(
+          color: PhoneColors.fieldBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: PhoneColors.border),
+        ),
+        child: child,
+      ),
+    );
+
+Widget _phoneLabeled(String label, Widget field) => Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: PhoneColors.sub)),
+          const SizedBox(height: 6),
+          field,
+        ],
+      ),
+    );
 
 /// 事前確認メールの送信時刻・事前連絡（電話）用の電話番号設定
 class _PreConfirmSettingsSection extends StatefulWidget {
@@ -181,6 +294,12 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
 
   void _editSendingTime() {
     final digits = _sendingTime.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0');
+    if (isPhoneWidth(context)) {
+      showPhoneTimePadSheet(context, title: '送信時刻（前日 HH:MM）', initial: digits).then((v) {
+        if (v != null) _update(sendingTime: '${v.substring(0, 2)}:${v.substring(2, 4)}');
+      });
+      return;
+    }
     showDialog(
       context: context,
       builder: (_) => KNumericInputDialog(
@@ -217,6 +336,34 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
   }
 
   Widget _row({required IconData icon, required String label, required String value, required VoidCallback onTap}) {
+    if (isPhoneWidth(context)) {
+      final empty = value.isEmpty;
+      return InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 49,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: PhoneColors.sub),
+              const SizedBox(width: 10),
+              Text(label, style: const TextStyle(fontSize: 11.5, color: PhoneColors.sub)),
+              const Spacer(),
+              Text(
+                empty ? '未設定' : value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: empty ? FontWeight.normal : FontWeight.bold,
+                  color: empty ? PhoneColors.sub : PhoneColors.text,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Icon(Icons.edit_rounded, size: 18, color: PhoneColors.purple),
+            ],
+          ),
+        ),
+      );
+    }
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(rs(context, 8)),
@@ -258,6 +405,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
         child: Center(child: CircularProgressIndicator()),
       );
     }
+    final phone = isPhoneWidth(context);
     return Column(
       children: [
         _row(
@@ -266,7 +414,7 @@ class _PreConfirmSettingsSectionState extends State<_PreConfirmSettingsSection> 
           value: _sendingTime.isEmpty ? '' : '前日 $_sendingTime',
           onTap: _editSendingTime,
         ),
-        SizedBox(height: rs(context, 8)),
+        SizedBox(height: phone ? 0 : rs(context, 8)),
         _row(
           icon: Icons.phone_forwarded,
           label: '担当者番号',
@@ -388,7 +536,14 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
       row.dispose();
       return;
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = isPhoneWidth(context)
+        ? await showPhoneConfirmDialog(
+            context,
+            icon: Icons.storefront_rounded,
+            title: '店舗を削除しますか？',
+            message: '「${row.branch.name}」を削除します。この操作は取り消せません。',
+          )
+        : await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.popupBackground,
@@ -506,11 +661,21 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           ],
         ),
         SizedBox(height: rs(context, 8)),
-        TextButton.icon(
-          onPressed: _addNewRow,
-          icon: const Icon(Icons.add),
-          label: const Text('店舗を追加'),
-        ),
+        if (isPhoneWidth(context))
+          Center(
+            child: TextButton.icon(
+              onPressed: _addNewRow,
+              style: TextButton.styleFrom(foregroundColor: PhoneColors.orange),
+              icon: const Icon(Icons.add_rounded, size: 20),
+              label: const Text('店舗を追加', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          )
+        else
+          TextButton.icon(
+            onPressed: _addNewRow,
+            icon: const Icon(Icons.add),
+            label: const Text('店舗を追加'),
+          ),
       ],
     );
   }
@@ -528,6 +693,15 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
   }
 
   Widget _buildBranchRow(_BranchRowData row, int index) {
+    if (isPhoneWidth(context)) {
+      return ReorderableDelayedDragStartListener(
+        index: index,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          child: _phoneCard(row.editing ? _phoneEditView(row) : _phoneDisplayView(row)),
+        ),
+      );
+    }
     return Container(
       margin: EdgeInsets.only(bottom: rs(context, 12)),
       padding: EdgeInsets.all(rs(context, 12)),
@@ -537,6 +711,250 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: row.editing ? _buildEditView(row) : _buildDisplayView(row, index),
+    );
+  }
+
+  /// スマホ用：店舗の写真(高さ110)。[showDelete]のとき右下に削除チップ
+  Widget _phoneImage(_BranchRowData row, {required bool showDelete}) {
+    final placeholder = const Center(child: Icon(Icons.storefront_rounded, size: 36, color: Color(0xFFB5BAC0)));
+    return SizedBox(
+      height: 110,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            color: const Color(0xFFEEF0F2),
+            child: row.branch.imageUrl.isEmpty
+                ? placeholder
+                : Image.network(
+                    row.branch.imageUrl,
+                    webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => placeholder,
+                  ),
+          ),
+          if (showDelete)
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => _delete(row),
+                child: Container(
+                  height: 20,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(6)),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline_rounded, size: 12, color: Color(0xFFD32F2F)),
+                      SizedBox(width: 1),
+                      Text('削除', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFD32F2F))),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _phoneDisplayView(_BranchRowData row) {
+    const sub = TextStyle(fontSize: 11.5, color: PhoneColors.sub);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _phoneImage(row, showDelete: true),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(row.branch.name.isEmpty ? '（店舗名未設定）' : row.branch.name,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PhoneColors.text)),
+                    const SizedBox(height: 3),
+                    Text(row.branch.companyName.isEmpty ? '社名未設定' : row.branch.companyName, style: sub),
+                    const SizedBox(height: 2),
+                    Text(row.branch.address.isEmpty ? '住所未設定' : row.branch.address, style: sub),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.call_rounded, size: 12, color: PhoneColors.sub),
+                        const SizedBox(width: 2),
+                        Flexible(child: Text(row.branch.phone.isEmpty ? '電話番号未設定' : row.branch.phone, style: sub)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, size: 20, color: PhoneColors.hint),
+                onSelected: (v) {
+                  if (v == 'edit') {
+                    setState(() => row.editing = true);
+                  } else if (v == 'delete') {
+                    _delete(row);
+                  }
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'edit', child: Text('編集')),
+                  PopupMenuItem(value: 'delete', child: Text('削除', style: TextStyle(color: Colors.red))),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _phoneCancelEdit(_BranchRowData row) {
+    if (row.branch.id.isEmpty) {
+      setState(() => _rows.remove(row));
+      row.dispose();
+      return;
+    }
+    row.nameController.text = row.branch.name;
+    row.companyController.text = row.branch.companyName;
+    row.addressController.text = row.branch.address;
+    row.phoneController.text = row.branch.phone;
+    row.vehicleController.text = row.branch.deliveryVehicleCount.toString();
+    setState(() => row.editing = false);
+  }
+
+  Widget _phoneEditView(_BranchRowData row) {
+    const valueStyle = TextStyle(fontSize: 14, color: PhoneColors.text);
+    const hintStyle = TextStyle(fontSize: 14, color: PhoneColors.hint);
+    Widget text(String v, String hint) => Text(v.isEmpty ? hint : v,
+        maxLines: 1, overflow: TextOverflow.ellipsis, style: v.isEmpty ? hintStyle : valueStyle);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _phoneImage(row, showDelete: false),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _phoneLabeled('店舗名', _penField(row, row.nameController)),
+              _phoneLabeled('社名', _penField(row, row.companyController)),
+              _phoneLabeled(
+                '住所',
+                _phoneBox(
+                  onTap: () => showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => KDirectAddressPickerDialog(
+                      initialPref: '',
+                      initialCity: '',
+                      initialTown: '',
+                      onAddressConfirmed: (fullAddr) {
+                        setState(() => row.addressController.text = fullAddr);
+                        _autoSave(row);
+                      },
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(child: text(row.addressController.text, '住所を検索')),
+                      InkWell(
+                        onTap: () => _adjustCoordinates(row),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.edit_location_alt_rounded, size: 18, color: PhoneColors.sub),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _phoneLabeled(
+                '電話番号',
+                _phoneBox(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => KNumericInputDialog(
+                      title: '電話番号の入力',
+                      initialValue: row.phoneController.text,
+                      emptyHint: '番号を入力してください',
+                      onConfirmed: (v) {
+                        setState(() => row.phoneController.text = v);
+                        _autoSave(row);
+                      },
+                    ),
+                  ),
+                  child: text(row.phoneController.text, '番号を入力'),
+                ),
+              ),
+              _phoneLabeled(
+                '配送車両数',
+                _phoneBox(
+                  onTap: () => showDialog(
+                    context: context,
+                    builder: (_) => KNumericInputDialog(
+                      title: '配送車両数の入力',
+                      emptyHint: '台数を入力してください',
+                      unit: '台',
+                      maxLength: 3,
+                      onConfirmed: (v) {
+                        final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                        setState(() => row.vehicleController.text = digits);
+                        _autoSave(row);
+                      },
+                    ),
+                  ),
+                  child: text(row.vehicleController.text, '台数を入力'),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: OutlinedButton(
+                        onPressed: () => _phoneCancelEdit(row),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: PhoneColors.text,
+                          side: const BorderSide(color: PhoneColors.border),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('キャンセル', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _autoSave(row);
+                          if (!mounted) return;
+                          setState(() => row.editing = false);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: PhoneColors.purple,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('完了', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -893,70 +1311,80 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
     }
   }
 
-  Widget _title(IconData icon, String text) => Row(
-        children: [
-          Icon(icon, color: AppColors.accentPurple.withValues(alpha: 0.7)),
-          const SizedBox(width: 8),
-          Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ],
-      );
-
   Widget _field(TextEditingController c, String hint) => TextField(
         controller: c,
         minLines: 4,
         maxLines: 8,
-        decoration: InputDecoration(hintText: hint, border: const OutlineInputBorder()),
+        style: const TextStyle(fontSize: 14, color: PhoneColors.text),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(fontSize: 14, color: PhoneColors.hint),
+          filled: true,
+          fillColor: PhoneColors.fieldBg,
+          contentPadding: const EdgeInsets.all(13),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: PhoneColors.border)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: PhoneColors.purple)),
+        ),
       );
 
   @override
   Widget build(BuildContext context) {
-    final noteStyle = TextStyle(fontSize: 12, color: Colors.grey.shade600);
+    const labelStyle = TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: PhoneColors.sub);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _title(Icons.phone_in_talk_outlined, '事前連絡方法の設定'),
-        const SizedBox(height: 4),
-        Text('事前連絡で最初に使う連絡方法を選びます。', style: noteStyle),
-        const SizedBox(height: 12),
-        KChoiceGroup<String>(
-          label: '',
-          showLabel: false,
-          selectedValue: _method,
-          selectedColor: AppColors.selectButton,
-          selectedTextColor: AppColors.primaryText,
-          onSelected: (v) => setState(() => _method = v),
-          items: [
-            KChoiceItem(label: '電話', value: '電話'),
-            KChoiceItem(label: 'SMS', value: 'SMS'),
-            KChoiceItem(label: 'メール', value: 'メール'),
-          ],
-        ),
-        const SizedBox(height: 32),
-        const Divider(),
-        const SizedBox(height: 16),
-        _title(Icons.sms_outlined, 'メール/SMSのテンプレート文章の作成'),
-        const SizedBox(height: 4),
-        Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}', style: noteStyle),
-        const SizedBox(height: 12),
-        const Text('SMS用', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        _field(_smsCtrl, '例：{お客様名} 様 {配達日} {配達時間} のお届けで間違いございませんか。'),
-        const SizedBox(height: 16),
-        const Text('メール用', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 6),
-        _field(_mailCtrl, '例：{お客様名} 様 ご注文の事前確認です。'),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.selectButton,
-              foregroundColor: AppColors.primaryText,
-              elevation: 0,
-              side: BorderSide.none,
+        _phoneSectionTitle(Icons.phone_in_talk_outlined, '事前連絡方法の設定'),
+        _phoneCard(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 13, 15, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('事前連絡で最初に使う連絡方法を選びます。', style: _phoneDescStyle),
+                const SizedBox(height: 14),
+                PhoneSegmented<String>(
+                  items: const [('電話', '電話'), ('SMS', 'SMS'), ('メール', 'メール')],
+                  value: _method,
+                  onChanged: (v) => setState(() => _method = v),
+                ),
+              ],
             ),
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? '保存中...' : '保存'),
+          ),
+        ),
+        const SizedBox(height: 15),
+        _phoneSectionTitle(Icons.sms_outlined, 'メール/SMSのテンプレート文章の作成'),
+        _phoneCard(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}', style: _phoneDescStyle),
+                const SizedBox(height: 14),
+                const Text('SMS用', style: labelStyle),
+                const SizedBox(height: 6),
+                _field(_smsCtrl, '例：{お客様名} 様 {配達日} {配達時間} のお届けで間違いございませんか。'),
+                const SizedBox(height: 14),
+                const Text('メール用', style: labelStyle),
+                const SizedBox(height: 6),
+                _field(_mailCtrl, '例：{お客様名} 様 ご注文の事前確認です。'),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: PhoneColors.purple,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _saving ? null : _save,
+                    child: Text(_saving ? '保存中...' : '保存', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

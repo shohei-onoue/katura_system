@@ -6,6 +6,8 @@ import 'k_choice_group.dart';
 import 'k_dialog_title.dart';
 import 'k_multimodal_text_field.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import '../screens/phone/phone_common.dart';
+import '../screens/phone/phone_shell.dart';
 
 /// 注文内容ステップの「次へ」で開く、ゴミ回収の要否・日時・場所を決めるダイヤログ。
 ///
@@ -93,8 +95,103 @@ class _KTrashPickupDialogState extends State<KTrashPickupDialog> {
     });
   }
 
+  /// スマホ用(Figma 43/44)：画面下から出るシート
+  Widget _buildPhone(BuildContext context) {
+    const labelStyle = TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: PhoneColors.sub);
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: EdgeInsets.zero,
+      alignment: Alignment.bottomCenter,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            PhoneSheetHeader(title: 'ゴミ回収の設定', onClose: () => Navigator.pop(context)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 4, 18, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!_detailStage)
+                    PhoneSegmented<bool>(
+                      items: const [(false, 'なし'), (true, 'あり')],
+                      value: _requested,
+                      selectedBg: PhoneColors.green,
+                      selectedFg: PhoneColors.greenText,
+                      onChanged: (v) => setState(() => _requested = v),
+                    ),
+                  if (_detailStage) ...[
+                    const Text('回収日時', style: labelStyle),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: _showDateTimeDialog,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 13),
+                        decoration: BoxDecoration(
+                          color: PhoneColors.fieldBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: PhoneColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_rounded, size: 18, color: PhoneColors.red),
+                            const SizedBox(width: 6),
+                            Text(
+                              _dateTime != null ? DateFormat('yyyy年M月d日 HH:mm', 'ja_JP').format(_dateTime!) : '未設定',
+                              style: TextStyle(fontSize: 14, color: _dateTime != null ? PhoneColors.text : PhoneColors.hint),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.expand_more_rounded, size: 18, color: PhoneColors.sub),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 11),
+                    const Text('回収場所', style: labelStyle),
+                    const SizedBox(height: 6),
+                    PhoneSegmented<String>(
+                      items: const [('引渡し場所', '引渡し場所'), ('指定場所', '指定場所')],
+                      value: _location,
+                      selectedBg: PhoneColors.green,
+                      selectedFg: PhoneColors.greenText,
+                      onChanged: (v) => setState(() => _location = v),
+                    ),
+                    if (_location == '指定場所') ...[
+                      const SizedBox(height: 10),
+                      KMultimodalTextField(
+                        label: '詳細',
+                        showLabel: false,
+                        controller: _detailController,
+                        height: 44,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+            PhoneSheetFooter(children: [
+              PhoneSheetButton(label: 'キャンセル', color: PhoneColors.red, onPressed: () => Navigator.pop(context)),
+              PhoneSheetButton(
+                label: _detailStage ? '確定' : '次へ',
+                color: PhoneColors.purple,
+                onPressed: _detailStage ? _submit : _onNext,
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneWidth(context)) return _buildPhone(context);
     final double screenWidth = MediaQuery.of(context).size.width;
     final double dialogWidth = rs(context, 560).clamp(0.0, screenWidth * 0.92).toDouble();
 

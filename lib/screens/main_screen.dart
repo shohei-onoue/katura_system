@@ -19,7 +19,7 @@ import '../services/email_auth_service.dart';
 import 'login/login_screen.dart';
 import 'phone/phone_common.dart';
 import '../services/pre_contact_settings_service.dart';
-import 'phone/phone_greeting_screen.dart';
+import 'phone/phone_shell.dart';
 import '../services/order_service.dart';
 
 /// 経営効率化を極めたメイン司令塔画面
@@ -47,17 +47,9 @@ class _MainScreenState extends State<MainScreen> {
   // 常駐キャッシュ対象の画面インデックス（受注入力=0とデータ分析=5は対象外）
   static const List<int> _cachedIndices = [1, 2, 3, 6, 7, 10, 8, 9, 11];
 
+  String? _staffId; // ログインID
   String? _staffName; // ログイン者名（スマホ挨拶用）
-  bool _staffNameLoaded = false;
-  String? _contactSummary; // スマホ挨拶の下に出す「N件中n件連絡済み」
   int _pendingCount = 0; // 上部バーの事前連絡バッジ（未連絡件数）
-
-  String _greeting() {
-    final h = DateTime.now().hour;
-    if (h >= 5 && h <= 10) return 'おはよう';
-    if (h >= 11 && h <= 17) return 'こんにちは';
-    return 'こんばんは';
-  }
 
   Future<void> _loadContactSummary() async {
     try {
@@ -68,11 +60,9 @@ class _MainScreenState extends State<MainScreen> {
         if (mounted) setState(() => _pendingCount = 0);
         return;
       }
-      final done = targets.length - pending;
       if (mounted) {
         setState(() {
           _pendingCount = pending;
-          _contactSummary = '${targets.length}件中$done件連絡済み';
         });
       }
     } catch (_) {}
@@ -82,9 +72,8 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     AuthService().restoreSession().then((staff) {
-      if (mounted) setState(() { _staffName = staff?.name; _staffNameLoaded = true; });
+      if (mounted) setState(() { _staffId = staff?.id; _staffName = staff?.name; });
     }).catchError((_) {
-      if (mounted) setState(() => _staffNameLoaded = true);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && isPhoneWidth(context)) {
@@ -147,8 +136,6 @@ class _MainScreenState extends State<MainScreen> {
     0: '受注入力', 1: '受注一覧', 2: '調理・仕入れ計画', 3: '配達予定', 4: '配送ルート', 5: 'データ分析', 6: '顧客管理',
     7: 'メニューマスタ', 8: 'スタッフ管理', 9: '設定', 10: '材料マスタ', 11: '事前連絡進捗',
   };
-  // スマホ下部バー：画面インデックス（受注一覧・配達予定・設定）
-  static const List<int> _bottomIndices = [1, 3, 9];
 
   Future<void> _logout() async {
     await AuthService().logout();
@@ -158,15 +145,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   PreferredSizeWidget _buildPhoneAppBar() {
-    return AppBar(
-      backgroundColor: AppColors.acceptButton,
-      foregroundColor: Colors.white,
-      iconTheme: const IconThemeData(color: Colors.white),
-      actionsIconTheme: const IconThemeData(color: Colors.white),
-      automaticallyImplyLeading: false,
-      leading: IconButton(icon: const Icon(Icons.logout), tooltip: 'ログアウト', onPressed: _logout),
-      centerTitle: true,
-      title: Text(_titles[_selectedIndex] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+    return buildPhoneTopBar(
+      title: _titles[_selectedIndex] ?? '',
+      onMenu: () => _scaffoldKey.currentState?.openDrawer(),
       actions: [
         IconButton(
           icon: Badge(
@@ -174,7 +155,7 @@ class _MainScreenState extends State<MainScreen> {
             label: Text('$_pendingCount'),
             backgroundColor: Colors.red,
             textColor: Colors.white,
-            child: const Icon(Icons.notifications_active),
+            child: const Icon(Icons.notifications_active_rounded, size: 20, color: Colors.white),
           ),
           tooltip: '事前連絡',
           onPressed: _showContactDialog,
@@ -218,29 +199,10 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildPhoneBottomBar() {
-    final pos = _bottomIndices.indexOf(_selectedIndex);
-    return NavigationBarTheme(
-      data: NavigationBarThemeData(
-        backgroundColor: AppColors.acceptButton,
-        indicatorColor: Colors.transparent,
-        iconTheme: WidgetStateProperty.resolveWith((st) =>
-            IconThemeData(color: pos >= 0 && st.contains(WidgetState.selected) ? Colors.orange : Colors.white)),
-        labelTextStyle: WidgetStateProperty.resolveWith((st) =>
-            TextStyle(fontSize: 12, color: pos >= 0 && st.contains(WidgetState.selected) ? Colors.orange : Colors.white)),
-      ),
-      child: NavigationBar(
-        // バーに無い画面のときは選択なし扱い（全項目を白で表示）
-        selectedIndex: pos >= 0 ? pos : 0,
-        onDestinationSelected: (i) => _goTo(_bottomIndices[i]),
-        destinations: [
-          for (final d in const [
-            (Icons.list_alt, '受注一覧'),
-            (Icons.local_shipping, '配達予定'),
-            (Icons.settings, '設定'),
-          ])
-            NavigationDestination(icon: Icon(d.$1), label: d.$2),
-        ],
-      ),
+    return PhoneBottomBar(
+      selectedIndex: _selectedIndex,
+      onNavigate: _goTo,
+      onMenu: () => _scaffoldKey.currentState?.openDrawer(),
     );
   }
 
@@ -312,15 +274,7 @@ class _MainScreenState extends State<MainScreen> {
             children: _cachedIndices.map(_buildCachedScreen).toList(),
           ),
         ),
-        if (_selectedIndex == 0 && isPhoneWidth(context) && _currentEditingOrder == null)
-          (_staffNameLoaded
-              ? PhoneGreetingScreen(
-                  key: ValueKey('greeting_${_staffName ?? ""}'),
-                  text: (_staffName == null || _staffName!.isEmpty) ? _greeting() : '${_greeting()}、$_staffNameさん',
-                  subText: _contactSummary,
-                )
-              : Container(color: Colors.white))
-        else if (_selectedIndex == 0)
+        if (_selectedIndex == 0)
           _buildOrderFormScreen()
         else if (_selectedIndex == 5) // データ分析
           AnalysisScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo)
@@ -341,7 +295,20 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: AppColors.mainBackground,
       appBar: isPhone ? _buildPhoneAppBar() : null,
       bottomNavigationBar: isPhone ? _buildPhoneBottomBar() : null,
-      drawer: isMobile ? Drawer(
+      drawerScrimColor: isPhone ? PhoneColors.scrim : null,
+      drawer: isPhone
+          ? PhoneDrawer(
+              selectedIndex: _selectedIndex,
+              staffName: _staffName ?? '',
+              loginId: _staffId ?? '',
+              onClose: () => Navigator.pop(context),
+              onLogout: _logout,
+              onSelect: (index) async {
+                Navigator.pop(context); // 先にDrawerを閉じる（確認ダイヤログはその上に出す）
+                await _goTo(index);
+              },
+            )
+          : isMobile ? Drawer(
         child: KSidebar(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (index) async {
