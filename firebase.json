@@ -74,6 +74,13 @@
     ],
     "rewrites": [
       {
+        "source": "/r",
+        "function": {
+          "functionId": "smsReply",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqlite3/common.dart';
@@ -139,6 +140,25 @@ class OrderService {
       map['status'] = status;
       _localDb!.execute('UPDATE orders SET data = ? WHERE id = ?', [jsonEncode(map), orderId]);
     }
+  }
+
+  /// 確認ページ用の合言葉（replyToken）を用意する。既にあればそれを返し、無ければ作って保存する。
+  static Future<String> ensureReplyToken(OrderModel o) async {
+    if (o.replyToken.isNotEmpty) return o.replyToken;
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final r = Random.secure();
+    final token = List.generate(20, (_) => chars[r.nextInt(chars.length)]).join();
+    final s = OrderService();
+    await s._orderCollection.doc(o.id).update({'replyToken': token});
+    s._cache = null;
+    await s._initLocalDb();
+    final res = s._localDb!.select('SELECT data FROM orders WHERE id = ?', [o.id]);
+    if (res.isNotEmpty) {
+      final map = jsonDecode(res.first['data'] as String) as Map<String, dynamic>;
+      map['replyToken'] = token;
+      s._localDb!.execute('UPDATE orders SET data = ? WHERE id = ?', [jsonEncode(map), o.id]);
+    }
+    return token;
   }
 
   /// SMSを送信済みにする（スマホから手動でSMSを送ったとき用）。

@@ -81,7 +81,7 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
     final isPhone = o.preConfirmationMethod == '電話';
     final phone = o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
     final reaction = !isPhone && o.smsReply.isNotEmpty && o.smsReply != '承認';
-    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? (o.smsReply == '承認' ? '連絡済み' : '返信待ち') : 'SMS未送信');
+    final status = isPhone ? '電話連絡待ち' : reaction ? 'お客様の返信：${o.smsReply}' : (o.smsSent ? (o.smsReply == '承認' ? '確認済み' : '返信待ち') : 'SMS未送信');
     final done = !isPhone && o.smsSent && o.smsReply == '承認';
     final fg = reaction ? AppColors.whiteText : null;
     return Card(
@@ -101,7 +101,9 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
               InkWell(
                 onTap: () async {
                   if (isPhone) { callPhone(phone); return; }
-                  await sendSms(phone, preContactSmsBody(o, withHonorific(_displayNames[o.id] ?? o.customerName)));
+                  final token = await OrderService.ensureReplyToken(o);
+                  if (!mounted) return;
+                  await sendSms(phone, preContactSmsBody(o, withHonorific(_displayNames[o.id] ?? o.customerName), link: replyUrl(o, token)));
                   if (!o.smsSent) { await _orderService.markSmsSent(o.id); _load(refresh: false); }
                 },
                 child: Padding(

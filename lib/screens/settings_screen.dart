@@ -1405,7 +1405,7 @@ class _PhonePreContactSectionState extends State<_PhonePreContactSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}  {お弁当}  {お会計}  {お支払い方法}', style: _phoneDescStyle),
+                const Text('次の差し込みキーを文中に入れると、お客様ごとに自動で置き換わります。\n{お客様名}  {配達日}  {配達時間}  {お弁当}  {お会計}  {お支払い方法}  {確認リンク}', style: _phoneDescStyle),
                 const SizedBox(height: 14),
                 const Text('SMS用', style: labelStyle),
                 const SizedBox(height: 6),

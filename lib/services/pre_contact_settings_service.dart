@@ -73,7 +73,7 @@ class PreContactSettingsService {
     ));
   }
 
-  /// {お客様名} {配達日} {配達時間} {お弁当} {お会計} {お支払い方法} を置換する。
+  /// {お客様名} {配達日} {配達時間} {お弁当} {お会計} {お支払い方法} {確認リンク} を置換する。
   static String applyTemplate(
     String template, {
     required String name,
@@ -82,6 +82,7 @@ class PreContactSettingsService {
     String items = '',
     String total = '',
     String payment = '',
+    String link = '',
   }) {
     return template
         .replaceAll('{お客様名}', name)
@@ -89,6 +90,7 @@ class PreContactSettingsService {
         .replaceAll('{配達時間}', time)
         .replaceAll('{お弁当}', items)
         .replaceAll('{お会計}', total)
-        .replaceAll('{お支払い方法}', payment);
+        .replaceAll('{お支払い方法}', payment)
+        .replaceAll('{確認リンク}', link);
   }
 }

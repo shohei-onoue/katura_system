@@ -44,6 +44,7 @@ class OrderModel {
   final DateTime? scheduledSmsDateTime; // 送信予定日時
   final bool smsSent; // 送信済みフラグ
   final String smsReply; // お客様のSMS返信（空=未返信, 承認, キャンセル, その他）
+  final String replyToken; // 確認ページ用の合言葉（SMSリンクに使う）
 
   final String status;
   final String branchName; // 店舗名
@@ -89,6 +90,7 @@ class OrderModel {
     this.scheduledSmsDateTime,
     this.smsSent = false,
     this.smsReply = '',
+    this.replyToken = '',
     this.status = '受注済み',
     this.branchName = '岡崎本店',
     this.remarks = '',
@@ -144,6 +146,7 @@ class OrderModel {
       'scheduledSmsDateTime': scheduledSmsDateTime?.toUtc().toIso8601String(),
       'smsSent': smsSent,
       'smsReply': smsReply,
+      'replyToken': replyToken,
       'status': status,
       'branchName': branchName,
       'remarks': remarks,
@@ -222,6 +225,7 @@ class OrderModel {
           : null,
       smsSent: map['smsSent'] ?? false,
       smsReply: map['smsReply'] ?? '',
+      replyToken: map['replyToken'] ?? '',
       status: map['status'] ?? '受注済み',
       branchName: map['branchName'] ?? '岡崎本店',
       remarks: map['remarks'] ?? '',

@@ -4,6 +4,12 @@ const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const { getFirestore } = require("firebase-admin/firestore");
 const axios = require("axios");
+const crypto = require("crypto");
+
+// 店舗ごとの電話番号（SMS本文と確認ページで共用）
+const BRANCH_PHONES = { '岡崎本店': '0564-23-8861', '名古屋店': '050-1748-2670', '岐阜店': '050-1748-2670' };
+const DEFAULT_PHONE = '0564-23-8861';
+const REPLY_BASE_URL = "https://katura-system-app.web.app/r";
 
 if (admin.apps.length === 0) { admin.initializeApp(); }
 setGlobalOptions({ region: "us-central1" });
@@ -59,7 +65,12 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
       if (!cleanPhone) continue;
 
       const internationalPhone = cleanPhone.startsWith("0") ? "81" + cleanPhone.substring(1) : cleanPhone;
-      const message = buildSmsMessage(order);
+      let token = order.replyToken;
+      if (!token) {
+        token = crypto.randomBytes(15).toString("base64url");
+        await doc.ref.update({ replyToken: token });
+      }
+      const message = buildSmsMessage(order, doc.id, token);
 
       try {
         const response = await axios.post("https://rest.nexmo.com/sms/json", {
@@ -84,7 +95,7 @@ exports.orderAutoSms = onSchedule("every 1 minutes", async (event) => {
   }
 });
 
-function buildSmsMessage(order) {
+function buildSmsMessage(order, orderId, token) {
   const deliveryDate = new Date(order.deliveryDate);
   const dateStr = `${deliveryDate.getMonth() + 1}月${deliveryDate.getDate()}日`;
   const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -102,10 +113,10 @@ function buildSmsMessage(order) {
     trashInfo = `${jstHours}:${trashDate.getUTCMinutes().toString().padStart(2, '0')}`;
   }
   const isPickup = order.deliveryType === '引取' || order.deliveryType === '店頭引取';
-  const branchPhones = { '岡崎本店': '0564-23-8861', '名古屋店': '050-1748-2670', '岐阜店': '050-1748-2670' };
-  const storePhone = branchPhones[order.branchName] || "0564-23-8861";
+  const storePhone = BRANCH_PHONES[order.branchName] || DEFAULT_PHONE;
+  const confirmUrl = `${REPLY_BASE_URL}?o=${encodeURIComponent(orderId)}&t=${encodeURIComponent(token)}`;
 
-  return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${isPickup ? "お待ちしております" : "お届けいたします"}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber || order.phoneDisplay}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
+  return `「肉弁当専門店かつらです」\n${order.customerName}様\nこの度はご注文ありがとうございます。\n下記内容にて明日${dateStr}${weekDay}曜日 ${order.deliveryTime}に${isPickup ? "お待ちしております" : "お届けいたします"}。\n\n受取人：${order.receiverName || order.customerName}様\n${isPickup ? '引取店舗' : '配達先住所'}：${order.address}\n連絡先：${order.phoneNumber || order.phoneDisplay}\n\nー注文内容ー\n${itemsText}\nーお支払い金額ー\n${order.totalPrice}円（税込）\n\n容器回収日時：${trashInfo}\n回収場所：${order.trashPickupLocationDetail || '配達場所と同じ'}\n\nご確認はこちら\n${confirmUrl}\n\n内容に不備がある場合お気軽にお電話ください\n${storePhone}`;
 }
 
 
@@ -131,5 +142,86 @@ exports.mapsProxy = onRequest({ cors: true }, async (req, res) => {
     res.status(r.status).json(r.data);
   } catch (e) {
     res.status(400).json({ error: "bad request" });
+  }
+});
+
+
+/**
+ * お客様の確認ページ（了承/変更/キャンセル）。GETで画面、POSTで返信を記録する。
+ */
+const REPLY_ACTIONS = { ok: "承認", change: "変更", cancel: "キャンセル" };
+
+function esc(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function page(body) {
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>ご注文の確認</title>
+<style>body{font-family:sans-serif;margin:0;padding:24px 16px;text-align:center;color:#222}
+h1{font-size:20px}p{font-size:16px;line-height:1.6}
+button{display:block;width:100%;max-width:360px;margin:14px auto;padding:20px;font-size:20px;border:0;border-radius:12px;color:#fff;background:#2e7d32}
+button.c{background:#1565c0}button.x{background:#c62828}a{color:#1565c0;font-size:20px}</style>
+</head><body>${body}</body></html>`;
+}
+
+function errorPage(res, code) {
+  res.status(code).set("Content-Type", "text/html; charset=utf-8")
+    .send(page("<h1>ページを表示できません</h1><p>リンクをご確認のうえ、店舗へお問い合わせください。</p>"));
+}
+
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
+}
+
+exports.smsReply = onRequest(async (req, res) => {
+  try {
+    const orderId = String(req.query.o || "");
+    const token = String(req.query.t || "");
+    if (!orderId || !token || orderId.length > 128 || token.length > 128 || orderId.includes("/")) {
+      return errorPage(res, 400);
+    }
+    if (req.method !== "GET" && req.method !== "POST") return errorPage(res, 400);
+
+    const ref = getFirestore("katura-system-database").collection("orders").doc(orderId);
+    const snap = await ref.get();
+    const order = snap.exists ? snap.data() : null;
+    if (!order || !order.replyToken || !safeEqual(order.replyToken, token)) {
+      return errorPage(res, 404);
+    }
+    const phone = BRANCH_PHONES[order.branchName] || DEFAULT_PHONE;
+
+    if (req.method === "GET") {
+      const action = `?o=${encodeURIComponent(orderId)}&t=${encodeURIComponent(token)}`;
+      return res.status(200).set("Content-Type", "text/html; charset=utf-8").send(page(
+        `<h1>${esc(order.customerName)}様<br>ご注文内容のご確認</h1>
+<p>内容をご確認のうえ、下のボタンを押してください。</p>
+<form method="POST" action="${esc(action)}">
+<button type="submit" name="action" value="ok">了承</button>
+<button type="submit" name="action" value="change" class="c">変更</button>
+<button type="submit" name="action" value="cancel" class="x">キャンセル</button>
+</form>`));
+    }
+
+    const action = String((req.body && req.body.action) || "");
+    if (!Object.prototype.hasOwnProperty.call(REPLY_ACTIONS, action)) return errorPage(res, 400);
+    await ref.update({
+      smsReply: REPLY_ACTIONS[action],
+      smsRepliedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    const msg = action === "ok"
+      ? "<h1>ご確認ありがとうございました</h1>"
+      : `<h1>受け付けました</h1><p>変更・キャンセルは店舗へお電話ください。</p><p><a href="tel:${esc(phone)}">${esc(phone)}</a></p>`;
+    return res.status(200).set("Content-Type", "text/html; charset=utf-8").send(page(msg));
+  } catch (e) {
+    console.error("[smsReply Error]", e.message);
+    return errorPage(res, 400);
   }
 });

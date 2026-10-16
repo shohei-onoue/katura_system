@@ -10,14 +10,20 @@ import '../../services/pre_contact_settings_service.dart';
 bool isPhoneWidth(BuildContext context) => MediaQuery.of(context).size.width < 600;
 
 /// 事前連絡SMSの文面（設定済み文面の保存先が未確定のため、受注内容から仮生成）
-String preContactSmsBody(OrderModel o, String name) {
+/// お客様の確認ページURL
+String replyUrl(OrderModel o, String token) => 'https://katura-system-app.web.app/r?o=${o.id}&t=$token';
+
+String preContactSmsBody(OrderModel o, String name, {String link = ''}) {
   final d = o.deliveryDate;
   final t = PreContactSettingsService.cachedSmsTemplate;
   if (t.trim().isNotEmpty) {
     final items = o.items.map((e) => '${e['name'] ?? ''}（${e['quantity'] ?? 0}個）').join('\n\n');
-    return PreContactSettingsService.applyTemplate(t, name: name, date: d, time: o.deliveryTime, items: items, payment: o.paymentMethod, total: '¥${NumberFormat('#,###').format(o.totalPrice)}');
+    final body = PreContactSettingsService.applyTemplate(t, name: name, date: d, time: o.deliveryTime, items: items, payment: o.paymentMethod, total: '¥${NumberFormat('#,###').format(o.totalPrice)}', link: link);
+    if (link.isEmpty || t.contains('{確認リンク}')) return body;
+    return '$body\n\nご確認はこちら\n$link';
   }
-  return '$name 様\nご注文の事前確認です。${d.month}月${d.day}日 ${o.deliveryTime} のお届け(お引取り)で間違いございませんでしょうか。';
+  final base = '$name 様\nご注文の事前確認です。${d.month}月${d.day}日 ${o.deliveryTime} のお届け(お引取り)で間違いございませんでしょうか。';
+  return link.isEmpty ? base : '$base\n\nご確認はこちら\n$link';
 }
 
 Future<void> callPhone(String phone) async {
