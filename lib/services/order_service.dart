@@ -39,10 +39,10 @@ class OrderService {
         o.preConfirmationMethod.isNotEmpty).toList();
   }
 
-  /// 事前連絡が未完了か（電話は常に未完了、SMSは未送信・承認以外の返信あり）。
+  /// 事前連絡が未完了か（電話は常に未完了、SMSはお客様が「承認」するまで未完了。返信待ちも含む）。
   static bool isPreContactPending(OrderModel o) {
     if (o.preConfirmationMethod == '電話') return true;
-    return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
+    return o.smsReply != '承認';
   }
 
   /// 事前連絡の未連絡数（バッジ・事前連絡画面共通の定義）。
