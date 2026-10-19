@@ -16,6 +16,7 @@ import 'phone_delivery_common.dart';
 const Color _orange = Color(0xFFFF8A65);
 const Color _sunRed = Color(0xFFE53935);
 const Color _satBlue = Color(0xFF1E88E5);
+const Color _green = Color(0xFF43A047);
 
 // =====================================================================
 // 配達予定カレンダー（Figma 89:4425）
@@ -379,6 +380,8 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
   final OrderService _orderService = OrderService();
   // ドラッグで号車を変えた予定（親の注文データは古いままなので、こちらを優先する）
   final Map<String, int> _vehicleOverride = {};
+  final Set<String> _deliveredIds = {}; // この画面で配達済みにした受注
+  bool _isDelivered(OrderModel o) => _deliveredIds.contains(o.id) || OrderService.isDelivered(o);
   final GlobalKey _vScrollKey = GlobalKey();
   final GlobalKey _timelineKey = GlobalKey();
   final ScrollController _vScroll = ScrollController();
@@ -526,13 +529,18 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
           title: '- ${lane + 1}号車 -　配送ルート',
           origin: origin,
           vertical: true,
+          onDelivered: (id) {
+            if (mounted) setState(() => _deliveredIds.add(id));
+          },
           stops: [
             for (final o in group)
               KRouteStop(
                 location: (o.latitude != null && o.longitude != null) ? LatLng(o.latitude!, o.longitude!) : phoneCleanAddress(o),
                 time: o.deliveryTime,
-                place: phoneCityOf(o),
+                place: phoneTownOf(o),
                 color: _blue,
+                orderId: o.id,
+                delivered: _isDelivered(o),
               ),
           ],
       ),
@@ -857,7 +865,7 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
   /// 長押ししてドラッグすると、別の号車の列へ移せる予定カード（タップは詳細表示のまま）。
   Widget _draggablePill(OrderModel o, double pillW) {
     final pill = _pill('${o.deliveryTime} ${phoneCityOf(o)}',
-        late: _late.contains(o.id), onTap: () => showPhoneDeliveryDetail(context, order: o, name: withHonorific(_names[o.id] ?? o.customerName)));
+        late: _late.contains(o.id), delivered: _isDelivered(o), onTap: () => showPhoneDeliveryDetail(context, order: o, name: withHonorific(_names[o.id] ?? o.customerName)));
     return LongPressDraggable<OrderModel>(
       data: o,
       onDragStarted: _onDragStart,
@@ -872,13 +880,13 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
     );
   }
 
-  Widget _pill(String label, {bool late = false, VoidCallback? onTap}) {
+  Widget _pill(String label, {bool late = false, bool delivered = false, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.only(left: 7),
         alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(color: late ? _sunRed : _blue, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: delivered ? _green : (late ? _sunRed : _blue), borderRadius: BorderRadius.circular(8)),
         child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
       ),
     );

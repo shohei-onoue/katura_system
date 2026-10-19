@@ -129,7 +129,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
   }
 
   List<OrderModel> get _branchOrders =>
-      _orders.where((o) => OrderService.isActive(o) && o.branchName == _branchName && o.deliveryType == '配送').toList();
+      _orders.where((o) => (isPhoneWidth(context) ? OrderService.isScheduleTarget(o) : OrderService.isActive(o)) && o.branchName == _branchName && o.deliveryType == '配送').toList();
 
   /// 選択日・選択店舗の配送受注（時間順）。
   List<OrderModel> get _dayOrders {
@@ -179,7 +179,7 @@ class _RouteOptimizationScreenState extends State<RouteOptimizationScreen> {
         MaterialPageRoute(
           builder: (_) => PhoneDeliveryTimelinePage(
             date: day,
-            orders: _orders.where((o) => OrderService.isActive(o) && o.deliveryType == '配送').toList(),
+            orders: _orders.where((o) => OrderService.isScheduleTarget(o) && o.deliveryType == '配送').toList(),
             branchNames: [for (final b in _branches) b.name],
             initialBranch: _branchName,
             branchPositions: {for (final b in _branches) b.name: LatLng(b.latitude, b.longitude)},

@@ -200,6 +200,19 @@ String phoneCityOf(OrderModel o) {
   return o.facilityName.isNotEmpty ? o.facilityName : o.address;
 }
 
+/// 住所から「市区町村＋町名」までを取り出す（番地以降は除く）。切り出せなければ [phoneCityOf] と同じ。
+String phoneTownOf(OrderModel o) {
+  var a = o.address.replaceAll('　', ' ').trim();
+  a = a.replaceFirst(RegExp(r'^〒?\s*\d{3}-?\d{4}\s*'), '');
+  a = a.replaceFirst(RegExp(r'^(北海道|[^市区町村\d\s]{2,3}?[都府県])'), '');
+  final m = RegExp(r'^[^\d\s]+?[市区町村]').firstMatch(a);
+  if (m == null) return phoneCityOf(o);
+  var rest = a.substring(m.end);
+  rest = rest.split(RegExp(r'[\d０-９\s\-－ー]')).first;
+  rest = rest.replaceFirst(RegExp(r'[一二三四五六七八九十]+丁目$'), '').replaceFirst(RegExp(r'丁目$'), '');
+  return '${m.group(0)!}$rest';
+}
+
 /// 住所に混ざった社名・施設名を除き、「〒郵便番号 都道府県以降」にする
 String phoneCleanAddress(OrderModel o) {
   var a = o.address.replaceAll('　', ' ').trim();

@@ -23,6 +23,12 @@ class OrderService {
   static bool isActive(OrderModel o) =>
       o.status != '配送済み' && o.status != 'キャンセル済み' && o.status != '当日キャンセル';
 
+  /// 配達済み（status が「配送済み」）。
+  static bool isDelivered(OrderModel o) => o.status == '配送済み';
+
+  /// スマホの配達予定で表示する受注（有効 ＋ 配達済み）。
+  static bool isScheduleTarget(OrderModel o) => isActive(o) || isDelivered(o);
+
   /// 事前連絡の対象（有効・配達日が明日・事前連絡方法あり）。
   static List<OrderModel> preContactTargets(List<OrderModel> all, DateTime now) {
     final t = DateTime(now.year, now.month, now.day + 1);

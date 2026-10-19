@@ -4,6 +4,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'html_view/k_html_view.dart';
 import '../firebase_options.dart';
+import '../services/order_service.dart';
 import '../services/google_maps_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'k_responsive.dart';
@@ -15,7 +16,9 @@ class KRouteStop {
   final String time; // 配達時間（表示用）
   final String place; // 市区町村（表示用）
   final Color color; // カードの色
-  const KRouteStop({required this.location, required this.time, required this.place, required this.color});
+  final String? orderId; // 受注ID（「配達済み」ボタン用）
+  final bool delivered; // 配達済みか
+  const KRouteStop({required this.location, required this.time, required this.place, required this.color, this.orderId, this.delivered = false});
 }
 
 /// 配送ルートの地図ダイアログ。左7：地図、右3：配達予定カードと移動時間。
@@ -28,8 +31,9 @@ class KRouteMapDialog extends StatefulWidget {
   final LatLng origin;
   final List<KRouteStop> stops; // 最後が目的地、それ以外は経由地
   final bool vertical; // true＝スマホ用（上に地図、下にルートカード）
+  final void Function(String orderId)? onDelivered; // 「配達済み」にした受注IDを通知
 
-  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops, this.vertical = false});
+  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops, this.vertical = false, this.onDelivered});
 
   @override
   State<KRouteMapDialog> createState() => _KRouteMapDialogState();
@@ -48,6 +52,9 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   int _selected = -1;
   bool _mapReady = false;
   bool _sheetOpen = true; // スマホ版：配達時間シートの開閉
+  final Set<int> _delivered = {}; // 配達済みのカード番号
+  bool _delivering = false; // 配達済み保存中
+  static const Color _deliveredGreen = Color(0xFF43A047);
 
   String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
 
@@ -55,6 +62,9 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   void initState() {
     super.initState();
     _highway = List.filled(widget.stops.length, false);
+    for (int i = 0; i < widget.stops.length; i++) {
+      if (widget.stops[i].delivered) _delivered.add(i);
+    }
     _load();
   }
 
@@ -315,31 +325,32 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
 
   Object _stopLoc(int i) => _points.length > i + 1 ? _points[i + 1] : widget.stops[i].location;
 
-  /// stops の [from, to) 区間をGoogleマップのナビで開く。出発地は [origin]。最後が目的地、それ以外は経由地。
+  /// stops の [idxs]（番号の並び）をGoogleマップのナビで開く。出発地は [origin]。最後が目的地、それ以外は経由地。
   /// 一般道の区間は高速道路を避ける（avoid=highways）。高速の区間は指定なし（Googleマップ任せ）。
-  Future<void> _openNav(Object? origin, int from, int to, {bool highway = false}) async {
-    final locs = [for (int i = from; i < to; i++) _navPlace(_stopLoc(i))];
+  Future<void> _openNav(Object? origin, List<int> idxs, {bool highway = false}) async {
+    final locs = [for (final i in idxs) _navPlace(_stopLoc(i))];
     var url = 'https://www.google.com/maps/dir/?api=1${origin == null ? '' : '&origin=${_navPlace(origin)}'}&destination=${locs.last}&travelmode=driving';
     if (locs.length > 1) url += '&waypoints=${locs.sublist(0, locs.length - 1).join('%7C')}';
     if (!highway) url += '&avoid=highways';
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
-  /// 「ナビ開始」。メニューで選んだ優先道路（[highway]）を全区間に使い、最大10件ずつに分けて開く。
-  /// 10件を超える場合は区間を選ばせる。
+  /// 「ナビ開始」。メニューで選んだ優先道路（[highway]）を全区間に使う。
+  /// 配達済みは除き、未配達だけを順番に最大10件ずつに分けて開く（空いた枠には後ろの配達先が繰り上がる）。
+  /// 区間が複数なら区間を選ばせる。
   Future<void> _startNav(bool highway) async {
     const maxStops = 10;
-    final n = widget.stops.length;
-    if (n == 0) return;
-    final sections = <(int, int, bool)>[];
-    var from = 0;
-    for (int i = 1; i <= n; i++) {
-      if (i == n || i - from >= maxStops) {
-        sections.add((from, i, highway));
-        from = i;
-      }
+    final todo = [for (int i = 0; i < widget.stops.length; i++) if (!_delivered.contains(i)) i];
+    if (todo.isEmpty) return;
+    final sections = <List<int>>[];
+    for (int k = 0; k < todo.length; k += maxStops) {
+      sections.add(todo.sublist(k, k + maxStops > todo.length ? todo.length : k + maxStops));
     }
-    Future<void> open((int, int, bool) sec) => _openNav(sec.$1 == 0 ? widget.origin : _stopLoc(sec.$1 - 1), sec.$1, sec.$2, highway: sec.$3);
+    Future<void> open(List<int> sec) {
+      final first = sec.first;
+      final prev = todo.indexOf(first) - 1; // 前の区間の最後の配達先から出発
+      return _openNav(prev < 0 ? widget.origin : _stopLoc(todo[prev]), sec, highway: highway);
+    }
     if (sections.length == 1) return open(sections.first);
     final sel = await showDialog<int>(
       context: context,
@@ -349,13 +360,31 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
           for (int k = 0; k < sections.length; k++)
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, k),
-              child: Text('${sections[k].$1 + 1}〜${sections[k].$2}件目（${sections[k].$3 ? '高速' : '一般道'}）'),
+              child: Text('${sections[k].first + 1}〜${sections[k].last + 1}件目（${highway ? '高速' : '一般道'}）'),
             ),
         ],
       ),
     );
     if (sel == null) return;
     await open(sections[sel]);
+  }
+
+  /// 「配達済み」ボタン：受注の状態を「配送済み」に保存し、カードを緑にする。
+  Future<void> _markDelivered(int i) async {
+    final id = widget.stops[i].orderId;
+    if (id == null || _delivering || _delivered.contains(i)) return;
+    setState(() => _delivering = true);
+    try {
+      await OrderService().updateOrderStatus(id, '配送済み');
+      widget.onDelivered?.call(id);
+      if (mounted) setState(() => _delivered.add(i));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('配達済みを保存できませんでした')));
+      }
+    } finally {
+      if (mounted) setState(() => _delivering = false);
+    }
   }
 
   Widget _navButton() => PopupMenuButton<bool>(
@@ -392,16 +421,18 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   Widget _vCard(int i) {
     final st = widget.stops[i];
     final sel = _selected == i;
+    final done = _delivered.contains(i);
+    final cardColor = done ? _deliveredGreen : st.color;
     final head = Row(
       children: [
         sel
-            ? SizedBox(width: 20, child: Text('${i + 1}', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: st.color)))
+            ? SizedBox(width: 20, child: Text('${i + 1}', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: cardColor)))
             : Container(
                 width: 20,
                 height: 20,
                 alignment: Alignment.center,
                 decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: st.color)),
+                child: Text('${i + 1}', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: cardColor)),
               ),
         const SizedBox(width: 8),
         Expanded(
@@ -410,12 +441,12 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
         Icon(sel ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: sel ? PL.ink : Colors.white),
       ],
     );
-    return GestureDetector(
+    final card = GestureDetector(
       onTap: () => _select(i),
       child: Container(
         padding: EdgeInsets.fromLTRB(12, sel ? 10 : 9, 12, sel ? 6 : 9),
         decoration: BoxDecoration(
-          color: sel ? Colors.white : st.color.withValues(alpha: 0.5),
+          color: sel ? Colors.white : cardColor.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(10),
           border: sel ? Border.all(color: _selectedLine, width: 2) : null,
         ),
@@ -427,18 +458,39 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
               const SizedBox(height: 6),
               _vRadio(i, '一般道', false),
               _vRadio(i, '高速道路', true),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  tooltip: 'ナビ開始',
-                  icon: const Icon(Icons.navigation_rounded, size: 24, color: PL.purple),
-                  onPressed: () => _openNav(null, i, i + 1, highway: _highway[i]),
+              if (st.orderId != null) ...[
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 40,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _deliveredGreen,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _deliveredGreen.withValues(alpha: 0.5),
+                      disabledForegroundColor: Colors.white,
+                      elevation: 0,
+                    ),
+                    onPressed: (done || _delivering) ? null : () => _markDelivered(i),
+                    child: Text(done ? '配達済み（完了）' : '配達済み', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+              ],
             ],
           ],
         ),
       ),
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: card),
+        IconButton(
+          tooltip: 'ナビ開始',
+          icon: const Icon(Icons.navigation_rounded, size: 24, color: PL.purple),
+          onPressed: () => _openNav(null, [i], highway: _highway[i]),
+        ),
+      ],
     );
   }
 
