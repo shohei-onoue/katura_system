@@ -49,7 +49,7 @@ PreferredSizeWidget buildPhoneTopBar({
   );
 }
 
-/// 下部バー: 受注一覧(1)・配送予定(3)・顧客(6)・スタッフ(8)・設定(9)
+/// 下部バー: 受注一覧(1)・配送予定(3)・顧客(6)・設定(9)
 class PhoneBottomBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onNavigate;
@@ -59,7 +59,6 @@ class PhoneBottomBar extends StatelessWidget {
     (1, Icons.list_alt_rounded, '受注一覧'),
     (3, Icons.local_shipping_rounded, '配送予定'),
     (6, Icons.people_rounded, '顧客'),
-    (8, Icons.badge_rounded, 'スタッフ'),
     (9, Icons.settings_rounded, '設定'),
   ];
 
@@ -139,7 +138,6 @@ class PhoneDrawer extends StatelessWidget {
     (5, Icons.analytics_rounded, 'データ分析'),
     (6, Icons.people_rounded, '顧客管理'),
     (7, Icons.restaurant_rounded, 'メニューマスタ'),
-    (8, Icons.badge_rounded, 'スタッフ管理'),
     (9, Icons.settings_rounded, '設定'),
   ];
 
