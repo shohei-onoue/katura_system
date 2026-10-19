@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqlite3/common.dart';
@@ -43,6 +44,13 @@ class OrderService {
     if (o.preConfirmationMethod == '電話') return true;
     return !o.smsSent || (o.smsReply.isNotEmpty && o.smsReply != '承認');
   }
+
+  /// 事前連絡の未連絡数（バッジ・事前連絡画面共通の定義）。
+  static int preContactPendingCount(List<OrderModel> all, DateTime now) =>
+      preContactTargets(all, now).where(isPreContactPending).length;
+
+  /// 未連絡数の共有値（バッジと事前連絡画面で同じ値を見る）。
+  static final ValueNotifier<int> preContactPending = ValueNotifier<int>(0);
 
   /// データベースの一本化 (katura_cache.db)
   Future<void> _initLocalDb() async {

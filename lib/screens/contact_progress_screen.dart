@@ -49,6 +49,7 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
   Future<void> _load({bool refresh = true}) async {
     final list = await _orderService.getAllOrders(forceRefresh: refresh);
     final names = await _customerService.resolveOrderNames(list);
+    OrderService.preContactPending.value = OrderService.preContactPendingCount(list, DateTime.now());
     if (!mounted) return;
     setState(() {
       _displayNames = names;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/k_sidebar.dart';
 import 'contact_progress_screen.dart';
@@ -50,20 +51,19 @@ class _MainScreenState extends State<MainScreen> {
 
   int _pendingCount = 0; // 上部バーの事前連絡バッジ（未連絡件数）
 
+  StreamSubscription<List<OrderModel>>? _ordersSub;
+  Timer? _summaryDebounce;
+
+  void _onPendingChanged() {
+    if (mounted) setState(() => _pendingCount = OrderService.preContactPending.value);
+  }
+
   Future<void> _loadContactSummary() async {
     try {
       final all = await OrderService().getAllOrders();
-      final targets = OrderService.preContactTargets(all, DateTime.now());
-      final pending = targets.where(OrderService.isPreContactPending).length;
-      if (targets.isEmpty) {
-        if (mounted) setState(() => _pendingCount = 0);
-        return;
-      }
-      if (mounted) {
-        setState(() {
-          _pendingCount = pending;
-        });
-      }
+      final pending = OrderService.preContactPendingCount(all, DateTime.now());
+      OrderService.preContactPending.value = pending;
+      if (mounted) setState(() => _pendingCount = pending);
     } catch (_) {}
   }
 
@@ -98,10 +98,25 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    _pendingCount = OrderService.preContactPending.value;
+    OrderService.preContactPending.addListener(_onPendingChanged);
+    _loadContactSummary();
+    _ordersSub = OrderService().watchOrders().listen((_) {
+      _summaryDebounce?.cancel();
+      _summaryDebounce = Timer(const Duration(milliseconds: 300), _loadContactSummary);
+    });
     AuthService().restoreSession().then((staff) {
       if (mounted) setState(() {});
     }).catchError((_) {
     });
+  }
+
+  @override
+  void dispose() {
+    _summaryDebounce?.cancel();
+    _ordersSub?.cancel();
+    OrderService.preContactPending.removeListener(_onPendingChanged);
+    super.dispose();
   }
 
   /// 受注カードの編集中に別の機能（受注入力の新規も含む）へ移動しようとしたとき、
