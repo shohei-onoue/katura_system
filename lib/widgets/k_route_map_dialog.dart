@@ -316,53 +316,58 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
   Object _stopLoc(int i) => _points.length > i + 1 ? _points[i + 1] : widget.stops[i].location;
 
   /// stops の [from, to) 区間をGoogleマップのナビで開く。出発地は [origin]。最後が目的地、それ以外は経由地。
-  Future<void> _openNav(Object origin, int from, int to) async {
+  /// 一般道の区間は高速道路を避ける（avoid=highways）。高速の区間は指定なし（Googleマップ任せ）。
+  Future<void> _openNav(Object? origin, int from, int to, {bool highway = false}) async {
     final locs = [for (int i = from; i < to; i++) _navPlace(_stopLoc(i))];
-    var url = 'https://www.google.com/maps/dir/?api=1&origin=${_navPlace(origin)}&destination=${locs.last}&travelmode=driving';
+    var url = 'https://www.google.com/maps/dir/?api=1${origin == null ? '' : '&origin=${_navPlace(origin)}'}&destination=${locs.last}&travelmode=driving';
     if (locs.length > 1) url += '&waypoints=${locs.sublist(0, locs.length - 1).join('%7C')}';
+    if (!highway) url += '&avoid=highways';
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   }
 
-  /// 「ナビ開始」。経由地は上限9件（配達先10件）まで。超える場合は10件ずつに分けて選ばせる。
-  Future<void> _startNav() async {
+  /// 「ナビ開始」。メニューで選んだ優先道路（[highway]）を全区間に使い、最大10件ずつに分けて開く。
+  /// 10件を超える場合は区間を選ばせる。
+  Future<void> _startNav(bool highway) async {
     const maxStops = 10;
     final n = widget.stops.length;
     if (n == 0) return;
-    if (n <= maxStops) return _openNav(widget.origin, 0, n);
-    final parts = (n / maxStops).ceil();
+    final sections = <(int, int, bool)>[];
+    var from = 0;
+    for (int i = 1; i <= n; i++) {
+      if (i == n || i - from >= maxStops) {
+        sections.add((from, i, highway));
+        from = i;
+      }
+    }
+    Future<void> open((int, int, bool) sec) => _openNav(sec.$1 == 0 ? widget.origin : _stopLoc(sec.$1 - 1), sec.$1, sec.$2, highway: sec.$3);
+    if (sections.length == 1) return open(sections.first);
     final sel = await showDialog<int>(
       context: context,
       builder: (ctx) => SimpleDialog(
-        title: const Text('ナビ開始（件数が多いため分割）'),
+        title: const Text('ナビ開始（区間を選択）'),
         children: [
-          for (int k = 0; k < parts; k++)
+          for (int k = 0; k < sections.length; k++)
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, k),
-              child: Text('${k * maxStops + 1}〜${(k + 1) * maxStops < n ? (k + 1) * maxStops : n}件目'),
+              child: Text('${sections[k].$1 + 1}〜${sections[k].$2}件目（${sections[k].$3 ? '高速' : '一般道'}）'),
             ),
         ],
       ),
     );
     if (sel == null) return;
-    final from = sel * maxStops;
-    final to = (from + maxStops) < n ? from + maxStops : n;
-    await _openNav(from == 0 ? widget.origin : _stopLoc(from - 1), from, to);
+    await open(sections[sel]);
   }
 
-  Widget _navButton() => Padding(
-        padding: const EdgeInsets.only(right: 10),
-        child: TextButton.icon(
-          onPressed: _startNav,
-          icon: const Icon(Icons.navigation_rounded, size: 18),
-          label: const Text('ナビ開始', style: TextStyle(fontWeight: FontWeight.bold)),
-          style: TextButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: PL.purple,
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        ),
+  Widget _navButton() => PopupMenuButton<bool>(
+        tooltip: 'ナビ開始',
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        icon: const Icon(Icons.navigation_rounded, size: 24, color: Colors.white),
+        onSelected: _startNav,
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: false, child: Text('一般道')),
+          PopupMenuItem(value: true, child: Text('高速')),
+        ],
       );
 
   Widget _vRadio(int i, String label, bool value) {
@@ -422,6 +427,14 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
               const SizedBox(height: 6),
               _vRadio(i, '一般道', false),
               _vRadio(i, '高速道路', true),
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: 'ナビ開始',
+                  icon: const Icon(Icons.navigation_rounded, size: 24, color: PL.purple),
+                  onPressed: () => _openNav(null, i, i + 1, highway: _highway[i]),
+                ),
+              ),
             ],
           ],
         ),
@@ -443,7 +456,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
           titleSpacing: 0,
           leading: IconButton(icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20), onPressed: () => Navigator.pop(context)),
           title: Text(widget.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          actions: [Center(child: _navButton())],
+          actions: [_navButton()],
         ),
         body: Column(
           children: [
