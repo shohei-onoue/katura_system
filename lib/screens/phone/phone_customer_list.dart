@@ -83,16 +83,10 @@ class PhoneCustomerList extends StatelessWidget {
           Expanded(
             child: Container(
               margin: const EdgeInsets.fromLTRB(14, 0, 14, 0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: PcColors.line2),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              ),
-              clipBehavior: Clip.antiAlias,
               child: customers.isEmpty
                   ? const Center(child: Text('顧客が見つかりません', style: TextStyle(color: PcColors.hint)))
                   : ListView.builder(
-                      padding: EdgeInsets.zero,
+                      padding: const EdgeInsets.only(top: 4, bottom: 12),
                       itemCount: customers.length,
                       itemBuilder: (_, i) => _row(customers[i]),
                     ),
@@ -113,11 +107,11 @@ class PhoneCustomerList extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: active ? PcColors.green : Colors.white,
-          border: Border.all(color: active ? PcColors.greenBorder : PcColors.line),
-          borderRadius: BorderRadius.circular(10),
+          color: active ? PcColors.purple : Colors.white,
+          border: Border.all(color: active ? PcColors.purple : PcColors.line),
+          borderRadius: BorderRadius.circular(17),
         ),
-        child: Text('$label $arrow', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: active ? PcColors.greenText : PcColors.text)),
+        child: Text('$label $arrow', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: active ? Colors.white : PcColors.text)),
       ),
     );
   }
@@ -126,8 +120,17 @@ class PhoneCustomerList extends StatelessWidget {
     final selected = c.id == selectedId;
     final days = elapsedDays(c);
     final Color dayColor = days == null ? PcColors.hint : (days <= 60 ? PcColors.blue : (days <= 365 ? PcColors.redOrange : PcColors.hint));
-    return Material(
-      color: selected ? PcColors.purpleRow : Colors.white,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: selected ? PcColors.purpleRow : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x1F1B1B2F), blurRadius: 14, offset: Offset(0, 4))],
+      ),
+      child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => onTap(c),
         child: SizedBox(
@@ -153,6 +156,12 @@ class PhoneCustomerList extends StatelessWidget {
                   ],
                 ),
               ),
+              Container(
+                margin: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: PcColors.chipOff, borderRadius: BorderRadius.circular(6)),
+                child: Text(c.companyName.isEmpty ? '個人' : '法人', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: PcColors.text)),
+              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -169,6 +178,7 @@ class PhoneCustomerList extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

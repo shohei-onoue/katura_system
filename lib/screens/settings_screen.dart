@@ -191,12 +191,13 @@ class _PhoneSettingsBody extends StatelessWidget {
 const TextStyle _phoneDescStyle = TextStyle(fontSize: 11.5, color: PhoneColors.sub, height: 1.35);
 
 Widget _phoneAccordion(IconData icon, String text, Widget child) => _AccordionSection(
-      headerPadding: const EdgeInsets.only(left: 2, bottom: 6),
+      headerPadding: const EdgeInsets.only(left: 2, bottom: 8),
+      phone: true,
       title: Row(
         children: [
-          Icon(icon, size: 16, color: PhoneColors.purple),
-          const SizedBox(width: 5),
-          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneColors.sub)),
+          Icon(icon, size: 18, color: PhoneColors.purple),
+          const SizedBox(width: 6),
+          Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PhoneColors.text)),
         ],
       ),
       child: child,
@@ -205,7 +206,8 @@ Widget _phoneAccordion(IconData icon, String text, Widget child) => _AccordionSe
 /// 見出し右の＋/－アイコンで中身を開閉する共通ウィジェット（初期は開）。
 /// 閉じても中身は破棄せず（入力中の内容を保持）、高さだけ0にする。
 class _AccordionSection extends StatefulWidget {
-  const _AccordionSection({required this.title, required this.child, this.headerPadding = EdgeInsets.zero});
+  const _AccordionSection({required this.title, required this.child, this.headerPadding = EdgeInsets.zero, this.phone = false});
+  final bool phone;
   final Widget title;
   final Widget child;
   final EdgeInsets headerPadding;
@@ -229,7 +231,14 @@ class _AccordionSectionState extends State<_AccordionSection> {
             child: Row(
               children: [
                 Expanded(child: widget.title),
-                Icon(_open ? Icons.remove : Icons.add, size: 20, color: Colors.grey.shade600),
+                if (widget.phone)
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(color: PhoneColors.purpleLight, shape: BoxShape.circle),
+                    child: Icon(_open ? Icons.remove : Icons.add, size: 16, color: PhoneColors.purple),
+                  )
+                else
+                  Icon(_open ? Icons.remove : Icons.add, size: 20, color: Colors.grey.shade600),
               ],
             ),
           ),
@@ -255,8 +264,8 @@ Widget _phoneCard(Widget child) => Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PhoneColors.cardBorder),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x1F1B1B2F), blurRadius: 14, offset: Offset(0, 4))],
       ),
       child: child,
     );
