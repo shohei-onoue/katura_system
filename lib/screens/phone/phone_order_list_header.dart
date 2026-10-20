@@ -47,7 +47,7 @@ class PhoneOrderListHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          color: Colors.white,
+          color: PL.bg,
           child: Column(
             children: [
               SizedBox(
@@ -66,8 +66,8 @@ class PhoneOrderListHeader extends StatelessWidget {
                         width: 52,
                         height: 28,
                         alignment: Alignment.center,
-                        decoration: BoxDecoration(color: AppColors.selectButton, borderRadius: BorderRadius.circular(10)),
-                        child: const Text('今日', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.ink)),
+                        decoration: BoxDecoration(color: PL.purple, borderRadius: BorderRadius.circular(14)),
+                        child: const Text('今日', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -132,16 +132,16 @@ class PhoneOrderListHeader extends StatelessWidget {
           child: Container(
             width: 44,
             height: 50,
-            decoration: BoxDecoration(color: selected ? AppColors.selectButton : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: selected ? PL.purple : Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: selected ? null : const [BoxShadow(color: Color(0x141B1B2F), blurRadius: 6, offset: Offset(0, 2))]),
             child: Stack(
               alignment: Alignment.center,
               children: [
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('${day.day}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: selected ? PL.ink : color)),
+                    Text('${day.day}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: selected ? Colors.white : color)),
                     const SizedBox(height: 2),
-                    Text(_weeks[i], style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? PL.ink : color)),
+                    Text(_weeks[i], style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.bold : FontWeight.normal, color: selected ? Colors.white : color)),
                   ],
                 ),
                 if (hasOrder && !selected) Positioned(bottom: 3, child: Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppColors.accentOrange, shape: BoxShape.circle))),

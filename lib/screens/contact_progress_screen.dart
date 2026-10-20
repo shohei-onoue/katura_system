@@ -61,14 +61,24 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final onPhone = isPhoneWidth(context);
+    final barFg = onPhone ? Colors.white : AppColors.primaryText;
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: onPhone ? const Color(0xFFF4F1FA) : Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: AppColors.mainBackground,
+        backgroundColor: onPhone ? AppColors.acceptButton : AppColors.mainBackground,
+        foregroundColor: barFg,
         automaticallyImplyLeading: false,
         leading: widget.asPage ? IconButton(icon: const Icon(Icons.close), tooltip: '閉じる', onPressed: () => Navigator.of(context).pop()) : null,
-        title: Text('明日ご予約分事前連絡 ${_orders.length}件', style: TextStyle(fontSize: _rf(context, 16), fontWeight: FontWeight.bold, color: AppColors.primaryText)),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
+        title: Text(onPhone ? '事前連絡' : '明日ご予約分事前連絡 ${_orders.length}件', style: TextStyle(fontSize: _rf(context, 16), fontWeight: FontWeight.bold, color: barFg)),
+        actions: [
+          if (onPhone) Center(child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(color: AppColors.cancelButton, borderRadius: BorderRadius.circular(99)),
+            child: Text('未連絡 ${OrderService.preContactPending.value}件', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+          )),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
