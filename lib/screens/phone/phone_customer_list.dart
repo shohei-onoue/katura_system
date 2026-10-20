@@ -17,9 +17,13 @@ class PhoneCustomerList extends StatelessWidget {
   final ValueChanged<String> onSort;
   final VoidCallback onSearch;
   final VoidCallback onClearSearch;
-  final VoidCallback onGenerateDummy;
   final ValueChanged<Customer> onTap;
   final ValueChanged<Customer> onMenu;
+  final Set<String> checkedIds; // 選択中の顧客ID（空なら通常モード）
+  final ValueChanged<Customer> onLongPress;
+  final VoidCallback onSelectAll;
+  final VoidCallback onCancelSelect;
+  final VoidCallback onDeleteChecked;
 
   const PhoneCustomerList({
     super.key,
@@ -32,10 +36,59 @@ class PhoneCustomerList extends StatelessWidget {
     required this.onSort,
     required this.onSearch,
     required this.onClearSearch,
-    required this.onGenerateDummy,
     required this.onTap,
     required this.onMenu,
+    required this.checkedIds,
+    required this.onLongPress,
+    required this.onSelectAll,
+    required this.onCancelSelect,
+    required this.onDeleteChecked,
   });
+
+  bool get _selecting => checkedIds.isNotEmpty;
+
+  Widget _selectBar() {
+    final all = customers.isNotEmpty && customers.every((c) => checkedIds.contains(c.id));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 6, 8, 6),
+      child: Row(
+        children: [
+          IconButton(visualDensity: VisualDensity.compact, icon: const Icon(Icons.close, size: 22, color: PcColors.text), tooltip: '選択を解除', onPressed: onCancelSelect),
+          Text('${checkedIds.length}件選択', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: PcColors.text)),
+          const Spacer(),
+          GestureDetector(
+            onTap: onSelectAll,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: all ? PcColors.purple : Colors.white,
+                border: Border.all(color: all ? PcColors.purple : PcColors.line),
+                borderRadius: BorderRadius.circular(17),
+              ),
+              child: Text(all ? 'すべて解除' : 'すべて選択', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: all ? Colors.white : PcColors.text)),
+            ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onDeleteChecked,
+            child: Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: PcColors.red, borderRadius: BorderRadius.circular(17)),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.delete_outline, size: 16, color: Colors.white),
+                SizedBox(width: 4),
+                Text('削除', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,25 +96,21 @@ class PhoneCustomerList extends StatelessWidget {
       color: PcColors.bg,
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-            child: Row(
-              children: [
-                _chip('氏名順', 'name'),
-                const SizedBox(width: 6),
-                _chip('企業名', 'company'),
-                const SizedBox(width: 7),
-                _chip('前回経過日', 'elapsed'),
-                const Spacer(),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.auto_awesome, size: 20, color: PcColors.text),
-                  tooltip: 'ダミーデータを生成',
-                  onPressed: onGenerateDummy,
-                ),
-              ],
+          if (_selecting)
+            _selectBar()
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+              child: Row(
+                children: [
+                  _chip('氏名順', 'name'),
+                  const SizedBox(width: 6),
+                  _chip('企業名', 'company'),
+                  const SizedBox(width: 7),
+                  _chip('前回経過日', 'elapsed'),
+                ],
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
             child: InkWell(
@@ -131,7 +180,8 @@ class PhoneCustomerList extends StatelessWidget {
   }
 
   Widget _row(Customer c) {
-    final selected = c.id == selectedId;
+    final checked = checkedIds.contains(c.id);
+    final selected = c.id == selectedId || checked;
     final days = elapsedDays(c);
     final Color dayColor = days == null ? PcColors.hint : (days <= 60 ? PcColors.blue : (days <= 365 ? PcColors.redOrange : PcColors.hint));
     return Container(
@@ -147,11 +197,16 @@ class PhoneCustomerList extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => onTap(c),
+        onLongPress: () => onLongPress(c),
         child: SizedBox(
           height: 64,
           child: Row(
             children: [
               const SizedBox(width: 14),
+              if (_selecting) ...[
+                Icon(checked ? Icons.check_circle : Icons.radio_button_unchecked, size: 24, color: checked ? PcColors.purple : PcColors.hint),
+                const SizedBox(width: 10),
+              ],
               Container(
                 width: 40,
                 height: 40,
@@ -185,11 +240,14 @@ class PhoneCustomerList extends StatelessWidget {
                   const Text('前回から', style: TextStyle(fontSize: 10, color: PcColors.sub)),
                 ],
               ),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onMenu(c),
-                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16), child: Icon(Icons.more_vert, size: 20, color: PcColors.hint)),
-              ),
+              if (_selecting)
+                const SizedBox(width: 14)
+              else
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onMenu(c),
+                  child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16), child: Icon(Icons.more_vert, size: 20, color: PcColors.hint)),
+                ),
             ],
           ),
         ),
@@ -378,7 +436,14 @@ Widget _menuRow(BuildContext ctx, IconData icon, String label, Color color, Stri
 }
 
 /// 「顧客データの削除」確認。削除する→true
-Future<bool> showPhoneDeleteCustomerDialog(BuildContext context, Customer c) async {
+Future<bool> showPhoneDeleteCustomerDialog(BuildContext context, Customer c) =>
+    _confirmDelete(context, '${withHonorific(c.name)}のデータを削除してもよろしいですか？');
+
+/// 複数選択した顧客の削除確認。削除する→true
+Future<bool> showPhoneDeleteManyDialog(BuildContext context, int count) =>
+    _confirmDelete(context, '選択した$count件の顧客データを削除してもよろしいですか？');
+
+Future<bool> _confirmDelete(BuildContext context, String message) async {
   final r = await showDialog<bool>(
     context: context,
     builder: (ctx) => Dialog(
@@ -399,7 +464,7 @@ Future<bool> showPhoneDeleteCustomerDialog(BuildContext context, Customer c) asy
             const SizedBox(height: 14),
             const Text('顧客データの削除', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: PcColors.text)),
             const SizedBox(height: 10),
-            Text('${withHonorific(c.name)}のデータを削除してもよろしいですか？', textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: PcColors.sub)),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: PcColors.sub)),
             const SizedBox(height: 14),
             const Text('この操作は取り消せません。', style: TextStyle(fontSize: 13, color: PcColors.sub)),
             const SizedBox(height: 18),

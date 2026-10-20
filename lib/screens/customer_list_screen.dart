@@ -315,17 +315,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
   }
 
-  void _generateDummy() => _runBulk(
-        title: 'ダミーデータの生成',
-        message: '顧客100名と、過去1年の注文・2週間分の受注予約を作成します。\n同じIDのダミーは上書きされます。',
-        okLabel: '生成する',
-        okColor: AppColors.accentPurple,
-        job: () async {
-          final r = await DummyDataService().generate();
-          return 'ダミーデータを生成しました（顧客${r.customers}名・注文${r.orders}件・受注予約${r.reservations}件）';
-        },
-      );
-
   void _deleteAllData() => _runBulk(
         title: '全データの一括削除',
         message: '顧客データと受注データを「すべて」削除します。\nダミーかどうかは区別せず、元に戻せません。',
@@ -338,6 +327,38 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       );
 
   // ---- スマホ版（幅600未満）----
+  final Set<String> _checkedIds = {};
+
+  void _toggleChecked(Customer c) => setState(() {
+        if (!_checkedIds.remove(c.id)) _checkedIds.add(c.id);
+      });
+
+  /// 表示中の顧客が全部選択済みなら解除、そうでなければ全選択
+  void _toggleSelectAll() => setState(() {
+        final all = _filteredCustomers.every((c) => _checkedIds.contains(c.id));
+        if (all) {
+          _checkedIds.clear();
+        } else {
+          _checkedIds.addAll(_filteredCustomers.map((c) => c.id));
+        }
+      });
+
+  Future<void> _deleteChecked() async {
+    final ids = _checkedIds.toList();
+    if (ids.isEmpty || !await showPhoneDeleteManyDialog(context, ids.length) || !mounted) return;
+    for (final id in ids) {
+      await _customerService.deleteCustomer(id);
+    }
+    if (!mounted) return;
+    setState(() {
+      _checkedIds.clear();
+      if (_selectedCustomer != null && ids.contains(_selectedCustomer!.id)) _selectedCustomer = null;
+    });
+    await _loadCustomers();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ids.length}件の顧客データを削除しました')));
+  }
+
   Future<void> _phoneSearch() async {
     final r = await showPhoneCustomerSearchSheet(context, _searchController.text);
     if (r != null) _searchController.text = r;
@@ -388,9 +409,13 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               onSort: _onSort,
               onSearch: _phoneSearch,
               onClearSearch: _searchController.clear,
-              onGenerateDummy: _generateDummy,
-              onTap: _phoneTap,
+              onTap: (c) => _checkedIds.isNotEmpty ? _toggleChecked(c) : _phoneTap(c),
               onMenu: _phoneMenu,
+              checkedIds: _checkedIds,
+              onLongPress: _toggleChecked,
+              onSelectAll: _toggleSelectAll,
+              onCancelSelect: () => setState(_checkedIds.clear),
+              onDeleteChecked: _deleteChecked,
             ),
     );
   }
@@ -406,11 +431,6 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
         foregroundColor: AppColors.primaryText,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            tooltip: 'ダミーデータを生成',
-            onPressed: _generateDummy,
-          ),
           IconButton(
             icon: const Icon(Icons.delete_forever, color: Colors.red),
             tooltip: '全データを一括削除',
