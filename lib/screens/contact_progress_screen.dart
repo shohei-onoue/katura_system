@@ -7,6 +7,7 @@ import '../services/pre_contact_settings_service.dart';
 import '../widgets/k_responsive.dart' show KR;
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
+import 'package:katura_system/utils/facility_icon.dart';
 import 'phone/phone_common.dart';
 
 // スマホ幅は実寸、それ以外は従来の比率拡大
@@ -151,7 +152,7 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
                 Text(name, style: TextStyle(fontSize: _rf(context, 18), fontWeight: FontWeight.bold, color: AppColors.whiteText)),
                 SizedBox(height: _rs(context, 3)),
                 Row(children: [
-                  Icon(facility == '個人宅' ? Icons.home_outlined : Icons.business, size: _rs(context, 14), color: Colors.white70),
+                  Icon(orderIcon(deliveryType: o.deliveryType, facilityName: o.facilityName), size: _rs(context, 14), color: Colors.white70),
                   SizedBox(width: _rs(context, 5)),
                   Flexible(child: Text(facility, style: TextStyle(fontSize: _rf(context, 12), color: Colors.white70))),
                 ]),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/order_model.dart';
+import 'package:katura_system/utils/facility_icon.dart';
 import 'phone_common.dart';
 import 'phone_order_list_style.dart';
 
@@ -71,6 +72,8 @@ class PhoneOrderCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Icon(orderIcon(deliveryType: order.deliveryType, facilityName: order.facilityName), size: 20, color: PL.purple),
+                    const SizedBox(width: 6),
                     Flexible(
                       child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PL.ink)),
                     ),
