@@ -33,6 +33,7 @@ PreferredSizeWidget buildPhoneTopBar({
     elevation: 0,
     scrolledUnderElevation: 0,
     toolbarHeight: 52,
+    centerTitle: false,
     automaticallyImplyLeading: false,
     leadingWidth: 52,
     titleSpacing: 0,

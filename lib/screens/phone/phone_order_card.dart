@@ -50,10 +50,13 @@ class PhoneOrderCard extends StatelessWidget {
           child: Icon(orderIcon(deliveryType: order.deliveryType, facilityName: order.facilityName), size: 18, color: PL.purple),
         ),
         const SizedBox(width: 10),
-        Flexible(child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white))),
-        const SizedBox(width: 5),
-        Text(honorific, style: const TextStyle(fontSize: 11.5, color: Color(0xFFE1D6FF))),
-        const Spacer(),
+        Expanded(
+          child: Row(children: [
+            Flexible(child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white))),
+            const SizedBox(width: 5),
+            Text(honorific, style: const TextStyle(fontSize: 11.5, color: Color(0xFFE1D6FF))),
+          ]),
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
@@ -102,10 +105,13 @@ class PhoneOrderCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(children: [
-              Flexible(child: Text('${it['name'] ?? ''}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: PL.ink))),
-              if ((it['specialOrder'] ?? '').toString().isNotEmpty)
-                Padding(padding: const EdgeInsets.only(left: 6), child: Text('${it['specialOrder']}', style: const TextStyle(fontSize: 10.5, color: PL.grey))),
-              const Spacer(),
+              Expanded(
+                child: Row(children: [
+                  Flexible(child: Text('${it['name'] ?? ''}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: PL.ink))),
+                  if ((it['specialOrder'] ?? '').toString().isNotEmpty)
+                    Padding(padding: const EdgeInsets.only(left: 6), child: Text('${it['specialOrder']}', style: const TextStyle(fontSize: 10.5, color: PL.grey))),
+                ]),
+              ),
               Text('× ${it['quantity'] ?? ''}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.purple)),
             ]),
           ),
@@ -186,12 +192,13 @@ class PhoneOrderCard extends StatelessWidget {
                   children: [
                     Icon(orderIcon(deliveryType: order.deliveryType, facilityName: order.facilityName), size: 20, color: PL.purple),
                     const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PL.ink)),
+                    Expanded(
+                      child: Row(children: [
+                        Flexible(child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PL.ink))),
+                        const SizedBox(width: 6),
+                        Text(honorific, style: const TextStyle(fontSize: 11.5, color: PL.grey)),
+                      ]),
                     ),
-                    const SizedBox(width: 6),
-                    Text(honorific, style: const TextStyle(fontSize: 11.5, color: PL.grey)),
-                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(color: PL.branchBg(order.branchName), borderRadius: BorderRadius.circular(6)),
