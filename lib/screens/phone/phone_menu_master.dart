@@ -8,7 +8,7 @@ import '../../services/menu_service.dart';
 import 'package:katura_system/widgets/k_numeric_input_dialog.dart';
 
 // Figma(スマホ版メニューマスタ)の色
-const Color _bg = Color(0xFFF3F7F6);
+const Color _bg = Color(0xFFF4F1FA);
 const Color _ink = Color(0xFF1D1B20);
 const Color _sub = Color(0xFF6B6F76);
 const Color _hint = Color(0xFF9AA0A6);

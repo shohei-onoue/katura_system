@@ -5,7 +5,7 @@ import '../../models/order_model.dart';
 /// 配達予定・データ分析(スマホ)で共通のFigma配色
 class PhoneUi {
   PhoneUi._();
-  static const bg = Color(0xFFF3F7F6);
+  static const bg = Color(0xFFF4F1FA);
   static const purple = AppColors.acceptButton; // 0xFF673AB7
   static const ink = Color(0xFF1D1B20);
   static const sub = Color(0xFF6B6F76);

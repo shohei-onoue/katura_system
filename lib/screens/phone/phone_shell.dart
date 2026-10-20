@@ -3,7 +3,7 @@ import 'package:katura_system/utils/app_colors.dart';
 
 /// スマホ版(Figma 89-xxxx)の共通カラー
 class PhoneColors {
-  static const Color bg = Color(0xFFF3F7F6);
+  static const Color bg = Color(0xFFF4F1FA);
   static const Color text = Color(0xFF1D1B20);
   static const Color sub = Color(0xFF6B6F76);
   static const Color hint = Color(0xFF9AA0A6);

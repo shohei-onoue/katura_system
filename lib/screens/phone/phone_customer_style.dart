@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// 顧客管理・住所/施設検索（スマホ版）で共通に使う色（Figmaの値）
 class PcColors {
   PcColors._();
-  static const bg = Color(0xFFF3F7F6);
+  static const bg = Color(0xFFF4F1FA);
   static const purple = Color(0xFF673AB7);
   static const purpleSoft = Color(0xFFEDE7F6);
   static const purpleRow = Color(0xFFF6F0FF);

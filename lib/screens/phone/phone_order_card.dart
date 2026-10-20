@@ -53,14 +53,15 @@ class PhoneOrderCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isWarning ? PL.redSoft : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isWarning ? PL.red : PL.cardBorder, width: isWarning ? 1.5 : 1),
+        borderRadius: BorderRadius.circular(16),
+        border: isWarning ? Border.all(color: PL.red, width: 1.5) : null,
+        boxShadow: const [BoxShadow(color: Color(0x1F1B1B2F), blurRadius: 14, offset: Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           onTap: onToggle,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(15, 12, 8, 14),
@@ -93,6 +94,17 @@ class PhoneOrderCard extends StatelessWidget {
                       child: const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2), child: Icon(Icons.map_rounded, size: 18, color: PL.purple)),
                     ),
                 ]),
+                if (!expanded)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 7),
+                    child: Row(children: [
+                      const Icon(Icons.access_time_rounded, size: 14, color: PL.purple),
+                      const SizedBox(width: 4),
+                      Text(order.deliveryTime, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PL.ink)),
+                      const Spacer(),
+                      Text('¥${NumberFormat('#,###').format(order.totalPrice)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PL.purple)),
+                    ]),
+                  ),
                 if (expanded) ...[
                   if (facility.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 2), child: Text(facility, style: const TextStyle(fontSize: 11.5, color: PL.grey))),
                   const SizedBox(height: 10),

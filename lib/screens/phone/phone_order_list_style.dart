@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// スマホ版「受注一覧」グループ共通の色（Figmaの値）
 class PL {
   PL._();
-  static const Color bg = Color(0xFFF3F7F6);
+  static const Color bg = Color(0xFFF4F1FA);
   static const Color border = Color(0xFFE4E7EB);
   static const Color cardBorder = Color(0xFFEDF0F2);
   static const Color ink = Color(0xFF1D1B20);
