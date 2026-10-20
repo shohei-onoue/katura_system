@@ -13,7 +13,6 @@ import '../../widgets/k_route_map_dialog.dart';
 import 'phone_order_list_dialogs.dart';
 import 'phone_delivery_common.dart';
 
-const Color _orange = Color(0xFFFF8A65);
 const Color _sunRed = Color(0xFFE53935);
 const Color _satBlue = Color(0xFF1E88E5);
 const Color _green = Color(0xFF43A047);
@@ -73,11 +72,11 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 16),
                 child: Row(
                   children: [
-                    const Icon(Icons.event_note_rounded, size: 16, color: PhoneUi.purple),
+                    const Icon(Icons.access_time_rounded, size: 16, color: PhoneUi.sub),
                     const SizedBox(width: 5),
                     Text(
                       '${sel == null ? '' : '${DateFormat('M/d(E)', 'ja_JP').format(sel)} の'}受注 ${dayOrders.length}件',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PhoneUi.sub),
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PhoneUi.sub),
                     ),
                   ],
                 ),
@@ -99,10 +98,10 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
               child: GestureDetector(
                 onTap: onRoute,
                 child: Container(
-                  width: 132,
-                  height: 52,
+                  width: 140,
+                  height: 48,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: PhoneUi.purple, borderRadius: BorderRadius.circular(16)),
+                  decoration: BoxDecoration(color: PhoneUi.purple, borderRadius: BorderRadius.circular(26)),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -137,12 +136,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
       final isSel = sel(d);
       final isToday = d.year == today.year && d.month == today.month && d.day == today.day;
       final orders = hasOrders(d);
-      Color? border;
-      if (isToday) {
-        border = _sunRed;
-      } else if (orders) {
-        border = _orange;
-      }
+      final Color? border = isToday && !isSel ? PhoneUi.purple : null;
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -154,23 +148,30 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                 clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 28,
+                    width: 44,
                     height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isSel ? PhoneUi.chipFill : null,
-                      border: border == null ? null : Border.all(color: border),
+                      borderRadius: BorderRadius.circular(14),
+                      color: isSel ? PhoneUi.purple : null,
+                      border: border == null ? null : Border.all(color: border, width: 1.5),
                     ),
                     child: Text(
                       '${d.day}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: (isSel || isToday) ? FontWeight.bold : FontWeight.normal,
-                        color: isToday ? PhoneUi.red : dayColor(d, inMonth),
+                        color: isSel ? Colors.white : dayColor(d, inMonth),
                       ),
                     ),
                   ),
+                  if (orders)
+                    Positioned(
+                      bottom: -4,
+                      left: 0,
+                      right: 0,
+                      child: Center(child: Container(width: 4, height: 4, decoration: BoxDecoration(color: isSel ? Colors.white : PhoneUi.purple, shape: BoxShape.circle))),
+                    ),
                   if (hasWarning(d))
                     const Positioned(top: -2, right: -2, child: Icon(Icons.warning_rounded, size: 12, color: Colors.red)),
                 ],
@@ -203,8 +204,8 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(15, 0, 15, 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PhoneUi.cardLine),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x1F1B1B2F), blurRadius: 14, offset: Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -219,7 +220,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                 ),
                 Expanded(
                   child: Center(
-                    child: Text('${month.year}年${month.month}月', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PhoneUi.ink)),
+                    child: Text('${month.year}年${month.month}月', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: PhoneUi.ink)),
                   ),
                 ),
                 GestureDetector(
@@ -256,11 +257,11 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                legend('配送予定あり', border: _orange),
+                legend('配送予定あり', fill: PhoneUi.purple),
                 const SizedBox(width: 22),
-                legend('今日', border: _sunRed),
+                legend('今日', border: PhoneUi.purple),
                 const SizedBox(width: 22),
-                legend('選択中', fill: PhoneUi.chipFill),
+                legend('選択中', fill: PhoneUi.purple),
               ],
             ),
           ),
@@ -277,8 +278,8 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: PhoneUi.cardLine),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Color(0x1F1B1B2F), blurRadius: 14, offset: Offset(0, 4))],
       ),
       child: dayOrders.isEmpty
           ? const SizedBox(height: 62, child: Center(child: Text('受注なし', style: TextStyle(fontSize: 12, color: PhoneUi.sub))))
@@ -295,7 +296,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
                             width: 70,
                             child: Padding(
                               padding: const EdgeInsets.only(left: 14),
-                              child: Text(o.deliveryTime, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: PhoneUi.purple)),
+                              child: Text(o.deliveryTime, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: PhoneUi.purple)),
                             ),
                           ),
                           Expanded(

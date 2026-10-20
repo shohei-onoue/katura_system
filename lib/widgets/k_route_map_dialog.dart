@@ -447,7 +447,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
         padding: EdgeInsets.fromLTRB(12, sel ? 10 : 9, 12, sel ? 6 : 9),
         decoration: BoxDecoration(
           color: sel ? Colors.white : cardColor.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(16),
           border: sel ? Border.all(color: _selectedLine, width: 2) : null,
         ),
         child: Column(
@@ -487,7 +487,8 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
         Expanded(child: card),
         IconButton(
           tooltip: 'ナビ開始',
-          icon: const Icon(Icons.navigation_rounded, size: 24, color: PL.purple),
+          style: IconButton.styleFrom(backgroundColor: PL.purple, minimumSize: const Size(36, 36), padding: EdgeInsets.zero),
+          icon: const Icon(Icons.navigation_rounded, size: 18, color: Colors.white),
           onPressed: () => _openNav(null, [i], highway: _highway[i]),
         ),
       ],
@@ -537,7 +538,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeInOut,
                         height: _sheetOpen ? full : collapsed,
-                        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+                        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
                         clipBehavior: Clip.antiAlias,
                         child: OverflowBox(
                           alignment: Alignment.topCenter,

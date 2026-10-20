@@ -94,7 +94,7 @@ class PhoneOrderListHeader extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(17),
                       onTap: () => onSelectBranch(b),
                       child: Container(
                         height: 34,
@@ -102,7 +102,7 @@ class PhoneOrderListHeader extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: selectedBranch == b ? PL.purple : Colors.white,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(17),
                           border: Border.all(color: selectedBranch == b ? PL.purple : PL.border),
                         ),
                         child: Text(b, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: selectedBranch == b ? Colors.white : PL.ink)),
@@ -165,9 +165,9 @@ class PhoneOrderSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
         child: Row(children: [
-          Icon(icon, size: 16, color: PL.purple),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: PL.grey)),
+          Icon(icon, size: 16, color: PL.grey),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: PL.grey)),
         ]),
       );
 }

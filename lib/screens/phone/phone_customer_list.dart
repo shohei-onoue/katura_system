@@ -59,13 +59,27 @@ class PhoneCustomerList extends StatelessWidget {
                   tooltip: 'ダミーデータを生成',
                   onPressed: onGenerateDummy,
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: Icon(searchText.isEmpty ? Icons.search : Icons.manage_search, size: 20, color: searchText.isEmpty ? PcColors.text : PcColors.purple),
-                  tooltip: '名前・企業・電話番号で検索',
-                  onPressed: onSearch,
-                ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: InkWell(
+              onTap: onSearch,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: PcColors.line),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.search, size: 18, color: PcColors.sub),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(searchText.isEmpty ? '顧客名・電話番号で検索' : searchText, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: searchText.isEmpty ? PcColors.sub : PcColors.text))),
+                ]),
+              ),
             ),
           ),
           if (searchText.isNotEmpty)
@@ -139,10 +153,11 @@ class PhoneCustomerList extends StatelessWidget {
             children: [
               const SizedBox(width: 14),
               Container(
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
                 decoration: const BoxDecoration(color: PcColors.purpleSoft, shape: BoxShape.circle),
-                child: const Icon(Icons.person, size: 20, color: PcColors.purple),
+                alignment: Alignment.center,
+                child: Text(c.name.trim().isEmpty ? '?' : c.name.trim().substring(0, 1), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PcColors.purple)),
               ),
               const SizedBox(width: 10),
               Expanded(

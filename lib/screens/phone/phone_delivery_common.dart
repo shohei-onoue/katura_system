@@ -35,13 +35,13 @@ class PhoneChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? PhoneUi.chipFill : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? PhoneUi.chipBorder : PhoneUi.line),
+          color: selected ? PhoneUi.purple : Colors.white,
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(color: selected ? PhoneUi.purple : PhoneUi.line),
         ),
         child: Text(
           label,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: selected ? PhoneUi.chipText : PhoneUi.ink),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: selected ? Colors.white : PhoneUi.ink),
         ),
       ),
     );

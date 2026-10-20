@@ -41,7 +41,7 @@ PreferredSizeWidget buildPhoneTopBar({
       child: Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.only(left: 16),
-        child: const Icon(Icons.logout_rounded, size: 20, color: Colors.white),
+        child: const Icon(Icons.logout_rounded, size: 24, color: Colors.white),
       ),
     ),
     title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
@@ -59,11 +59,11 @@ class PhoneBottomBar extends StatelessWidget {
     (1, Icons.list_alt_rounded, '受注一覧'),
     (3, Icons.local_shipping_rounded, '配送予定'),
     (6, Icons.people_rounded, '顧客'),
-    (9, Icons.settings_rounded, '設定'),
+    (9, Icons.tune_rounded, '設定'),
   ];
 
   Widget _item({required IconData icon, required String label, required bool selected, required VoidCallback onTap}) {
-    final color = selected ? AppColors.selectButton : Colors.white;
+    final color = selected ? const Color(0xFFFFB74D) : const Color(0xFFCDB8FF);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -78,12 +78,12 @@ class PhoneBottomBar extends StatelessWidget {
                 color: Colors.transparent,
                 borderRadius: BorderRadius.circular(15),
               ),
-              child: Icon(icon, size: 20, color: color),
+              child: Icon(icon, size: 22, color: color),
             ),
             const SizedBox(height: 3),
             Text(label,
                 style: TextStyle(
-                    fontSize: 10.5, color: color, fontWeight: selected ? FontWeight.bold : FontWeight.w500)),
+                    fontSize: 10, color: color, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

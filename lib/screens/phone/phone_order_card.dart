@@ -72,7 +72,7 @@ class PhoneOrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Flexible(
-                      child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: PL.ink)),
+                      child: Text(baseName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PL.ink)),
                     ),
                     const SizedBox(width: 6),
                     Text(honorific, style: const TextStyle(fontSize: 11.5, color: PL.grey)),
@@ -87,7 +87,8 @@ class PhoneOrderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Row(children: [
-                  Expanded(child: Text(order.address, style: const TextStyle(fontSize: 11.5, color: PL.grey))),
+                  const Padding(padding: EdgeInsets.only(right: 5), child: Icon(Icons.place_outlined, size: 13, color: PL.grey)),
+                  Expanded(child: Text(order.address, style: const TextStyle(fontSize: 12, color: PL.grey))),
                   if (expanded)
                     InkWell(
                       onTap: () => openMap(lat: order.latitude, lng: order.longitude, address: order.address),
