@@ -20,6 +20,10 @@ class KNumericDialPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // スマホ幅は縮小せず実寸で表示する
+    final phone = MediaQuery.of(context).size.width < 600;
+    double rs(BuildContext c, double v) => phone ? v : KR.rs(c, v);
+    double rf(BuildContext c, double v) => phone ? v : KR.rf(c, v);
     final rows = [
       ['1', '2', '3'],
       ['4', '5', '6'],
@@ -48,7 +52,7 @@ class KNumericDialPad extends StatelessWidget {
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: rs(context, 4)),
                     child: SizedBox(
-                      height: height ?? rs(context, 70),
+                      height: height ?? (phone ? 60 : rs(context, 70)),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isAction 

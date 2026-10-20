@@ -94,12 +94,17 @@ class _KNumericInputDialogState extends State<KNumericInputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // スマホ幅は縮小せず実寸で表示する（rs/rf は大画面基準で小さくなりすぎるため）
+    final phone = MediaQuery.of(context).size.width < 600;
+    double rs(BuildContext c, double v) => phone ? v : KR.rs(c, v);
+    double rf(BuildContext c, double v) => phone ? v : KR.rf(c, v);
     return Dialog(
       backgroundColor: AppColors.popupBackground,
+      insetPadding: EdgeInsets.symmetric(horizontal: phone ? 20 : 40, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rs(context, 16))),
       child: Container(
-        width: rs(context, 400),
-        padding: EdgeInsets.all(rs(context, 24)),
+        width: phone ? double.infinity : rs(context, 400),
+        padding: EdgeInsets.all(phone ? 18 : rs(context, 24)),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -128,7 +133,7 @@ class _KNumericInputDialogState extends State<KNumericInputDialog> {
                         ),
                       ),
               ),
-              SizedBox(height: rs(context, 24)),
+              SizedBox(height: rs(context, phone ? 16 : 24)),
               KNumericDialPad(
                 onInput: (digit) {
                   if (widget.timeFormat) {
@@ -166,11 +171,13 @@ class _KNumericInputDialogState extends State<KNumericInputDialog> {
                   }
                 },
               ),
-              SizedBox(height: rs(context, 24)),
+              SizedBox(height: rs(context, phone ? 16 : 24)),
               SizedBox(
                 width: double.infinity,
                 child: KButton(
                   label: '確定',
+                  height: phone ? 52 : null,
+                  fontSize: phone ? 17 : null,
                   onPressed: () {
                     widget.onConfirmed(widget.timeFormat ? _t.join() : _text);
                     Navigator.pop(context);

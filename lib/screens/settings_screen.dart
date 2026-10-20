@@ -783,8 +783,8 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     );
   }
 
-  /// スマホ用：店舗の写真(高さ110)。[showDelete]のとき右下に削除チップ
-  Widget _phoneImage(_BranchRowData row, {required bool showDelete}) {
+  /// スマホ用：店舗の写真(高さ110)
+  Widget _phoneImage(_BranchRowData row) {
     final placeholder = const Center(child: Icon(Icons.storefront_rounded, size: 36, color: Color(0xFFB5BAC0)));
     return SizedBox(
       height: 110,
@@ -803,28 +803,6 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                     errorBuilder: (context, error, stack) => placeholder,
                   ),
           ),
-          if (showDelete)
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => _delete(row),
-                child: Container(
-                  height: 20,
-                  padding: const EdgeInsets.symmetric(horizontal: 7),
-                  decoration: BoxDecoration(color: const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(6)),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.delete_outline_rounded, size: 12, color: Color(0xFFD32F2F)),
-                      SizedBox(width: 1),
-                      Text('削除', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFFD32F2F))),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -835,7 +813,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _phoneImage(row, showDelete: true),
+        _phoneImage(row),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
           child: Row(
@@ -906,7 +884,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _phoneImage(row, showDelete: false),
+        _phoneImage(row),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           child: Column(
@@ -1111,7 +1089,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
         showLabel: false,
         controller: controller,
         maxLines: 1,
-        height: rs(context, 44),
+        height: isPhoneWidth(context) ? 44 : rs(context, 44),
       ),
     );
   }
