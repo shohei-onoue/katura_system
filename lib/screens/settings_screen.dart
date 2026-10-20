@@ -288,8 +288,8 @@ Widget _phoneBox({required Widget child, VoidCallback? onTap}) => InkWell(
       ),
     );
 
-Widget _phoneLabeled(String label, Widget field) => Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+Widget _phoneLabeled(String label, Widget field, {double gap = 5}) => Padding(
+      padding: EdgeInsets.only(bottom: gap),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -718,14 +718,25 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
               KeyedSubtree(key: ObjectKey(_rows[i]), child: _buildBranchRow(_rows[i], i)),
           ],
         ),
-        SizedBox(height: rs(context, 8)),
+        if (!isPhoneWidth(context)) SizedBox(height: rs(context, 8)),
         if (isPhoneWidth(context))
           Center(
-            child: TextButton.icon(
+            child: TextButton(
               onPressed: _addNewRow,
-              style: TextButton.styleFrom(foregroundColor: PhoneColors.orange),
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('店舗を追加', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              style: TextButton.styleFrom(
+                foregroundColor: PhoneColors.orange,
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 20),
+                  SizedBox(width: 4),
+                  Text('店舗を追加', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
           )
         else
@@ -835,7 +846,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                   children: [
                     Text(row.branch.name.isEmpty ? '（店舗名未設定）' : row.branch.name,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: PhoneColors.text)),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(row.branch.companyName.isEmpty ? '社名未設定' : row.branch.companyName, style: sub),
                     const SizedBox(height: 2),
                     Text(row.branch.address.isEmpty ? '住所未設定' : row.branch.address, style: sub),
@@ -852,6 +863,8 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, size: 20, color: PhoneColors.hint),
+                padding: const EdgeInsets.all(10),
+                style: IconButton.styleFrom(minimumSize: const Size(40, 40), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                 onSelected: (v) {
                   if (v == 'edit') {
                     setState(() => row.editing = true);
@@ -899,10 +912,11 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _phoneLabeled('店舗名', _penField(row, row.nameController)),
-              _phoneLabeled('社名', _penField(row, row.companyController)),
+              _phoneLabeled('店舗名', _penField(row, row.nameController), gap: 11),
+              _phoneLabeled('社名', _penField(row, row.companyController), gap: 11),
               _phoneLabeled(
                 '住所',
+                gap: 11,
                 _phoneBox(
                   onTap: () => showDialog(
                     context: context,
@@ -924,7 +938,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                         onTap: () => _adjustCoordinates(row),
                         child: const Padding(
                           padding: EdgeInsets.all(4),
-                          child: Icon(Icons.edit_location_alt_rounded, size: 18, color: PhoneColors.sub),
+                          child: Icon(Icons.place_rounded, size: 18, color: PhoneColors.sub),
                         ),
                       ),
                     ],
@@ -933,6 +947,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
               ),
               _phoneLabeled(
                 '電話番号',
+                gap: 11,
                 _phoneBox(
                   onTap: () => showDialog(
                     context: context,
@@ -951,6 +966,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
               ),
               _phoneLabeled(
                 '配送車両数',
+                gap: 11,
                 _phoneBox(
                   onTap: () => showDialog(
                     context: context,
@@ -969,7 +985,6 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                   child: text(row.vehicleController.text, '台数を入力'),
                 ),
               ),
-              const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(
