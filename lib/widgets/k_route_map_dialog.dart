@@ -32,8 +32,9 @@ class KRouteMapDialog extends StatefulWidget {
   final List<KRouteStop> stops; // 最後が目的地、それ以外は経由地
   final bool vertical; // true＝スマホ用（上に地図、下にルートカード）
   final void Function(String orderId)? onDelivered; // 「配達済み」にした受注IDを通知
+  final void Function(String orderId)? onUndelivered; // 「配達済み」を取り消した受注IDを通知
 
-  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops, this.vertical = false, this.onDelivered});
+  const KRouteMapDialog({super.key, required this.title, required this.origin, required this.stops, this.vertical = false, this.onDelivered, this.onUndelivered});
 
   @override
   State<KRouteMapDialog> createState() => _KRouteMapDialogState();
@@ -342,6 +343,21 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     const maxStops = 10;
     final todo = [for (int i = 0; i < widget.stops.length; i++) if (!_delivered.contains(i)) i];
     if (todo.isEmpty) return;
+    Object? startOrigin = widget.origin;
+    if (_delivered.contains(0)) {
+      final fromStore = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('ナビの出発地を選択'),
+          children: [
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, false), child: const Text('現在地からのナビ')),
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, true), child: const Text('店舗からのナビ')),
+          ],
+        ),
+      );
+      if (fromStore == null) return;
+      startOrigin = fromStore ? widget.origin : null;
+    }
     final sections = <List<int>>[];
     for (int k = 0; k < todo.length; k += maxStops) {
       sections.add(todo.sublist(k, k + maxStops > todo.length ? todo.length : k + maxStops));
@@ -349,9 +365,10 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     Future<void> open(List<int> sec) {
       final first = sec.first;
       final prev = todo.indexOf(first) - 1; // 前の区間の最後の配達先から出発
-      return _openNav(prev < 0 ? widget.origin : _stopLoc(todo[prev]), sec, highway: highway);
+      return _openNav(prev < 0 ? startOrigin : _stopLoc(todo[prev]), sec, highway: highway);
     }
     if (sections.length == 1) return open(sections.first);
+    if (!mounted) return;
     final sel = await showDialog<int>(
       context: context,
       builder: (ctx) => SimpleDialog(
@@ -381,6 +398,24 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('配達済みを保存できませんでした')));
+      }
+    } finally {
+      if (mounted) setState(() => _delivering = false);
+    }
+  }
+
+  /// 「取消」ボタン：配達済みを元の状態（受注済み）に戻す。
+  Future<void> _unmarkDelivered(int i) async {
+    final id = widget.stops[i].orderId;
+    if (id == null || _delivering || !_delivered.contains(i)) return;
+    setState(() => _delivering = true);
+    try {
+      await OrderService().updateOrderStatus(id, '受注済み');
+      widget.onUndelivered?.call(id);
+      if (mounted) setState(() => _delivered.remove(i));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('取消できませんでした')));
       }
     } finally {
       if (mounted) setState(() => _delivering = false);
@@ -474,6 +509,16 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
                     child: Text(done ? '配達済み（完了）' : '配達済み', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ),
                 ),
+                if (done) ...[
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 36,
+                    child: OutlinedButton(
+                      onPressed: _delivering ? null : () => _unmarkDelivered(i),
+                      child: const Text('取消', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 4),
               ],
             ],

@@ -91,6 +91,9 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
   final GlobalKey<ScaffoldMessengerState> _messengerKey =
       GlobalKey<ScaffoldMessengerState>();
   final Set<String> _lateIds = {}; // 移動時間で間に合わない予定カードのID（赤色で表示）
+  final Set<String> _deliveredIds = {}; // このダイアログで配達済みにした受注
+  final Set<String> _undeliveredIds = {}; // このダイアログで配達済みを取り消した受注
+  bool _isDelivered(OrderModel o) => _deliveredIds.contains(o.id) || (!_undeliveredIds.contains(o.id) && OrderService.isDelivered(o));
   ({int lane, int minutes})? _pending; // 今回決めた予約枠（列番号は0始まり）
 
   @override
@@ -571,6 +574,12 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
       builder: (_) => KRouteMapDialog(
         title: '- ${lane + 1}号車 -　配送ルート',
         origin: _branchPos!,
+        onDelivered: (id) {
+          if (mounted) setState(() { _deliveredIds.add(id); _undeliveredIds.remove(id); });
+        },
+        onUndelivered: (id) {
+          if (mounted) setState(() { _deliveredIds.remove(id); _undeliveredIds.add(id); });
+        },
         stops: [
           for (final o in group)
             KRouteStop(
@@ -578,6 +587,8 @@ class _DeliveryScheduleDialogState extends State<DeliveryScheduleDialog> {
               time: o.deliveryTime,
               place: _cityOf(o),
               color: _branchColor(o.branchName),
+              orderId: o.id,
+              delivered: _isDelivered(o),
             ),
         ],
       ),

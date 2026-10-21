@@ -382,7 +382,8 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
   // ドラッグで号車を変えた予定（親の注文データは古いままなので、こちらを優先する）
   final Map<String, int> _vehicleOverride = {};
   final Set<String> _deliveredIds = {}; // この画面で配達済みにした受注
-  bool _isDelivered(OrderModel o) => _deliveredIds.contains(o.id) || OrderService.isDelivered(o);
+  final Set<String> _undeliveredIds = {}; // この画面で配達済みを取り消した受注
+  bool _isDelivered(OrderModel o) => _deliveredIds.contains(o.id) || (!_undeliveredIds.contains(o.id) && OrderService.isDelivered(o));
   final GlobalKey _vScrollKey = GlobalKey();
   final GlobalKey _timelineKey = GlobalKey();
   final ScrollController _vScroll = ScrollController();
@@ -531,7 +532,10 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
           origin: origin,
           vertical: true,
           onDelivered: (id) {
-            if (mounted) setState(() => _deliveredIds.add(id));
+            if (mounted) setState(() { _deliveredIds.add(id); _undeliveredIds.remove(id); });
+          },
+          onUndelivered: (id) {
+            if (mounted) setState(() { _deliveredIds.remove(id); _undeliveredIds.add(id); });
           },
           stops: [
             for (final o in group)
