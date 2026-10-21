@@ -202,11 +202,15 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // スマホ幅は縮小せず実寸で表示する（rs/rf は大画面基準で小さくなりすぎるため）
+    final phone = MediaQuery.of(context).size.width < 600;
+    double rs(BuildContext c, double v) => phone ? v : KR.rs(c, v);
+    double rf(BuildContext c, double v) => phone ? v : KR.rf(c, v);
     return Dialog(
       insetPadding: EdgeInsets.zero,
       child: Scaffold(
         appBar: AppBar(
-          title: const KDialogTitle('場所の微調整と写真撮影'),
+          title: KDialogTitle('場所の微調整と写真撮影', fontSize: phone ? 20 : null),
           backgroundColor: AppColors.accentPurple,
           foregroundColor: AppColors.mainBackground,
           actions: [
@@ -221,23 +225,23 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
             Container(
               width: double.infinity,
               padding: EdgeInsets.all(rs(context, 16)),
-              color: Colors.deepPurple.shade50,
+              color: phone ? const Color(0xFFEDE7F6) : Colors.deepPurple.shade50,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: AppColors.accentOrange),
+                      Icon(Icons.location_on, color: AppColors.accentOrange, size: phone ? 24 : null),
                       SizedBox(width: rs(context, 12)),
                       Expanded(
-                        child: Text(_currentAddress, 
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16))),
+                        child: Text(_currentAddress,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: rf(context, 16), color: phone ? const Color(0xFF1D1B20) : null)),
                       ),
                     ],
                   ),
                   SizedBox(height: rs(context, 4)),
                   Text('※ストリートビューで向きを合わせると、その写真が保存されます', 
-                    style: TextStyle(fontSize: rf(context, 11), color: Colors.blueGrey)),
+                    style: TextStyle(fontSize: rf(context, 11), color: phone ? const Color(0xFF607D8B) : Colors.blueGrey)),
                 ],
               ),
             ),
@@ -255,6 +259,8 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
                 height: rs(context, 60),
                 child: KButton(
                   label: 'この地点と写真で確定',
+                  height: phone ? 60 : null,
+                  fontSize: phone ? 16 : null,
                   onPressed: () {
                     Navigator.pop(context, {
                       'position': _currentPosition,

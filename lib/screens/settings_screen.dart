@@ -784,7 +784,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
   }
 
   /// スマホ用：店舗の写真(高さ110)
-  Widget _phoneImage(_BranchRowData row) {
+  Widget _phoneImage(_BranchRowData row, {bool showAdjust = false}) {
     final placeholder = const Center(child: Icon(Icons.storefront_rounded, size: 36, color: Color(0xFFB5BAC0)));
     return SizedBox(
       height: 110,
@@ -803,6 +803,28 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
                     errorBuilder: (context, error, stack) => placeholder,
                   ),
           ),
+          if (showAdjust)
+            Positioned(
+              right: 10,
+              bottom: 10,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => _adjustCoordinates(row),
+                child: Container(
+                  height: 20,
+                  padding: const EdgeInsets.symmetric(horizontal: 7),
+                  decoration: BoxDecoration(color: PhoneColors.purpleLight, borderRadius: BorderRadius.circular(6)),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.edit_location_alt_rounded, size: 12, color: PhoneColors.purple),
+                      SizedBox(width: 1),
+                      Text('調整', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: PhoneColors.purple)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -813,7 +835,7 @@ class _BranchSettingsSectionState extends State<_BranchSettingsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _phoneImage(row),
+        _phoneImage(row, showAdjust: true),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
           child: Row(
