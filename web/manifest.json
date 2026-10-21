@@ -1,11 +1,11 @@
 {
-    "name": "katura_system",
-    "short_name": "katura_system",
+    "name": "かつらシステム",
+    "short_name": "かつらシステム",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#FFFFFF",
-    "description": "A new Flutter project.",
+    "description": "弁当受注から配送までの管理システム",
     "orientation": "any",
     "prefer_related_applications": false,
     "icons": [

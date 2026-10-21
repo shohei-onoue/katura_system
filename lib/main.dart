@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -13,6 +14,13 @@ import 'widgets/k_responsive.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // スマホ(画面の短い辺が600未満)は縦向き固定。タブレットは向き自由。Webは対象外
+  if (!kIsWeb) {
+    final v = WidgetsBinding.instance.platformDispatcher.views.first;
+    if (v.physicalSize.shortestSide / v.devicePixelRatio < 600) {
+      await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
+  }
   
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
