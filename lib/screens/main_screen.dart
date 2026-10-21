@@ -7,7 +7,6 @@ import 'order_form_screen.dart';
 import 'customer_list_screen.dart';
 import 'menu_master_screen.dart';
 import 'ingredient_master_screen.dart';
-import 'staff_management_screen.dart';
 import 'order_list_screen.dart';
 import 'planning_screen.dart';
 import 'analysis_screen.dart';
@@ -288,8 +287,6 @@ class _MainScreenState extends State<MainScreen> {
         return const ContactProgressScreen();
       case 10: // 材料マスタ
         return const IngredientMasterScreen();
-      case 8: // スタッフ管理
-        return const StaffManagementScreen();
       case 9: // 設定
         return SettingsScreen(onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(), onNavigate: _goTo);
       default:
