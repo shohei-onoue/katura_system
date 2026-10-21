@@ -15,6 +15,7 @@ description: katura_systemの変更をコミット・プッシュし、Web版を
 6. `flutter build web --release` でWeb版をビルドする。
 7. `firebase deploy --only hosting` でデプロイする（公開先: https://katura-system-app.web.app）。
 8. コミットID・プッシュ結果・デプロイ結果を3行以内で報告する。
+9. 起動（または再起動）のたびに、前回の追記以降の変更内容を `~/Desktop/work_log.md` の今日の日付の見出しの下へ、箇条書き1〜2行で端的に追記する（見出しが無ければ作る）。`git diff` で変更を確認して書く。
 
 ## 注意
 
