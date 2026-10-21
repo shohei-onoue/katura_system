@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/device_mode.dart';
 import 'package:flutter/material.dart';
 import 'k_responsive.dart';
 import 'k_numeric_dial_pad.dart';
@@ -95,7 +96,7 @@ class _KNumericInputDialogState extends State<KNumericInputDialog> {
   @override
   Widget build(BuildContext context) {
     // スマホ幅は縮小せず実寸で表示する（rs/rf は大画面基準で小さくなりすぎるため）
-    final phone = MediaQuery.of(context).size.width < 600;
+    final phone = isPhoneMode(context);
     double rs(BuildContext c, double v) => phone ? v : KR.rs(c, v);
     double rf(BuildContext c, double v) => phone ? v : KR.rf(c, v);
     return Dialog(

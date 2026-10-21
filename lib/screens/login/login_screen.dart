@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/device_mode.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/email_auth_service.dart';
@@ -124,7 +125,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     // スマホ幅(600未満)は端末標準キーボード、タブレットは独自キーボード
-    final bool useCustomKb = useOnScreenKeyboard && MediaQuery.of(context).size.width >= 600;
+    final bool useCustomKb = useOnScreenKeyboard && !isPhoneMode(context);
     // 画面幅・高さに対する比率でサイズ・余白を算出（widgets/k_responsive.dart の既存方式に準拠）
     final fieldWidth = rs(context, 340).clamp(240.0, 420.0);
     final fieldHeight = rs(context, 40).clamp(36.0, 56.0);

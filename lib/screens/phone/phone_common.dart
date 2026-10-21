@@ -1,3 +1,4 @@
+import 'package:katura_system/utils/device_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -6,8 +7,8 @@ import 'package:katura_system/utils/app_colors.dart';
 import '../../models/order_model.dart';
 import '../../services/pre_contact_settings_service.dart';
 
-/// スマホ幅(600未満)かどうか
-bool isPhoneWidth(BuildContext context) => MediaQuery.of(context).size.width < 600;
+/// スマホ版UIかどうか（判定は utils/device_mode.dart）
+bool isPhoneWidth(BuildContext context) => isPhoneMode(context);
 
 /// 事前連絡SMSの文面（設定済み文面の保存先が未確定のため、受注内容から仮生成）
 /// お客様の確認ページURL
