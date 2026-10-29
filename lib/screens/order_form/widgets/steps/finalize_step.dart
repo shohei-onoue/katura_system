@@ -177,23 +177,36 @@ class FinalizeStep extends StatelessWidget {
             children: [
               for (int i = 0; i < items.length; i++)
                 _choiceCard(context,
-                    selected: packagingType == items[i][1], label: items[i][0], onTap: () => onPackagingTypeChanged(items[i][1])),
+                    selected: _selectedPackaging.contains(items[i][1]),
+                    label: items[i][0],
+                    onTap: () => _togglePackaging(items[i][1])),
             ],
           ),
         ),
-        if (packagingType == '小分け' || packagingType == 'その他') ...[
-          SizedBox(height: rs(context, 8)),
-          Padding(
-            padding: EdgeInsets.only(left: _labelW(context)),
-            child: SizedBox(height: kFieldHeight(context), child: _buildPackagingDetailArea(context)),
-          ),
-        ],
+        for (final key in const ['小分け', 'その他'])
+          if (_selectedPackaging.contains(key)) ...[
+            SizedBox(height: rs(context, 8)),
+            Padding(
+              padding: EdgeInsets.only(left: _labelW(context)),
+              child: SizedBox(height: kFieldHeight(context), child: _buildPackagingDetailArea(context, key)),
+            ),
+          ],
       ],
     );
   }
 
-  Widget _buildPackagingDetailArea(BuildContext context) {
-    if (packagingType == '小分け') {
+  // 梱包方法は「,」区切りで複数保持する
+  List<String> get _selectedPackaging =>
+      packagingType.split(',').where((e) => e.isNotEmpty).toList();
+
+  void _togglePackaging(String value) {
+    final list = _selectedPackaging;
+    list.contains(value) ? list.remove(value) : list.add(value);
+    onPackagingTypeChanged(list.join(','));
+  }
+
+  Widget _buildPackagingDetailArea(BuildContext context, String key) {
+    if (key == '小分け') {
       return Align(
         alignment: Alignment.centerLeft,
         child: Row(
@@ -214,7 +227,7 @@ class FinalizeStep extends StatelessWidget {
         ),
       );
     }
-    if (packagingType == 'その他') {
+    if (key == 'その他') {
       return SizedBox(
         width: double.infinity,
         child: KMultimodalTextField(

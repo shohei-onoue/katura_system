@@ -294,12 +294,12 @@ class _OrderFormSidebarState extends State<OrderFormSidebar> {
 
   Widget _buildFinalizeSummary() {
     // 梱包方法の表示文言
-    String packaging = widget.packagingType.isEmpty ? '未選択' : widget.packagingType;
-    if (widget.packagingType == '小分け' && widget.packagingSmallQty > 0) {
-      packaging = '小分け（${widget.packagingSmallQty}個ずつ）';
-    } else if (widget.packagingType == 'その他' && widget.packagingOther.isNotEmpty) {
-      packaging = 'その他（${widget.packagingOther}）';
-    }
+    final packagingList = widget.packagingType.split(',').where((e) => e.isNotEmpty).map((e) {
+      if (e == '小分け' && widget.packagingSmallQty > 0) return '小分け（${widget.packagingSmallQty}個ずつ）';
+      if (e == 'その他' && widget.packagingOther.isNotEmpty) return 'その他（${widget.packagingOther}）';
+      return e;
+    }).toList();
+    final String packaging = packagingList.isEmpty ? '未選択' : packagingList.join('、');
 
     // 事前連絡：宛先 / 方法 / 番号 / 日時
     final String preRecipient = widget.preConfirmationRecipient.isEmpty ? '未設定' : widget.preConfirmationRecipient;
