@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -11,6 +11,7 @@ import 'services/settings_service.dart';
 import 'services/ink_recognition_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'widgets/k_responsive.dart';
+import 'utils/screen_angle.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +65,20 @@ class KaturaSystemApp extends StatelessWidget {
       ),
       // サイズ指定のない文字・アイコンも、画面比率に合わせて拡大縮小する（小さくなりすぎないよう下限0.8）
       builder: (context, child) {
+        // スマホのWebブラウザは、横向きにしても縦向きのままのUIを維持する（画面を逆回転して縦に保つ）
+        final mq = MediaQuery.of(context);
+        final bool mobileBrowser = kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+        final int angle = mobileBrowser ? screenAngle() : 0;
+        if (mobileBrowser && mq.size.shortestSide < 600 && (angle == 90 || angle == 270)) {
+          child = RotatedBox(
+            quarterTurns: angle == 90 ? 3 : 1,
+            child: MediaQuery(
+              data: mq.copyWith(size: Size(mq.size.height, mq.size.width), padding: EdgeInsets.zero, viewPadding: EdgeInsets.zero, viewInsets: EdgeInsets.zero),
+              child: child!,
+            ),
+          );
+        }
         final f = KR.scale(context).clamp(0.8, 3.0).toDouble();
         final theme = Theme.of(context);
         return Theme(
