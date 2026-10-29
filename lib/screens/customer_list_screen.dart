@@ -16,6 +16,8 @@ import 'package:katura_system/utils/name_format.dart';
 import 'phone/phone_common.dart';
 import 'phone/phone_customer_list.dart';
 import 'phone/phone_customer_style.dart';
+import 'phone/landscape/landscape_style.dart';
+import 'phone/landscape/landscape_customer.dart';
 
 class CustomerListScreen extends StatefulWidget {
   final VoidCallback? onOpenMenu;
@@ -370,12 +372,17 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     if (r == 'detail') {
       _showCustomerDetail(c);
     } else if (r == 'delete') {
-      if (await showPhoneDeleteCustomerDialog(context, c) && mounted) {
-        await _customerService.deleteCustomer(c.id);
-        if (!mounted) return;
-        _loadCustomers();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
-      }
+      await _phoneDelete(c);
+    }
+  }
+
+  Future<void> _phoneDelete(Customer c) async {
+    if (await showPhoneDeleteCustomerDialog(context, c) && mounted) {
+      await _customerService.deleteCustomer(c.id);
+      if (!mounted) return;
+      if (_selectedCustomer?.id == c.id) _selectedCustomer = null;
+      _loadCustomers();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('顧客データを削除しました')));
     }
   }
 
@@ -392,6 +399,35 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
       setState(() => _selectedCustomer = picked);
       _showCustomerDetail(picked);
     }
+  }
+
+  Widget _buildPhoneLandscape() {
+    return Scaffold(
+      backgroundColor: LS.bg,
+      resizeToAvoidBottomInset: true,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : LandscapeCustomerView(
+              customers: _filteredCustomers,
+              elapsedDays: _elapsedDays,
+              selected: _selectedCustomer,
+              sortKey: _sortKey,
+              sortAscending: _sortAscending,
+              searchText: _searchController.text,
+              onSort: _onSort,
+              onSearch: _phoneSearch,
+              onClearSearch: _searchController.clear,
+              onTap: (c) => _checkedIds.isNotEmpty ? _toggleChecked(c) : setState(() => _selectedCustomer = c),
+              onLongPress: _toggleChecked,
+              checkedIds: _checkedIds,
+              onCancelSelect: () => setState(_checkedIds.clear),
+              onDeleteChecked: _deleteChecked,
+              onDetail: _phoneTap,
+              onDelete: _phoneDelete,
+              onSelectAll: _toggleSelectAll,
+              onNewOrder: () => widget.onNavigate?.call(0),
+            ),
+    );
   }
 
   Widget _buildPhone() {
@@ -422,6 +458,7 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return _buildPhoneLandscape();
     if (isPhoneWidth(context)) return _buildPhone();
     final bool hasQuery = _searchController.text.isNotEmpty;
     return Scaffold(

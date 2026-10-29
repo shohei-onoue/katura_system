@@ -73,7 +73,7 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
       child: Container(
         width: dialogWidth,
         padding: EdgeInsets.all(rav(context, 24)),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -149,7 +149,7 @@ class _KOrderIntakeDialogState extends State<KOrderIntakeDialog> {
               ],
             ),
           ],
-        ),
+        )),
       ),
     );
   }

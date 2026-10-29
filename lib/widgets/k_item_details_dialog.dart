@@ -57,7 +57,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
           maxWidth: rs(context, 750),
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
-        child: Padding(
+        child: SingleChildScrollView(child: Padding(
           padding: EdgeInsets.all(rav(context, 20)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -212,7 +212,7 @@ class _KItemDetailsDialogState extends State<KItemDetailsDialog> {
               ),
             ],
           ),
-        ),
+        )),
       ),
     );
   }

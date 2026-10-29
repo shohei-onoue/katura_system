@@ -20,7 +20,6 @@ import '../widgets/k_responsive.dart';
 import 'phone/phone_common.dart';
 import 'phone/phone_delivery_common.dart';
 import 'phone/phone_delivery_schedule.dart';
-import 'phone/phone_order_list_dialogs.dart';
 
 /// 配送ルート最適化機能。これまでダイヤログの中に隠れていた「日時選択（カレンダー）」を、
 /// この画面ではポップアップではなく常時表示の画面として置く。

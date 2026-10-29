@@ -20,6 +20,7 @@ import 'package:katura_system/utils/app_colors.dart';
 import '../services/pre_contact_settings_service.dart';
 import 'phone/phone_common.dart';
 import 'phone/phone_shell.dart';
+import 'phone/landscape/landscape_style.dart';
 
 /// アプリ全体の設定を一括管理する画面
 class SettingsScreen extends StatelessWidget {
@@ -30,6 +31,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return const _LandscapeSettingsBody();
     if (isPhoneWidth(context)) return const _PhoneSettingsBody();
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -141,6 +143,119 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// スマホ横向きの設定画面(Figma 169:81): 左=カテゴリ(幅260) / 右=選んだカテゴリの内容
+class _LandscapeSettingsBody extends StatefulWidget {
+  const _LandscapeSettingsBody();
+
+  @override
+  State<_LandscapeSettingsBody> createState() => _LandscapeSettingsBodyState();
+}
+
+class _LandscapeSettingsBodyState extends State<_LandscapeSettingsBody> {
+  int _index = 0;
+
+  static const _titles = ['事前確認・事前連絡', '店舗登録', '事前連絡方法'];
+
+  Widget _category(int i) {
+    final sel = i == _index;
+    return InkWell(
+      onTap: () => setState(() => _index = i),
+      borderRadius: BorderRadius.circular(LS.btnRadius),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.only(left: 16, right: 12),
+        decoration: BoxDecoration(
+          color: sel ? LS.lilac2 : Colors.white,
+          borderRadius: BorderRadius.circular(LS.btnRadius),
+          border: Border.all(color: sel ? LS.primary : LS.border, width: sel ? 3 : 1),
+        ),
+        child: Row(children: [
+          Expanded(child: Text(_titles[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: sel ? LS.primary : LS.text))),
+          Icon(Icons.chevron_right, size: 28, color: sel ? LS.primary : LS.text),
+        ]),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LS.bg,
+      body: Column(
+        children: [
+          const SizedBox(
+            height: LS.headerH,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: LS.pad),
+                child: Text('設定', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: LS.text)),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(LS.pad, 0, LS.pad, LS.gap),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 260,
+                    child: ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: _titles.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      itemBuilder: (_, i) => _category(i),
+                    ),
+                  ),
+                  const SizedBox(width: LS.gap),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(LS.panelRadius), border: Border.all(color: LS.border)),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(14),
+                        child: IndexedStack(
+                          alignment: Alignment.topLeft,
+                          index: _index,
+                          sizing: StackFit.passthrough,
+                          children: const [
+                            _LandscapePreConfirm(),
+                            _BranchSettingsSection(),
+                            _PhonePreContactSection(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LandscapePreConfirm extends StatelessWidget {
+  const _LandscapePreConfirm();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '事前確認メールを配達前日に自動送信する時刻と、事前電話連絡の担当者番号を設定します。担当者番号には、電話連絡のし忘れ防止リマインドSMSが送信されます。',
+          style: TextStyle(fontSize: 16, color: LS.textSub, height: 1.4),
+        ),
+        SizedBox(height: 8),
+        _PreConfirmSettingsSection(),
+      ],
     );
   }
 }

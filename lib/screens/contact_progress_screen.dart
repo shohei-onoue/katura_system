@@ -8,6 +8,8 @@ import '../widgets/k_responsive.dart' show KR;
 import 'package:katura_system/utils/app_colors.dart';
 import 'package:katura_system/utils/name_format.dart';
 import 'package:katura_system/utils/facility_icon.dart';
+import 'package:intl/intl.dart';
+import 'phone/landscape/landscape_style.dart';
 import 'phone/phone_common.dart';
 
 // スマホ幅は実寸、それ以外は従来の比率拡大
@@ -60,8 +62,130 @@ class _ContactProgressScreenState extends State<ContactProgressScreen> {
     });
   }
 
+  Widget _buildLandscape(BuildContext context) {
+    final pages = (_orders.length + 1) ~/ 2;
+    return Scaffold(
+      backgroundColor: LS.bg,
+      body: SafeArea(
+        left: false,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            height: LS.headerH,
+            padding: const EdgeInsets.symmetric(horizontal: LS.pad),
+            child: Row(children: [
+              if (widget.asPage) ...[
+                InkWell(onTap: () => Navigator.of(context).pop(), child: const Icon(Icons.close, size: 28, color: LS.text)),
+                const SizedBox(width: LS.gap),
+              ],
+              const Flexible(
+                child: Text('事前連絡',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: LS.text)),
+              ),
+              const SizedBox(width: LS.gap),
+              ValueListenableBuilder<int>(
+                valueListenable: OrderService.preContactPending,
+                builder: (_, n, _) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                  decoration: BoxDecoration(color: LS.red, borderRadius: BorderRadius.circular(14)),
+                  child: Text('未連絡 $n件', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.refresh, size: 28, color: LS.text), onPressed: _load),
+            ]),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _orders.isEmpty
+                    ? const Center(child: Text('明日の連絡待ちはありません', style: TextStyle(fontSize: 18, color: LS.textSub)))
+                    : PageView.builder(
+                        itemCount: pages,
+                        itemBuilder: (_, i) {
+                          final a = _orders[i * 2];
+                          final b = i * 2 + 1 < _orders.length ? _orders[i * 2 + 1] : null;
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(LS.pad, 0, LS.pad, LS.gap),
+                            child: Row(children: [
+                              Expanded(child: _landscapeCard(a)),
+                              const SizedBox(width: LS.gap),
+                              Expanded(child: b == null ? const SizedBox() : _landscapeCard(b)),
+                            ]),
+                          );
+                        },
+                      ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _landscapeCard(OrderModel o) {
+    final isPhone = o.preConfirmationMethod == '電話';
+    final phone = o.preConfirmationPhoneType == '指定番号へ連絡' && o.preConfirmationPhoneNumber.isNotEmpty ? o.preConfirmationPhoneNumber : o.phoneNumber;
+    final reaction = !isPhone && o.smsReply.isNotEmpty && o.smsReply != '承認';
+    final done = !isPhone && o.smsSent && o.smsReply == '承認';
+    final badge = isPhone ? '電話待ち' : reaction ? '返信あり' : done ? '確認済み' : (o.smsSent ? '送信待ち' : '未送信');
+    final name = withHonorific(_displayNames[o.id] ?? o.customerName);
+    final date = '${DateFormat('M/d(E)', 'ja_JP').format(o.deliveryDate)} ${o.deliveryTime}';
+    Widget row(IconData icon, String t) => Row(children: [
+          Icon(icon, size: 24, color: Colors.white),
+          const SizedBox(width: 8),
+          Expanded(child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white))),
+        ]);
+    Widget btn(IconData icon, String label, Color bg, Color fg, VoidCallback onTap) => Expanded(
+          child: SizedBox(
+            height: LS.btnH,
+            child: FilledButton.icon(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                backgroundColor: bg,
+                foregroundColor: fg,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(LS.btnRadius)),
+              ),
+              icon: Icon(icon, size: 24),
+              label: Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            ),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: LS.primary, borderRadius: BorderRadius.circular(LS.panelRadius)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white))),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(color: LS.amberText, borderRadius: BorderRadius.circular(12)),
+            child: Text(badge, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: LS.badgeOrangeText)),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(color: LS.primary2, borderRadius: BorderRadius.circular(12)),
+          child: Column(children: [row(Icons.schedule_rounded, date), const SizedBox(height: 4), row(Icons.call_rounded, phone)]),
+        ),
+        const Spacer(),
+        if (!done)
+          Row(children: [
+            if (!isPhone) ...[
+              btn(Icons.sms_rounded, o.smsSent ? '再送' : 'SMS', Colors.white, LS.primary, () => _sendSms(o, phone)),
+              const SizedBox(width: 8),
+            ],
+            btn(Icons.call_rounded, '電話', LS.orange, Colors.white, () => callPhone(phone)),
+          ])
+        else
+          const Text('お客様が了承しました', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return _buildLandscape(context);
     final onPhone = isPhoneWidth(context);
     final barFg = onPhone ? Colors.white : AppColors.primaryText;
     return Scaffold(

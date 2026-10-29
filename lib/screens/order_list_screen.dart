@@ -7,6 +7,8 @@ import '../services/date_warning_service.dart';
 import '../services/order_service.dart';
 import '../widgets/k_responsive.dart';
 import 'order_list/widgets/order_list_card.dart';
+import 'phone/landscape/landscape_order_list.dart';
+import 'phone/landscape/landscape_style.dart';
 import 'phone/phone_common.dart';
 import 'phone/phone_order_card.dart';
 import 'phone/phone_order_list_dialogs.dart';
@@ -227,8 +229,36 @@ class _OrderListScreenState extends State<OrderListScreen> {
     );
   }
 
+  Widget _buildPhoneLandscape() {
+    final warnIds = <String>{
+      for (final o in _visibleOrders)
+        if ((_warnDays[DateWarningService.dayOf(o.deliveryDate)] ?? const <String>[]).any((t) => t.startsWith('${o.customerName}：'))) o.id,
+    };
+    final day = _selectedDay ?? _focusedDay;
+    return LandscapeOrderList(
+      orders: _visibleOrders,
+      isLoading: _isLoading,
+      selectedDay: day,
+      displayNames: _displayNames,
+      warnOrderIds: warnIds,
+      branches: _branchTabs,
+      selectedBranch: _selectedBranch,
+      onPrevDay: () => _setPhoneDay(day.subtract(const Duration(days: 1))),
+      onNextDay: () => _setPhoneDay(day.add(const Duration(days: 1))),
+      onToday: _goToday,
+      onSelectBranch: (b) => setState(() => _selectedBranch = b),
+      onDelivered: (o) async {
+        await _orderService.updateOrderStatus(o.id, '配送済み');
+        await _loadOrders(showLoading: false, refresh: false);
+      },
+      onEdit: (o, section) => widget.onEditOrder?.call(o, section),
+      onCancel: _cancelOrder,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return _buildPhoneLandscape();
     if (isPhoneWidth(context)) return _buildPhone();
     return Scaffold(
       backgroundColor: Colors.grey[100],

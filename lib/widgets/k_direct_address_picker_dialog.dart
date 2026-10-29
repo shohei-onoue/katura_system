@@ -283,7 +283,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                     : _phoneZipList()),
           ),
           const SizedBox(height: 10),
-          PcNumPad(onKey: _handleNumericInput),
+          _landCap(PcNumPad(onKey: _handleNumericInput)),
         ],
       );
     } else if (phase == 3) {
@@ -314,7 +314,7 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
             style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: tempDetail.isEmpty ? PcColors.handle : PcColors.purple),
           ),
           const SizedBox(height: 18),
-          PcNumPad(onKey: _handleNumericInput),
+          _landCap(PcNumPad(onKey: _handleNumericInput)),
         ],
       );
     } else {
@@ -337,13 +337,13 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
                     : PcChevronList(items: items, onTap: _handleAddressItemSelect)),
           ),
           const SizedBox(height: 10),
-          PcKanaPad(
+          _landCap(PcKanaPad(
             selected: selectedInitial,
             kanaMap: kanaMap,
             onKana: _handleKanaTap,
             onAll: _handleAllTap,
             onBack: phase > 0 ? _handleBack : () => Navigator.pop(context),
-          ),
+          )),
         ],
       );
     }
@@ -381,12 +381,27 @@ class _KDirectAddressPickerDialogState extends State<KDirectAddressPickerDialog>
               ),
             ),
             Padding(padding: const EdgeInsets.fromLTRB(18, 0, 18, 6), child: chips),
-            Expanded(child: body),
+            Expanded(
+              child: _isLand
+                  // 横向きは高さが足りないので、本文を最低高さ付きでスクロール可能にする
+                  ? LayoutBuilder(
+                      builder: (context, c) => SingleChildScrollView(
+                        child: SizedBox(height: c.maxHeight < 560 ? 560 : c.maxHeight, child: body),
+                      ),
+                    )
+                  : body,
+            ),
           ],
         ),
       ),
     );
   }
+
+  bool get _isLand => isPhoneWidth(context) && MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
+
+  // 横向き時のみ、キーパッドの幅を絞って縦にはみ出さないようにする
+  Widget _landCap(Widget w) =>
+      _isLand ? Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 380), child: w)) : w;
 
   Widget _phoneZipList() {
     return Container(

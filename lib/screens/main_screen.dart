@@ -341,10 +341,7 @@ class _MainScreenState extends State<MainScreen> {
             Expanded(
               child: SafeArea(
                 left: false,
-                child: MediaQuery(
-                  data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.3)),
-                  child: _buildBody(),
-                ),
+                child: _buildBody(),
               ),
             ),
           ],

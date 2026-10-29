@@ -205,6 +205,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
   Widget build(BuildContext context) {
     // スマホ幅は縮小せず実寸で表示する（rs/rf は大画面基準で小さくなりすぎるため）
     final phone = isPhoneMode(context);
+    final land = phone && MediaQuery.of(context).size.width > MediaQuery.of(context).size.height; // 横向き
     double rs(BuildContext c, double v) => phone ? v : KR.rs(c, v);
     double rf(BuildContext c, double v) => phone ? v : KR.rf(c, v);
     return Dialog(
@@ -225,7 +226,7 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
           children: [
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(rs(context, 16)),
+              padding: EdgeInsets.all(land ? 8 : rs(context, 16)),
               color: phone ? const Color(0xFFEDE7F6) : Colors.deepPurple.shade50,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,17 +251,17 @@ class _KLocationAdjustmentDialogState extends State<KLocationAdjustmentDialog> {
               child: KHtmlView(controller: _webViewController),
             ),
             Container(
-              padding: EdgeInsets.all(rs(context, 20)),
+              padding: EdgeInsets.all(land ? 8 : rs(context, 20)),
               decoration: BoxDecoration(
                 color: AppColors.mainBackground,
                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: rs(context, 60),
+                height: land ? 48 : rs(context, 60),
                 child: KButton(
                   label: 'この地点と写真で確定',
-                  height: phone ? 60 : null,
+                  height: land ? 48 : (phone ? 60 : null),
                   fontSize: phone ? 16 : null,
                   onPressed: () {
                     Navigator.pop(context, {

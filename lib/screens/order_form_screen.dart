@@ -36,6 +36,7 @@ import 'package:http/http.dart' as http;
 import '../widgets/k_responsive.dart';
 import '../services/pre_contact_settings_service.dart';
 import 'phone/phone_common.dart';
+import 'phone/landscape/landscape_style.dart' show isPhoneLandscape;
 import 'package:katura_system/utils/app_colors.dart';
 
 /// 親画面（メイン画面）から受注入力の状態を確認・破棄するための窓口。
@@ -1987,7 +1988,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   Widget _buildScaffold(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final bool isMobile = screenWidth < 900;
+    final bool isLand = isPhoneLandscape(context); // スマホ横向き(縦のUIを維持する)
+    final bool isMobile = screenWidth < 900 || isLand;
 
     return Scaffold(
       backgroundColor: KR.backgroundLight,
@@ -2036,7 +2038,15 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                                 ? const SizedBox.shrink()
                                 : (_currentStep == 3 || (_currentStep == 2 && _isHistoryMode))
                                     // 注文内容ステップ・配達先(履歴)：タイトル/ボタンを固定し、一覧のみ内部スクロール
-                                    ? Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent())
+                                    ? (isLand
+                                        // 横向きは高さが足りないため、最低高さ付きでスクロール可能にする
+                                        ? LayoutBuilder(
+                                            builder: (context, c) => SingleChildScrollView(
+                                              padding: EdgeInsets.all(rav(context, 12)),
+                                              child: SizedBox(height: c.maxHeight - 24 < 420 ? 420 : c.maxHeight - 24, child: _buildStepContent()),
+                                            ),
+                                          )
+                                        : Padding(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()))
                                     : SingleChildScrollView(padding: EdgeInsets.all(rav(context, isMobile ? 12 : 24)), child: _buildStepContent()),
                           ),
                         ),
@@ -2370,7 +2380,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     return LayoutBuilder(
       builder: (context, c) {
         // 入力前（通常表示）と同じ余白・幅にして、カードの位置と幅が変わらないようにする
-        final double pad = rav(context, MediaQuery.of(context).size.width < 900 ? 12 : 24);
+        final double pad = rav(context, (MediaQuery.of(context).size.width < 900 || isPhoneLandscape(context)) ? 12 : 24);
         final double cardWidth = c.maxWidth - pad * 2;
         return Stack(
           children: [

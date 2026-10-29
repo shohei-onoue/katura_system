@@ -9,6 +9,7 @@ import '../services/google_maps_service.dart';
 import 'package:katura_system/utils/app_colors.dart';
 import 'k_responsive.dart';
 import '../screens/phone/phone_order_list_style.dart';
+import '../screens/phone/landscape/landscape_style.dart';
 
 /// ルート上の配達先1件。[location] は LatLng か住所(String)。
 class KRouteStop {
@@ -161,6 +162,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
       _mapReady = true;
       _controller = (widget.vertical ? KHtmlController(channelName: 'KMap', onMessage: _onMapMessage) : KHtmlController())..loadHtml(html);
     });
+    if (widget.vertical && isPhoneLandscape(context)) _loadOptionLegs(_curIdx);
   }
 
   void _updateSummary() {
@@ -540,6 +542,229 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
     );
   }
 
+  // ---- スマホ横向き：Figma 168:294 ----
+  /// 横向きで「現在地」として表示する配達先（選択中、なければ最初の未配達）。
+  int get _curIdx {
+    if (_selected >= 0 && _selected < widget.stops.length) return _selected;
+    final i = [for (int k = 0; k < widget.stops.length; k++) k].indexWhere((k) => !_delivered.contains(k));
+    return i < 0 ? 0 : i;
+  }
+
+  void _selectL(int i) {
+    if (_selected == i) return;
+    _select(i);
+  }
+
+  Widget _lRoute(int i, String label, bool value) {
+    final on = _highway[i] == value;
+    final sec = _optLegs['$i-$value']?.seconds;
+    final style = TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: LS.text);
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: _mapReady ? () => _setHighway(i, value) : null,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: on ? LS.primary : LS.borderStrong, width: on ? 2 : 1),
+        ),
+        child: Row(
+          children: [
+            Icon(on ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded, size: 24, color: LS.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+            Text(sec == null ? '--分' : '${(sec / 60).ceil()}分', maxLines: 1, style: style),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLandscape(BuildContext context) {
+    final cur = widget.stops.isEmpty ? -1 : _curIdx;
+    final st = cur < 0 ? null : widget.stops[cur];
+    final done = cur >= 0 && _delivered.contains(cur);
+    Widget btn({required VoidCallback? onTap, required Color bg, required Color fg, required IconData icon, required String label, Color? border, double? width}) {
+      final b = Opacity(
+        opacity: onTap == null ? 0.5 : 1,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: LS.btnH,
+            width: width,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(LS.btnRadius), border: border == null ? null : Border.all(color: border, width: 2)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 24, color: fg),
+                const SizedBox(width: 8),
+                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: fg))),
+              ],
+            ),
+          ),
+        ),
+      );
+      return width == null ? Expanded(child: b) : b;
+    }
+
+    return Dialog(
+      insetPadding: EdgeInsets.zero,
+      child: Scaffold(
+        backgroundColor: LS.bg,
+        body: SafeArea(
+          child: Column(
+            children: [
+              SizedBox(
+                height: LS.headerH,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: LS.pad),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => Navigator.pop(context),
+                        child: const SizedBox(width: 44, height: 44, child: Icon(Icons.arrow_back_ios_new_rounded, size: 24, color: LS.text)),
+                      ),
+                      const SizedBox(width: LS.gap),
+                      Expanded(child: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: LS.text))),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(LS.pad, 0, LS.pad, LS.gap),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(LS.panelRadius),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(child: ColoredBox(color: LS.mapBg, child: _mapView())),
+                              Positioned(
+                                left: 10,
+                                top: 10,
+                                right: 10,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+                                    child: Text(_summary, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: LS.text)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: LS.gap),
+                      Container(
+                        width: 380,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(LS.panelRadius),
+                          border: Border.all(color: LS.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: ListView(
+                                padding: EdgeInsets.zero,
+                                children: [
+                                  for (int i = 0; i < widget.stops.length; i++) ...[
+                                    if (i > 0) const SizedBox(height: 10),
+                                    if (i == cur) ...[
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: LS.lilac,
+                                          borderRadius: BorderRadius.circular(LS.cardRadius),
+                                          border: Border.all(color: LS.primary, width: 3),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text(widget.stops[i].time, maxLines: 1, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: LS.orange)),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: Text('${i + 1}  ${widget.stops[i].place}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: LS.text))),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      _lRoute(i, '一般道', false),
+                                      const SizedBox(height: 10),
+                                      _lRoute(i, '高速道路', true),
+                                    ] else
+                                      InkWell(
+                                        borderRadius: BorderRadius.circular(LS.cardRadius),
+                                        onTap: () => _selectL(i),
+                                        child: Container(
+                                          height: 48,
+                                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                                          decoration: BoxDecoration(
+                                            color: _delivered.contains(i) ? LS.green.withValues(alpha: 0.12) : Colors.white,
+                                            borderRadius: BorderRadius.circular(LS.cardRadius),
+                                            border: Border.all(color: LS.border),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Text(widget.stops[i].time, maxLines: 1, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: LS.orange)),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: Text('${i + 1}  ${widget.stops[i].place}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: LS.text))),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                btn(
+                                  width: 120,
+                                  onTap: cur < 0 ? null : () => _openNav(null, [cur], highway: _highway[cur]),
+                                  bg: Colors.white,
+                                  fg: LS.primary,
+                                  border: LS.primary,
+                                  icon: Icons.send_rounded,
+                                  label: 'ナビ',
+                                ),
+                                const SizedBox(width: 8),
+                                if (done)
+                                  btn(onTap: _delivering ? null : () => _unmarkDelivered(cur), bg: Colors.white, fg: LS.green, border: LS.green, icon: Icons.undo_rounded, label: '取消')
+                                else
+                                  btn(
+                                    onTap: (st?.orderId == null || _delivering) ? null : () => _markDelivered(cur),
+                                    bg: LS.green,
+                                    fg: Colors.white,
+                                    icon: Icons.check_rounded,
+                                    label: '配達済み',
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildVertical(BuildContext context) {
     return Dialog(
       insetPadding: EdgeInsets.zero,
@@ -632,6 +857,7 @@ class _KRouteMapDialogState extends State<KRouteMapDialog> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.vertical && isPhoneLandscape(context)) return _buildLandscape(context);
     if (widget.vertical) return _buildVertical(context);
     return Dialog(
       insetPadding: EdgeInsets.zero,

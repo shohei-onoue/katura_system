@@ -12,6 +12,7 @@ import '../../services/reservation_service.dart';
 import '../../widgets/k_route_map_dialog.dart';
 import 'phone_order_list_dialogs.dart';
 import 'phone_delivery_common.dart';
+import 'landscape/landscape_style.dart';
 
 const Color _sunRed = Color(0xFFE53935);
 const Color _satBlue = Color(0xFF1E88E5);
@@ -55,6 +56,7 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return _buildLandscape(context);
     final sel = selected;
     return Container(
       color: PhoneUi.bg,
@@ -268,6 +270,279 @@ class PhoneDeliveryCalendarView extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  // ---------------------------------------------------------------
+  // スマホ横向き（Figma 168:111）
+  // ---------------------------------------------------------------
+  Widget _buildLandscape(BuildContext context) {
+    final sel = selected;
+    return Container(
+      color: LS.bg,
+      child: SafeArea(
+        left: false,
+        child: Column(
+          children: [
+            SizedBox(
+              height: LS.headerH,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: LS.pad),
+                child: Row(
+                  children: [
+                    const Text('配送予定', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: LS.text)),
+                    const SizedBox(width: LS.gap),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            for (int i = 0; i < branchNames.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 6),
+                              _lChip(branchNames[i], branchNames[i] == branch),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(LS.pad, 0, LS.pad, LS.gap),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(width: 340, child: _lCalendar()),
+                    const SizedBox(width: LS.gap),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.local_shipping_rounded, size: 28, color: LS.text),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '${sel == null ? '' : '${DateFormat('M/d(E)', 'ja_JP').format(sel)} '}${dayOrders.length}件',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: LS.text),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Expanded(
+                            child: dayOrders.isEmpty
+                                ? const Center(child: Text('受注なし', style: TextStyle(fontSize: 18, color: LS.textSub)))
+                                : ListView.separated(
+                                    padding: EdgeInsets.zero,
+                                    itemCount: dayOrders.length,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                                    itemBuilder: (_, i) => _lOrderRow(dayOrders[i]),
+                                  ),
+                          ),
+                          const SizedBox(height: 8),
+                          Opacity(
+                            opacity: onRoute == null ? 0.5 : 1,
+                            child: GestureDetector(
+                              onTap: onRoute,
+                              child: Container(
+                                height: LS.btnH,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(color: LS.primary, borderRadius: BorderRadius.circular(LS.btnRadius)),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.send_rounded, size: 24, color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Text('ルート確認', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lChip(String label, bool on) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onBranch(label),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: on ? LS.primary : LS.chipOff, borderRadius: BorderRadius.circular(22)),
+        child: Text(label, maxLines: 1, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: on ? Colors.white : LS.text)),
+      ),
+    );
+  }
+
+  Widget _lOrderRow(OrderModel o) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(LS.cardRadius),
+      onTap: () => onOrderTap(o),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.only(left: 14, right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(LS.cardRadius),
+          border: Border.all(color: LS.border),
+        ),
+        child: Row(
+          children: [
+            Text(o.deliveryTime, maxLines: 1, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: LS.orange)),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 3,
+              child: Text(names[o.id] ?? o.customerName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: LS.text)),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              flex: 2,
+              child: Text(phoneCityOf(o), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: LS.textSub)),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 28, color: LS.textSub),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lCalendar() {
+    final first = DateTime(month.year, month.month, 1);
+    final offset = first.weekday % 7;
+    final daysIn = DateTime(month.year, month.month + 1, 0).day;
+    final weeks = ((offset + daysIn) / 7).ceil();
+    final today = DateTime.now();
+    const dow = ['日', '月', '火', '水', '木', '金', '土'];
+    const headH = 36.0;
+
+    return LayoutBuilder(builder: (context, c) {
+      final avail = c.maxHeight - 16 - headH - 26;
+      final cellH = (avail / weeks).clamp(24.0, 40.0);
+      final circle = math.min(38.0, cellH - 2);
+
+      Widget cell(DateTime d) {
+        final inMonth = d.month == month.month;
+        final isSel = sel(d);
+        final isToday = d.year == today.year && d.month == today.month && d.day == today.day;
+        Color col = LS.text;
+        if (d.weekday == DateTime.sunday) col = LS.red;
+        if (d.weekday == DateTime.saturday) col = LS.blue;
+        if (!inMonth) col = col.withValues(alpha: 0.35);
+        return Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onSelect(DateTime(d.year, d.month, d.day)),
+            child: SizedBox(
+              height: cellH,
+              child: Center(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: circle,
+                      height: circle,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSel ? LS.primary : null,
+                        border: isToday && !isSel ? Border.all(color: LS.primary, width: 2) : null,
+                      ),
+                      child: Text('${d.day}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isSel ? Colors.white : col)),
+                    ),
+                    if (hasOrders(d))
+                      Positioned(
+                        bottom: 1,
+                        left: 0,
+                        right: 0,
+                        child: Center(child: Container(width: 4, height: 4, decoration: BoxDecoration(color: isSel ? Colors.white : LS.primary, shape: BoxShape.circle))),
+                      ),
+                    if (hasWarning(d)) const Positioned(top: -2, right: -2, child: Icon(Icons.warning_rounded, size: 14, color: LS.red)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      return Align(
+        alignment: Alignment.topCenter,
+        child: SingleChildScrollView(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(LS.panelRadius),
+              border: Border.all(color: LS.border),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: headH,
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onMonthMove(-1),
+                        child: const SizedBox(width: 44, height: headH, child: Icon(Icons.chevron_left_rounded, size: 32, color: LS.text)),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: Text('${month.year}年${month.month}月', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: LS.text)),
+                        ),
+                      ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onMonthMove(1),
+                        child: const SizedBox(width: 44, height: headH, child: Icon(Icons.chevron_right_rounded, size: 32, color: LS.text)),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: 26,
+                  child: Row(
+                    children: [
+                      for (int i = 0; i < 7; i++)
+                        Expanded(
+                          child: Center(
+                            child: Text(dow[i], style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: i == 0 ? LS.red : (i == 6 ? LS.blue : LS.textSub))),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                for (int r = 0; r < weeks; r++)
+                  Row(
+                    children: [
+                      for (int cc = 0; cc < 7; cc++) cell(DateTime(first.year, first.month, 1 - offset + r * 7 + cc)),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
   }
 
   bool sel(DateTime d) => selected != null && selected!.year == d.year && selected!.month == d.month && selected!.day == d.day;
@@ -667,8 +942,62 @@ class _PhoneDeliveryTimelinePageState extends State<PhoneDeliveryTimelinePage> {
 
   String get _title => '配達予定 ${DateFormat('M/d(E)', 'ja_JP').format(widget.date)}';
 
+  // スマホ横向き: 戻る+タイトル+店舗チップを1行ヘッダーにまとめ、縦のタイムラインをそのまま広く使う
+  Widget _buildLandscape(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LS.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              height: LS.headerH,
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: LS.pad),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.pop(context),
+                    child: const SizedBox(width: 40, height: LS.headerH, child: Icon(Icons.arrow_back_ios_new_rounded, size: 22, color: LS.text)),
+                  ),
+                  Text(_title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: LS.text)),
+                  const SizedBox(width: LS.gap),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          for (final b in widget.branchNames) ...[
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _selectBranch(b),
+                              child: Container(
+                                height: 40,
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(color: b == _branch ? LS.primary : LS.chipOff, borderRadius: BorderRadius.circular(20)),
+                                child: Text('$b(${_countOf(b)})', maxLines: 1, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: b == _branch ? Colors.white : LS.text)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _timeline()),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) return _buildLandscape(context);
     return Scaffold(
       backgroundColor: PhoneUi.bg,
       appBar: AppBar(

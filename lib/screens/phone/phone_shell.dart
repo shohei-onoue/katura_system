@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:katura_system/utils/app_colors.dart';
+import 'landscape/landscape_style.dart';
+import 'landscape/landscape_drawer.dart';
 
 /// スマホ版(Figma 89-xxxx)の共通カラー
 class PhoneColors {
@@ -144,13 +146,15 @@ class PhoneLandscapeRail extends StatelessWidget {
       onTap: onTap,
       child: SizedBox(
         width: 56,
-        height: 44,
-        child: Badge(
-          isLabelVisible: badge > 0,
-          label: Text('$badge'),
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-          child: Icon(icon, size: 28, color: Colors.white),
+        height: 48,
+        child: Center(
+          child: Badge(
+            isLabelVisible: badge > 0,
+            label: Text('$badge'),
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            child: Icon(icon, size: 28, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -164,7 +168,7 @@ class PhoneLandscapeRail extends StatelessWidget {
       onTap: () => onNavigate(e.$1),
       child: Container(
         width: 92,
-        height: 62,
+        height: 70,
         decoration: BoxDecoration(
           color: selected ? const Color(0x38FFFFFF) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
@@ -172,9 +176,12 @@ class PhoneLandscapeRail extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(e.$2, size: 28, color: color),
+            Icon(e.$2, size: 30, color: color),
             const SizedBox(height: 2),
-            Text(e.$3, style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold)),
+            Text(e.$3,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -187,23 +194,32 @@ class PhoneLandscapeRail extends StatelessWidget {
     final left = MediaQuery.of(context).padding.left;
     return Container(
       width: width + left,
-      color: AppColors.acceptButton,
+      color: const Color(0xFF5E35B1),
       padding: EdgeInsets.only(left: left),
       child: SafeArea(
         left: false,
         right: false,
-        child: Column(
-          children: [
-            const SizedBox(height: 6),
-            _topButton(Icons.logout_rounded, onLogout),
-            _topButton(Icons.notifications_active_rounded, onBell, badge: pendingCount),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [for (final e in _items) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: _item(e))],
+        child: LayoutBuilder(
+          builder: (context, c) => SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: c.maxHeight - 20),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    _topButton(Icons.logout_rounded, onLogout),
+                    _topButton(Icons.notifications_active_rounded, onBell, badge: pendingCount),
+                    const Spacer(),
+                    for (int i = 0; i < _items.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 4),
+                      _item(_items[i]),
+                    ],
+                    const Spacer(),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -241,6 +257,9 @@ class PhoneDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (isPhoneLandscape(context)) {
+      return LandscapeDrawer(selectedIndex: selectedIndex, loginId: loginId, onSelect: onSelect, onLogout: onLogout, onClose: onClose);
+    }
     return Drawer(
       width: 296,
       backgroundColor: Colors.black,

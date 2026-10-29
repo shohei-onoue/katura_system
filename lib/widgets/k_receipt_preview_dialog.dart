@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:katura_system/screens/phone/landscape/landscape_style.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'html_view/k_html_view.dart';
@@ -490,6 +491,10 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
 </html>''';
   }
 
+  // 横向き時のみ、プレビューを残り高さに収める(はみ出し防止)
+  Widget _landscapeFlex(BuildContext context, Widget child) =>
+      isPhoneLandscape(context) ? Flexible(child: child) : child;
+
   // スマホ(幅600未満)：Figma「領収書プレビュー」（全画面シート）
   Widget _buildPhone(BuildContext context) {
     return Dialog(
@@ -524,7 +529,9 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
                 ),
               ),
               const SizedBox(height: 10),
-              Padding(
+              _landscapeFlex(
+                context,
+                Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Container(
                   decoration: BoxDecoration(color: const Color(0xFFECEFF1), borderRadius: BorderRadius.circular(12)),
@@ -539,8 +546,8 @@ class _KReceiptPreviewDialogState extends State<KReceiptPreviewDialog> {
                           ),
                   ),
                 ),
-              ),
-              const Spacer(),
+              )),
+              if (!isPhoneLandscape(context)) const Spacer(),
               Container(
                 padding: const EdgeInsets.fromLTRB(18, 11, 18, 11),
                 decoration: const BoxDecoration(border: Border(top: BorderSide(color: PL.border))),

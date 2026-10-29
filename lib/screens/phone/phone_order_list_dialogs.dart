@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'landscape/landscape_style.dart';
 import 'phone_order_list_style.dart';
 
 /// スマホ版の確認ダイアログ共通部品（Figma: 編集の中止 / 予約キャンセル / 当日キャンセル / 注文入力の中止 / 注文の中止 / ルート表示の確認）
@@ -29,6 +30,84 @@ Future<bool?> showPhoneFigmaConfirm(
               alignment: Alignment.center,
               decoration: outlined ? BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: PL.border)) : null,
               child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: fg)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  if (isPhoneLandscape(context)) {
+    Widget lbtn(BuildContext ctx, String label, bool result, {Color? fill, Color fg = LS.primary, bool outlined = false}) {
+      return Expanded(
+        child: SizedBox(
+          height: 64,
+          child: Material(
+            color: fill ?? Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => Navigator.pop(ctx, result),
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: outlined ? BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: LS.primary, width: 2)) : null,
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: fg)),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return showDialog<bool>(
+      context: context,
+      barrierColor: LS.overlay,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+                      child: Icon(icon, size: 40, color: iconColor),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: LS.text)),
+                          if (message != null) ...[
+                            const SizedBox(height: 6),
+                            Text(message, style: const TextStyle(fontSize: 18, color: LS.textSub)),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  lbtn(ctx, cancelLabel, false, fill: cancelFill, fg: cancelFill == null ? LS.primary : Colors.white, outlined: cancelFill == null),
+                  const SizedBox(width: 12),
+                  lbtn(ctx, confirmLabel, true, fill: confirmColor, fg: Colors.white),
+                ]),
+              ],
             ),
           ),
         ),
