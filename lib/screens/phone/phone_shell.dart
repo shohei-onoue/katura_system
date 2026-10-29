@@ -113,6 +113,103 @@ class PhoneBottomBar extends StatelessWidget {
   }
 }
 
+/// 横向き用の左ナビ(Figma: スマホ全画面 横)。ログアウト・事前連絡ベル・4つの画面切替を縦に並べる
+class PhoneLandscapeRail extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onNavigate;
+  final VoidCallback onLogout;
+  final VoidCallback onBell;
+  final int pendingCount;
+  const PhoneLandscapeRail({
+    super.key,
+    required this.selectedIndex,
+    required this.onNavigate,
+    required this.onLogout,
+    required this.onBell,
+    this.pendingCount = 0,
+  });
+
+  static const double width = 104;
+
+  static const List<(int, IconData, String)> _items = [
+    (1, Icons.list_alt_rounded, '受注一覧'),
+    (3, Icons.local_shipping_rounded, '配送予定'),
+    (6, Icons.people_rounded, '顧客'),
+    (9, Icons.tune_rounded, '設定'),
+  ];
+
+  Widget _topButton(IconData icon, VoidCallback onTap, {int badge = 0}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: SizedBox(
+        width: 56,
+        height: 44,
+        child: Badge(
+          isLabelVisible: badge > 0,
+          label: Text('$badge'),
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          child: Icon(icon, size: 28, color: Colors.white),
+        ),
+      ),
+    );
+  }
+
+  Widget _item((int, IconData, String) e) {
+    final selected = e.$1 == selectedIndex;
+    final color = selected ? const Color(0xFFFFD180) : Colors.white;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => onNavigate(e.$1),
+      child: Container(
+        width: 92,
+        height: 62,
+        decoration: BoxDecoration(
+          color: selected ? const Color(0x38FFFFFF) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(e.$2, size: 28, color: color),
+            const SizedBox(height: 2),
+            Text(e.$3, style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ノッチ(切り欠き)側の余白ぶんだけ幅を広げ、紫の帯は画面端まで伸ばす
+    final left = MediaQuery.of(context).padding.left;
+    return Container(
+      width: width + left,
+      color: AppColors.acceptButton,
+      padding: EdgeInsets.only(left: left),
+      child: SafeArea(
+        left: false,
+        right: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 6),
+            _topButton(Icons.logout_rounded, onLogout),
+            _topButton(Icons.notifications_active_rounded, onBell, badge: pendingCount),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [for (final e in _items) Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: _item(e))],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// メニュー(ドロワー): 黒背景・選択中は#3A3A3Aの角丸ハイライト
 class PhoneDrawer extends StatelessWidget {
   final int selectedIndex;

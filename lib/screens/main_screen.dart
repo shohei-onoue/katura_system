@@ -321,6 +321,36 @@ class _MainScreenState extends State<MainScreen> {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isMobile = screenWidth < 900;
     final bool isPhone = isPhoneWidth(context);
+    // スマホを横向きにした時(縦狭横広)は、上下バーをやめて左ナビ＋大きめの文字にする
+    final Size screenSize = MediaQuery.of(context).size;
+    final bool isPhoneLandscape = isPhone && screenSize.width > screenSize.height;
+
+    if (isPhoneLandscape) {
+      return Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: AppColors.mainBackground,
+        body: Row(
+          children: [
+            PhoneLandscapeRail(
+              selectedIndex: _selectedIndex,
+              onNavigate: _goTo,
+              onLogout: _logout,
+              onBell: _showContactDialog,
+              pendingCount: _pendingCount,
+            ),
+            Expanded(
+              child: SafeArea(
+                left: false,
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(1.3)),
+                  child: _buildBody(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Scaffold(
       key: _scaffoldKey,
